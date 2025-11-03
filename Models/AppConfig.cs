@@ -1,6 +1,7 @@
 ﻿using InfoKioskApp.Models;
 using System.Collections.Generic;
 
+
 namespace InfoKioskApp
 {
     
@@ -8,12 +9,14 @@ namespace InfoKioskApp
     public class AppConfig
     {
         public InterfaceSettings InterfaceSettings { get; set; } = new InterfaceSettings();
+        public List<CustomSection> CustomSections { get; set; } = new List<CustomSection>();
 
         // === Основные пути ===
         public string MainSchedulePath { get; set; } = "data/MainSchedule.xlsx";
         public string ChangesPath { get; set; } = "data/Changes.xlsx";
         public bool ShowChanges { get; set; } = true;
         public string ChangesType { get; set; } = "Table";
+
 
         // === Дополнительные расписания ===
         public List<ExtraSchedule> ExtraSchedules { get; set; } = new List<ExtraSchedule>();

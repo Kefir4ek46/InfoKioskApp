@@ -16,7 +16,7 @@
         </Grid.RowDefinitions>
 
         <TextBlock Text="Введите PIN-код:" 
-                   Foreground="White"
+                   Foreground="white"
                    FontSize="18"
                    Margin="0,0,0,15"
                    HorizontalAlignment="Center"/>
@@ -29,11 +29,12 @@
                      Padding="5"
                      MaxLength="8"
                      HorizontalContentAlignment="Center"
+                     Background="LightGray"
                      Margin="0,0,0,20"/>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
-            <Button Content="Войти" Width="100" Height="35" Click="Login_Click"/>
-            <Button Content="Отмена" Width="100" Height="35" Click="Cancel_Click"/>
+            <Button Content="Войти" Width="100" Height="35" Click="Login_Click" Background="Green" />
+            <Button Content="Отмена" Width="100" Height="35" Click="Cancel_Click" Background="Red"/>
         </StackPanel>
     </Grid>
 </Window>

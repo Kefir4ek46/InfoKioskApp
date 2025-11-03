@@ -8,46 +8,56 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class InterfaceSettingsView : UserControl
     {
+        private AppConfig _config;
+
         public InterfaceSettingsView()
         {
             InitializeComponent();
+            _config = ConfigService.LoadConfig();
             LoadCurrentSettings();
         }
 
         private void LoadCurrentSettings()
         {
-            var config = ConfigService.LoadConfig();
-            if (config.InterfaceSettings != null)
+            if (_config.InterfaceSettings != null)
             {
-                BackgroundColorPicker.Text = config.InterfaceSettings.BackgroundColor ?? "#1E1E1E";
-                ButtonColorPicker.Text = config.InterfaceSettings.ButtonBackground ?? "#3A3A3A";
-                TextColorPicker.Text = config.InterfaceSettings.ButtonForeground ?? "White";
+                BackgroundColorPicker.SelectedColor =
+                    (Color)ColorConverter.ConvertFromString(_config.InterfaceSettings.BackgroundColor ?? "#1E1E1E");
+                ButtonColorPicker.SelectedColor =
+                    (Color)ColorConverter.ConvertFromString(_config.InterfaceSettings.ButtonBackground ?? "#3A3A3A");
+                TextColorPicker.SelectedColor =
+                    (Color)ColorConverter.ConvertFromString(_config.InterfaceSettings.ButtonForeground ?? "White");
             }
+        }
+
+        private void ColorPicker_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<Color?> e)
+        {
+            ApplyInterfaceColors(
+                BackgroundColorPicker.SelectedColor?.ToString() ?? "#1E1E1E",
+                ButtonColorPicker.SelectedColor?.ToString() ?? "#3A3A3A",
+                TextColorPicker.SelectedColor?.ToString() ?? "White"
+            );
         }
 
         private void Apply_Click(object sender, RoutedEventArgs e)
         {
-            ApplyInterfaceColors(BackgroundColorPicker.Text, ButtonColorPicker.Text, TextColorPicker.Text);
+            ApplyInterfaceColors(
+                BackgroundColorPicker.SelectedColor?.ToString(),
+                ButtonColorPicker.SelectedColor?.ToString(),
+                TextColorPicker.SelectedColor?.ToString()
+            );
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            var config = ConfigService.LoadConfig();
-            if (config.InterfaceSettings == null)
-                config.InterfaceSettings = new InterfaceSettings();
+            if (_config.InterfaceSettings == null)
+                _config.InterfaceSettings = new InterfaceSettings();
 
-            config.InterfaceSettings.BackgroundColor = BackgroundColorPicker.Text;
-            config.InterfaceSettings.ButtonBackground = ButtonColorPicker.Text;
-            config.InterfaceSettings.ButtonForeground = TextColorPicker.Text;
+            _config.InterfaceSettings.BackgroundColor = BackgroundColorPicker.SelectedColor?.ToString();
+            _config.InterfaceSettings.ButtonBackground = ButtonColorPicker.SelectedColor?.ToString();
+            _config.InterfaceSettings.ButtonForeground = TextColorPicker.SelectedColor?.ToString();
 
-            ConfigService.SaveConfig(config);
-
-            ApplyInterfaceColors(
-                config.InterfaceSettings.BackgroundColor,
-                config.InterfaceSettings.ButtonBackground,
-                config.InterfaceSettings.ButtonForeground
-            );
-
+            ConfigService.SaveConfig(_config);
             MessageBox.Show("Настройки сохранены и применены!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
@@ -55,15 +65,11 @@ namespace InfoKioskApp.Views.AdminTabs
         {
             var app = Application.Current;
 
-            SolidColorBrush bgBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(background));
-            SolidColorBrush btnBgBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(buttonBg));
-            SolidColorBrush textBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(text));
-
-            app.Resources["AppBackgroundBrush"] = bgBrush;
-            app.Resources["PanelBackgroundBrush"] = bgBrush;
-            app.Resources["ButtonBackgroundBrush"] = btnBgBrush;
-            app.Resources["ButtonForegroundBrush"] = textBrush;
-            app.Resources["TextForegroundBrush"] = textBrush;
+            app.Resources["AppBackgroundBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(background));
+            app.Resources["PanelBackgroundBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(background));
+            app.Resources["ButtonBackgroundBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(buttonBg));
+            app.Resources["ButtonForegroundBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(text));
+            app.Resources["TextForegroundBrush"] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(text));
         }
 
         private void ThemeSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -73,18 +79,22 @@ namespace InfoKioskApp.Views.AdminTabs
                 var tag = item.Tag?.ToString();
                 if (tag == "dark")
                 {
-                    BackgroundColorPicker.Text = "#1E1E1E";
-                    ButtonColorPicker.Text = "#444";
-                    TextColorPicker.Text = "White";
+                    BackgroundColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("#1E1E1E");
+                    ButtonColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("#444");
+                    TextColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("White");
                 }
                 else if (tag == "light")
                 {
-                    BackgroundColorPicker.Text = "#F5F5F5";
-                    ButtonColorPicker.Text = "#E0E0E0";
-                    TextColorPicker.Text = "#222";
+                    BackgroundColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("#F5F5F5");
+                    ButtonColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("#E0E0E0");
+                    TextColorPicker.SelectedColor = (Color)ColorConverter.ConvertFromString("#222");
                 }
 
-                ApplyInterfaceColors(BackgroundColorPicker.Text, ButtonColorPicker.Text, TextColorPicker.Text);
+                ApplyInterfaceColors(
+                    BackgroundColorPicker.SelectedColor?.ToString(),
+                    ButtonColorPicker.SelectedColor?.ToString(),
+                    TextColorPicker.SelectedColor?.ToString()
+                );
             }
         }
     }

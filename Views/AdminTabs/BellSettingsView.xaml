@@ -55,13 +55,13 @@
                 <!-- Левая часть: выбор параметров -->
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="10">
                     <TextBlock Text="Начало:" Foreground="White" VerticalAlignment="Center"/>
-                    <TextBox x:Name="StartTimeBox" Text="08:00" Width="60" Margin="0,0,10,0"/>
+                    <TextBox x:Name="StartTimeBox" Text="08:00" FontSize="16" VerticalAlignment="Center" Background="#ff3a3a3a" Foreground="White" Width="60" Margin="0,0,10,0"/>
 
                     <TextBlock Text="Длительность урока:" Foreground="White" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="LessonDurationCombo" Width="70" SelectedIndex="3">
-                        <ComboBoxItem Content="30"/>
-                        <ComboBoxItem Content="35"/>
-                        <ComboBoxItem Content="40"/>
+                    <ComboBox x:Name="LessonDurationCombo" Width="70" Foreground="Black" SelectedIndex="3">
+                        <ComboBoxItem Content="30" />
+                        <ComboBoxItem Content="35" />
+                        <ComboBoxItem Content="40" />
                         <ComboBoxItem Content="45"/>
                         <ComboBoxItem Content="50"/>
                     </ComboBox>
@@ -71,8 +71,8 @@
 
                 <!-- Правая часть: действия -->
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="10">
-                    <Button Content="Добавить" Click="AddBell_Click" Width="100" Height="32" Background="#444" Foreground="White"/>
-                    <Button Content="Удалить" Click="RemoveBell_Click" Width="100" Height="32" Background="#444" Foreground="White"/>
+                    <Button Content="Добавить" Click="AddBell_Click" Width="100" Height="32" Background="Green" Foreground="White"/>
+                    <Button Content="Удалить" Click="RemoveBell_Click" Width="100" Height="32" Background="Red" Foreground="White"/>
                     <Button Content="💾 Сохранить" Click="SaveBells_Click" Width="120" Height="32" Background="#2A82DA" Foreground="White"/>
                 </StackPanel>
             </DockPanel>

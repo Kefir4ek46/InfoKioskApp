@@ -7,7 +7,47 @@
         Background="{DynamicResource AppBackgroundBrush}">
 
 	<Window.Resources>
-		<SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1E1E"/>
+
+        <Style x:Key="ModernMenuButton" TargetType="Button">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                        CornerRadius="10"
+                        
+                        SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"
+                                      Margin="10,0,0,0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3A9FFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#2A82DA"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1E1E"/>
 		<SolidColorBrush x:Key="PanelBackgroundBrush" Color="#252525"/>
 		<SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#444"/>
 		<SolidColorBrush x:Key="ButtonForegroundBrush" Color="White"/>
@@ -61,15 +101,15 @@
 		<!-- Боковое меню -->
 		<DockPanel Grid.Row="1" Background="{DynamicResource PanelBackgroundBrush}" Margin="10" LastChildFill="False">
 			<StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-				<Button Content="📅 Расписание" Click="Schedule_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Margin="0,5,0,0"/>
-				<Button Content="🖼️ Медиа" Click="Media_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Margin="0,5,0,0"/>
-				<Button Content="📄 Документы" Click="Documents_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Margin="0,5,0,0"/>
+                <Button Content="📅 Расписание" Click="Schedule_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource ModernMenuButton}"  Margin="0,5,0,0"/>
+                <Button Content="🖼️ Медиа" Click="Media_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource ModernMenuButton}" Margin="0,5,0,0"/>
+                <Button Content="📄 Документы" Click="Documents_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource ModernMenuButton}" Margin="0,5,0,0"/>
 			</StackPanel>
 
 			<Separator DockPanel.Dock="Bottom" Margin="0,10,0,10" Background="#444" Height="2"/>
 
 			<StackPanel DockPanel.Dock="Bottom">
-				<Button Content="⚙️ Админ" Click="Admin_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Margin="0,5,0,0"/>
+                <Button Content="⚙️ Админ" Click="Admin_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource ModernMenuButton}" Margin="0,5,0,0"/>
 			</StackPanel>
 		</DockPanel>
 

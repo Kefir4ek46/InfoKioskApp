@@ -1,15 +1,20 @@
-﻿using InfoKioskApp.Services;
+﻿using InfoKioskApp.Models;
+using InfoKioskApp.Services;
 using InfoKioskApp.Views;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using static InfoKioskApp.AppConfig;
+
 
 namespace InfoKioskApp
 {
@@ -27,6 +32,9 @@ namespace InfoKioskApp
             StartLessonTimer();
             ApplyInterfaceSettings();
             _ = UpdateWeatherAsync();
+
+            // ✅ Добавляем пользовательские разделы из конфига
+            AddCustomSections();
         }
 
         #region === Время и дата ===
@@ -255,6 +263,46 @@ namespace InfoKioskApp
             {
                 var adminMenu = new AdminMenu();
                 adminMenu.ShowDialog();
+
+                // 🔄 После выхода из админ-панели обновляем меню (вдруг добавились новые разделы)
+                AddCustomSections(true);
+            }
+        }
+        #endregion
+
+        #region === Пользовательские разделы ===
+        private void AddCustomSections(bool refresh = false)
+        {
+            var config = ConfigService.LoadConfig();
+            if (config.CustomSections == null || config.CustomSections.Count == 0)
+                return;
+
+            var leftMenu = FindName("LeftMenuPanel") as StackPanel;
+            if (leftMenu == null) return;
+
+            // Удаляем старые кнопки пользовательских разделов
+            if (refresh)
+            {
+                var toRemove = leftMenu.Children.OfType<Button>().Where(b => b.Tag is CustomSection).ToList();
+                foreach (var b in toRemove) leftMenu.Children.Remove(b);
+            }
+
+            foreach (var section in config.CustomSections)
+            {
+                var button = new Button
+                {
+                    Content = $"📂 {section.Name}",
+                    Style = (Style)FindResource("ModernMenuButton"),
+                    Tag = section
+                };
+
+                button.Click += (s, e) =>
+                {
+                    ContentArea.Content = new CustomContentView(section.FolderPath);
+
+                };
+
+                leftMenu.Children.Add(button);
             }
         }
         #endregion
