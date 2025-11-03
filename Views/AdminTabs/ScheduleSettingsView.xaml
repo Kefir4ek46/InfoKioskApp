@@ -1,0 +1,67 @@
+﻿<UserControl x:Class="InfoKioskApp.Views.AdminTabs.ScheduleSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#2D2D30">
+
+    <StackPanel Margin="20" Orientation="Vertical">
+        <TextBlock Text="Настройки расписаний" 
+                   Foreground="White" FontSize="20" FontWeight="Bold" Margin="0 0 0 20"/>
+
+        <!-- Основное расписание -->
+        <GroupBox Header="Основное расписание" Margin="0 10" Foreground="White">
+            <StackPanel Margin="10">
+                <StackPanel Orientation="Horizontal" Margin="0 5">
+                    <TextBlock Text="Путь к файлу:" Foreground="White" Width="150" VerticalAlignment="Center"/>
+                    <TextBox x:Name="MainSchedulePathBox" Width="350" Margin="0,0,10,0"/>
+                    <Button Content="Обзор" Click="BrowseMain_Click" Width="80"/>
+                </StackPanel>
+                <TextBlock Text="* Excel-файл, где каждая страница — отдельный класс" 
+                           Foreground="LightGray" FontSize="12" Margin="0,5,0,0"/>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Расписание изменений -->
+        <GroupBox Header="Изменения в расписании" Margin="0 10" Foreground="White">
+            <StackPanel Margin="10">
+                <CheckBox x:Name="ShowChangesBox" Content="Показывать вкладку изменений"
+                          Foreground="White" Margin="0,0,0,10"/>
+                <StackPanel Orientation="Horizontal" Margin="0 5">
+                    <TextBlock Text="Путь:" Foreground="White" Width="150" VerticalAlignment="Center"/>
+                    <TextBox x:Name="ChangesPathBox" Width="350" Margin="0,0,10,0"/>
+                    <Button Content="Обзор" Click="BrowseChanges_Click" Width="80"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 10">
+                    <TextBlock Text="Тип файла:" Foreground="White" Width="150" VerticalAlignment="Center"/>
+                    <ComboBox x:Name="ChangesTypeBox" Width="200">
+                        <ComboBoxItem Content="Excel" Tag="excel"/>
+                        <ComboBoxItem Content="Изображение" Tag="image"/>
+                        <ComboBoxItem Content="PDF" Tag="pdf"/>
+                    </ComboBox>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <!-- Дополнительные расписания -->
+        <GroupBox Header="Дополнительные расписания" Margin="0 10" Foreground="White">
+            <StackPanel Margin="10">
+                <ListView x:Name="ExtraSchedulesList" Height="150" Margin="0 0 0 10">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Название" Width="150" DisplayMemberBinding="{Binding Name}"/>
+                            <GridViewColumn Header="Путь" Width="300" DisplayMemberBinding="{Binding Path}"/>
+                            <GridViewColumn Header="Тип" Width="100" DisplayMemberBinding="{Binding Type}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Добавить" Click="AddSchedule_Click" Width="120" Margin="0,0,10,0"/>
+                    <Button Content="Удалить" Click="RemoveSchedule_Click" Width="120"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+
+        <Button Content="💾 Сохранить настройки расписаний" Width="250" Height="40" Margin="0 30 0 0"
+                Background="#007ACC" Foreground="White" Click="Save_Click"/>
+    </StackPanel>
+</UserControl>

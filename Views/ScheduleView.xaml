@@ -1,0 +1,27 @@
+﻿<UserControl x:Class="InfoKioskApp.Views.ScheduleView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#FF1E1E1E">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Вкладки -->
+        <TabControl x:Name="ScheduleTabs" Grid.Row="0"
+                    Background="#FF2A2A2A" Foreground="White"
+                    BorderThickness="0" Margin="0,0,0,10">
+        </TabControl>
+
+        <!-- Область контента -->
+        <Grid x:Name="ScheduleContent" Grid.Row="1" Background="#FF2E2E2E">
+            <TextBlock Text="Выберите расписание..."
+                       Foreground="Gray" FontSize="18"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+        </Grid>
+    </Grid>
+</UserControl>
+
