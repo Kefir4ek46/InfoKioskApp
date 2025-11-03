@@ -1,16 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using Newtonsoft.Json; // <-- убедись, что пакет установлен
+using Newtonsoft.Json;
 
 namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class BellSettingsView : UserControl
     {
-        private List<Bell> _bells = new List<Bell>();
-        private readonly string _path = "data\\BellSchedule.json";
+        private ObservableCollection<BellItem> Bells { get; set; }
+        private readonly string bellsFile = "data/BellSchedule.json";
 
         public BellSettingsView()
         {
@@ -20,65 +20,93 @@ namespace InfoKioskApp.Views.AdminTabs
 
         private void LoadBells()
         {
-            try
+            if (File.Exists(bellsFile))
             {
-                if (File.Exists(_path))
-                {
-                    string json = File.ReadAllText(_path);
-                    _bells = JsonConvert.DeserializeObject<List<Bell>>(json) ?? new List<Bell>();
-                }
-                else
-                {
-                    _bells = new List<Bell>();
-                }
+                string json = File.ReadAllText(bellsFile);
+                Bells = JsonConvert.DeserializeObject<ObservableCollection<BellItem>>(json);
+            }
+            else
+            {
+                Bells = new ObservableCollection<BellItem>();
+            }
 
-                BellsGrid.ItemsSource = _bells;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка при загрузке расписания звонков: " + ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            if (Bells == null)
+                Bells = new ObservableCollection<BellItem>();
+
+            BellsGrid.ItemsSource = Bells;
         }
 
         private void AddBell_Click(object sender, RoutedEventArgs e)
         {
-            _bells.Add(new Bell { Number = _bells.Count + 1, Start = "08:30", End = "09:15" });
-            BellsGrid.Items.Refresh();
+            int duration = int.Parse(((ComboBoxItem)LessonDurationCombo.SelectedItem).Content.ToString());
+            TimeSpan startTime;
+
+            if (Bells.Count == 0)
+            {
+                startTime = TimeSpan.Parse(StartTimeBox.Text);
+            }
+            else
+            {
+                var last = Bells[Bells.Count - 1];
+                startTime = TimeSpan.Parse(last.End).Add(TimeSpan.FromMinutes(last.BreakAfter));
+            }
+
+            TimeSpan endTime = startTime.Add(TimeSpan.FromMinutes(duration));
+
+            Bells.Add(new BellItem
+            {
+                Number = Bells.Count + 1,
+                Start = startTime.ToString(@"hh\:mm"),
+                End = endTime.ToString(@"hh\:mm"),
+                BreakAfter = 10
+            });
         }
 
         private void RemoveBell_Click(object sender, RoutedEventArgs e)
         {
-            if (BellsGrid.SelectedItem is Bell bell)
+            if (BellsGrid.SelectedItem is BellItem selected)
+                Bells.Remove(selected);
+
+            for (int i = 0; i < Bells.Count; i++)
+                Bells[i].Number = i + 1;
+        }
+
+        private void Recalculate_Click(object sender, RoutedEventArgs e)
+        {
+            if (Bells.Count == 0) return;
+
+            int duration = int.Parse(((ComboBoxItem)LessonDurationCombo.SelectedItem).Content.ToString());
+            TimeSpan currentStart = TimeSpan.Parse(StartTimeBox.Text);
+
+            foreach (var bell in Bells)
             {
-                _bells.Remove(bell);
-                // перенумеровываем
-                for (int i = 0; i < _bells.Count; i++)
-                    _bells[i].Number = i + 1;
-                BellsGrid.Items.Refresh();
+                TimeSpan end = currentStart.Add(TimeSpan.FromMinutes(duration));
+                bell.Start = currentStart.ToString(@"hh\:mm");
+                bell.End = end.ToString(@"hh\:mm");
+                currentStart = end.Add(TimeSpan.FromMinutes(bell.BreakAfter));
             }
+
+            BellsGrid.Items.Refresh();
         }
 
         private void SaveBells_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                Directory.CreateDirectory("data");
-                string json = JsonConvert.SerializeObject(_bells, Formatting.Indented);
-                File.WriteAllText(_path, json);
-                MessageBox.Show("Расписание звонков сохранено!", "Сохранено", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка при сохранении расписания: " + ex.Message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            for (int i = 0; i < Bells.Count; i++)
+                Bells[i].Number = i + 1;
+
+            string json = JsonConvert.SerializeObject(Bells, Formatting.Indented);
+            File.WriteAllText(bellsFile, json);
+
+            MessageBox.Show("Расписание звонков сохранено!", "InfoKioskApp",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
-    // Простая модель звонка. Если у тебя уже есть Bell в другом неймспейсе — удали этот класс или приведите к одному неймспейсу.
-    public class Bell
+    public class BellItem
     {
         public int Number { get; set; }
-        public string Start { get; set; } = "";
-        public string End { get; set; } = "";
+        public string Start { get; set; }
+        public string End { get; set; }
+        public int BreakAfter { get; set; }
     }
 }

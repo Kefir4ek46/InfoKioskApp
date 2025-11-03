@@ -7,6 +7,7 @@ using InfoKioskApp.Services;
 using ClosedXML.Excel;
 using static InfoKioskApp.Services.ConfigService;
 using System.Windows.Media;
+using InfoKioskApp.Models;
 
 namespace InfoKioskApp.Views
 {

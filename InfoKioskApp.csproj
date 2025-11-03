@@ -95,6 +95,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Models\AppConfig.cs" />
+    <Compile Include="Models\ExtraSchedule.cs" />
+    <Compile Include="Models\InterfaceSettings.cs" />
     <Compile Include="Services\ConfigService.cs" />
     <Compile Include="Views\AdminMenu.xaml.cs">
       <DependentUpon>AdminMenu.xaml</DependentUpon>
@@ -228,7 +231,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Data\media\" />
-    <Folder Include="Models\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

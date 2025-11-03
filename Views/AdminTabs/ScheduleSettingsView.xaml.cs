@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using InfoKioskApp.Services;
+using InfoKioskApp.Models;
+
 
 namespace InfoKioskApp.Views.AdminTabs
 {
