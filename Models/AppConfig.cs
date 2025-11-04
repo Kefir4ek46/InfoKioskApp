@@ -10,6 +10,8 @@ namespace InfoKioskApp
     {
         public InterfaceSettings InterfaceSettings { get; set; } = new InterfaceSettings();
         public List<CustomSection> CustomSections { get; set; } = new List<CustomSection>();
+        public List<ScheduleFile> Schedules { get; set; } = new List<ScheduleFile>();
+
 
         // === Основные пути ===
         public string MainSchedulePath { get; set; } = "data/MainSchedule.xlsx";
@@ -18,14 +20,16 @@ namespace InfoKioskApp
         public string ChangesType { get; set; } = "Table";
 
 
+
         // === Дополнительные расписания ===
-        public List<ExtraSchedule> ExtraSchedules { get; set; } = new List<ExtraSchedule>();
+        public List<ScheduleFile> ExtraSchedules { get; set; } = new List<ScheduleFile>();
 
         // === Тип отображения изменений ===
         public string PinCode { get; set; } = "1234";
 
 
         // === Остальные настройки ===
+        public int MediaAutoIntervalSeconds { get; set; } = 15; // интервал в секундах
         public string MediaPath { get; set; } = "data/media";
         public string DocumentsPath { get; set; } = "data/documents";
         public string BellSchedulePath { get; set; } = "data/BellSchedule.json";

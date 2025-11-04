@@ -76,6 +76,15 @@
     <Reference Include="Microsoft.Bcl.HashCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Bcl.HashCode.1.1.1\lib\net461\Microsoft.Bcl.HashCode.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.3595.46, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Web.WebView2.1.0.3595.46\lib\net462\Microsoft.Web.WebView2.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.WinForms, Version=1.0.3595.46, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Web.WebView2.1.0.3595.46\lib\net462\Microsoft.Web.WebView2.WinForms.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.Wpf, Version=1.0.3595.46, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+      <HintPath>packages\Microsoft.Web.WebView2.1.0.3595.46\lib\net462\Microsoft.Web.WebView2.Wpf.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Xaml.Behaviors.Wpf.1.1.77\lib\net462\Microsoft.Xaml.Behaviors.dll</HintPath>
     </Reference>
@@ -140,7 +149,7 @@
     <Compile Include="Models\AppConfig.cs" />
     <Compile Include="Models\CalendarEvent.cs" />
     <Compile Include="Models\CustomSection.cs" />
-    <Compile Include="Models\ExtraSchedule.cs" />
+    <Compile Include="Models\ScheduleFile.cs" />
     <Compile Include="Models\InterfaceSettings.cs" />
     <Compile Include="Models\WeatherData.cs" />
     <Compile Include="Services\CalendarService.cs" />
@@ -148,6 +157,9 @@
     <Compile Include="Services\WeatherService.cs" />
     <Compile Include="Views\AdminMenu.xaml.cs">
       <DependentUpon>AdminMenu.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AdminTabs\AboutDeveloperView.xaml.cs">
+      <DependentUpon>AboutDeveloperView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\AdminTabs\BellSettingsView.xaml.cs">
       <DependentUpon>BellSettingsView.xaml</DependentUpon>
@@ -160,6 +172,9 @@
     </Compile>
     <Compile Include="Views\AdminTabs\CustomSectionsView.xaml.cs">
       <DependentUpon>CustomSectionsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AdminTabs\FilesSettingsView.xaml.cs">
+      <DependentUpon>FilesSettingsView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\AdminTabs\InterfaceSettingsView.xaml.cs">
       <DependentUpon>InterfaceSettingsView.xaml</DependentUpon>
@@ -210,6 +225,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Views\AdminTabs\AboutDeveloperView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\AdminTabs\BellSettingsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -223,6 +242,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\AdminTabs\CustomSectionsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AdminTabs\FilesSettingsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -341,5 +364,7 @@
       <ErrorText>Данный проект ссылается на пакеты NuGet, отсутствующие на этом компьютере. Используйте восстановление пакетов NuGet, чтобы скачать их.  Дополнительную информацию см. по адресу: http://go.microsoft.com/fwlink/?LinkID=322105. Отсутствует следующий файл: {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('packages\MaterialDesignThemes.5.3.0\build\MaterialDesignThemes.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\MaterialDesignThemes.5.3.0\build\MaterialDesignThemes.targets'))" />
+    <Error Condition="!Exists('packages\Microsoft.Web.WebView2.1.0.3595.46\build\Microsoft.Web.WebView2.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\Microsoft.Web.WebView2.1.0.3595.46\build\Microsoft.Web.WebView2.targets'))" />
   </Target>
+  <Import Project="packages\Microsoft.Web.WebView2.1.0.3595.46\build\Microsoft.Web.WebView2.targets" Condition="Exists('packages\Microsoft.Web.WebView2.1.0.3595.46\build\Microsoft.Web.WebView2.targets')" />
 </Project>

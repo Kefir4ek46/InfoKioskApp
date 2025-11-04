@@ -1,0 +1,74 @@
+﻿<UserControl x:Class="InfoKioskApp.Views.AdminTabs.FilesSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#1e1e1e">
+
+    <Border Background="#2b2b2b"
+            CornerRadius="10"
+            Padding="20"
+            Margin="10">
+        <StackPanel>
+            <TextBlock Text="Настройки путей к файлам"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       Margin="0,0,0,15"/>
+
+            <!-- === Медиа === -->
+            <StackPanel Margin="0,0,0,15">
+                <TextBlock Text="🎞 Папка с медиафайлами"
+                           Foreground="White"
+                           FontSize="16"
+                           Margin="0,0,0,5"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox x:Name="MediaPathBox"
+                             Width="400"
+                             Margin="0,0,10,0"
+                             Background="#333"
+                             Foreground="White"
+                             BorderThickness="0"
+                             Padding="6"/>
+                    <Button Content="📁 Обзор..."
+                            Width="120"
+                            Height="32"
+                            Background="#3A6DF0"
+                            Foreground="White"
+                            Click="SelectMediaFolder_Click"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- === Документы === -->
+            <StackPanel Margin="0,0,0,15">
+                <TextBlock Text="📄 Папка с документами"
+                           Foreground="White"
+                           FontSize="16"
+                           Margin="0,0,0,5"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox x:Name="DocumentsPathBox"
+                             Width="400"
+                             Margin="0,0,10,0"
+                             Background="#333"
+                             Foreground="White"
+                             BorderThickness="0"
+                             Padding="6"/>
+                    <Button Content="📁 Обзор..."
+                            Width="120"
+                            Height="32"
+                            Background="#3A6DF0"
+                            Foreground="White"
+                            Click="SelectDocumentsFolder_Click"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- === Сохранить === -->
+            <Button Content="💾 Сохранить изменения"
+                    Width="250"
+                    Height="40"
+                    HorizontalAlignment="Left"
+                    Background="#28a745"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Click="Save_Click"/>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,119 +1,111 @@
-﻿using System.Collections.Generic;
-using System.IO;
+﻿using InfoKioskApp.Models;
+using InfoKioskApp.Services;
+using Microsoft.Win32;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.Win32;
-using InfoKioskApp.Services;
-using InfoKioskApp.Models;
-
 
 namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class ScheduleSettingsView : UserControl
     {
-        private AppConfig _config;
+        private List<ScheduleFile> _schedules;
 
         public ScheduleSettingsView()
         {
             InitializeComponent();
-            _config = ConfigService.LoadConfig();
-            LoadConfig();
+            LoadSchedules();
         }
 
-        private void LoadConfig()
+        private void LoadSchedules()
         {
-            MainSchedulePathBox.Text = _config.MainSchedulePath;
-            ChangesPathBox.Text = _config.ChangesPath;
-            ShowChangesBox.IsChecked = _config.ShowChanges;
+            var config = ConfigService.LoadConfig();
+            _schedules = config.Schedules ?? new List<ScheduleFile>();
+            RefreshList();
+        }
 
-            foreach (ComboBoxItem item in ChangesTypeBox.Items)
+        private void RefreshList()
+        {
+            ScheduleList.ItemsSource = null;
+            ScheduleList.ItemsSource = _schedules;
+        }
+
+        private void Browse_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog
             {
-                if ((string)item.Tag == _config.ChangesType)
-                {
-                    ChangesTypeBox.SelectedItem = item;
-                    break;
-                }
+                Filter = "Все поддерживаемые|*.xlsx;*.xls;*.pdf;*.png;*.jpg;*.jpeg|Excel|*.xlsx;*.xls|PDF|*.pdf|Изображения|*.png;*.jpg;*.jpeg"
+            };
+            if (dlg.ShowDialog() == true)
+                PathBox.Text = dlg.FileName;
+        }
+
+        private void Add_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(NameBox.Text) || string.IsNullOrWhiteSpace(PathBox.Text))
+            {
+                MessageBox.Show("Введите название и выберите файл.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
-            ExtraSchedulesList.ItemsSource = new List<ExtraSchedule>(_config.ExtraSchedules);
-        }
+            string type = (TypeBox.SelectedItem as ComboBoxItem)?.Content.ToString().ToLower() ?? "excel";
 
-        private void BrowseMain_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new OpenFileDialog { Filter = "Excel файлы|*.xlsx" };
-            if (dlg.ShowDialog() == true)
-                MainSchedulePathBox.Text = dlg.FileName;
-        }
-
-        private void BrowseChanges_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new OpenFileDialog { Filter = "Все поддерживаемые|*.xlsx;*.png;*.jpg;*.pdf|Excel|*.xlsx|Изображения|*.png;*.jpg|PDF|*.pdf" };
-            if (dlg.ShowDialog() == true)
-                ChangesPathBox.Text = dlg.FileName;
-        }
-
-        private void AddSchedule_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new OpenFileDialog { Filter = "Поддерживаемые файлы|*.xlsx;*.png;*.jpg;*.pdf" };
-            if (dlg.ShowDialog() == true)
+            var existing = _schedules.FirstOrDefault(x => x.Name == NameBox.Text);
+            if (existing != null)
             {
-                string ext = Path.GetExtension(dlg.FileName).ToLower();
-                string type;
-
-                switch (ext)
+                existing.FilePath = PathBox.Text;
+                existing.Type = type;
+            }
+            else
+            {
+                _schedules.Add(new ScheduleFile
                 {
-                    case ".xlsx":
-                        type = "excel";
-                        break;
-                    case ".png":
-                    case ".jpg":
-                    case ".jpeg":
-                        type = "image";
-                        break;
-                    case ".pdf":
-                        type = "pdf";
-                        break;
-                    default:
-                        type = "unknown";
-                        break;
-                }
-
-                var schedule = new ExtraSchedule
-                {
-                    Name = Path.GetFileNameWithoutExtension(dlg.FileName),
-                    Path = dlg.FileName,
+                    Name = NameBox.Text,
+                    FilePath = PathBox.Text,
                     Type = type
-                };
+                });
+            }
 
+            RefreshList();
+            NameBox.Text = "";
+            PathBox.Text = "";
+        }
 
-                _config.ExtraSchedules.Add(schedule);
-                ExtraSchedulesList.ItemsSource = null;
-                ExtraSchedulesList.ItemsSource = new List<ExtraSchedule>(_config.ExtraSchedules);
+        private void Edit_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as Button)?.DataContext is ScheduleFile file)
+            {
+                NameBox.Text = file.Name;
+                PathBox.Text = file.FilePath;
+                TypeBox.SelectedItem = TypeBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Content == file.Type);
             }
         }
 
-        private void RemoveSchedule_Click(object sender, RoutedEventArgs e)
+        private void Delete_Click(object sender, RoutedEventArgs e)
         {
-            if (ExtraSchedulesList.SelectedItem is ExtraSchedule schedule)
+            if ((sender as Button)?.DataContext is ScheduleFile file)
             {
-                _config.ExtraSchedules.Remove(schedule);
-                ExtraSchedulesList.ItemsSource = null;
-                ExtraSchedulesList.ItemsSource = new List<ExtraSchedule>(_config.ExtraSchedules);
+                if (MessageBox.Show($"Удалить расписание «{file.Name}»?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    _schedules.Remove(file);
+                    RefreshList();
+                }
             }
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            _config.MainSchedulePath = MainSchedulePathBox.Text;
-            _config.ChangesPath = ChangesPathBox.Text;
-            _config.ShowChanges = ShowChangesBox.IsChecked == true;
+            var config = ConfigService.LoadConfig();
+            config.Schedules = _schedules;
+            ConfigService.SaveConfig(config);
 
-            if (ChangesTypeBox.SelectedItem is ComboBoxItem item)
-                _config.ChangesType = item.Tag.ToString();
+            MessageBox.Show("Расписания сохранены ✅", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
 
-            ConfigService.SaveConfig(_config);
-            MessageBox.Show("Настройки расписаний сохранены.", "InfoKioskApp",
-                            MessageBoxButton.OK, MessageBoxImage.Information);
+        private void NameBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+
         }
     }
 }

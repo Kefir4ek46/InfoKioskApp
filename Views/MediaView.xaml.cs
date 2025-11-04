@@ -1,8 +1,11 @@
-﻿using System;
+﻿using InfoKioskApp.Services;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -10,81 +13,168 @@ namespace InfoKioskApp.Views
 {
     public partial class MediaView : UserControl
     {
-        private string _mediaPath = "data/media";
-        private string[] _mediaFiles;
+        private List<string> _mediaFiles;
         private int _currentIndex = 0;
-        private DispatcherTimer _mediaTimer;
+        private DispatcherTimer _autoTimer;
+        private bool _isPaused = false;
 
         public MediaView()
         {
             InitializeComponent();
-            LoadMedia();
+            LoadMediaFiles();
+            ShowMedia(_currentIndex);
+            StartAutoCycle();
         }
 
-        private void LoadMedia()
+        #region === Загрузка ===
+        private void LoadMediaFiles()
         {
-            if (!Directory.Exists(_mediaPath))
-                Directory.CreateDirectory(_mediaPath);
+            var config = ConfigService.LoadConfig();
+            string folder = config.MediaPath ?? "data/media";
 
-            _mediaFiles = Directory.GetFiles(_mediaPath, "*.*")
-                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                            f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
-                            f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
-                            f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase))
-                .ToArray();
+            if (!Directory.Exists(folder))
+                Directory.CreateDirectory(folder);
 
-            if (_mediaFiles.Length > 0)
+            _mediaFiles = Directory.GetFiles(folder)
+                .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".avi", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".mov", StringComparison.OrdinalIgnoreCase)
+                         || f.EndsWith(".wmv", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+        #endregion
+
+        #region === Показ медиа ===
+        private void ShowMedia(int index)
+        {
+            if (_mediaFiles == null || _mediaFiles.Count == 0)
             {
-                ShowImage();
-                StartSlideshow();
+                ContentArea.Children.Clear();
+                ContentArea.Children.Add(new TextBlock
+                {
+                    Text = "Нет медиафайлов для отображения",
+                    Foreground = Brushes.Gray,
+                    FontSize = 18,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                return;
+            }
+
+            if (index < 0) _currentIndex = _mediaFiles.Count - 1;
+            if (index >= _mediaFiles.Count) _currentIndex = 0;
+
+            string path = _mediaFiles[_currentIndex];
+            string ext = Path.GetExtension(path).ToLower();
+
+            MediaTitle.Text = Path.GetFileName(path);
+
+            ContentArea.Children.Clear();
+            if (IsImage(ext)) ShowImage(path);
+            else if (IsVideo(ext)) ShowVideo(path);
+        }
+
+        private void ShowImage(string path)
+        {
+            var image = new Image
+            {
+                Source = new BitmapImage(new Uri(Path.GetFullPath(path))),
+                Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 1400,
+                MaxHeight = 900,
+                Margin = new Thickness(10)
+            };
+
+            var scroll = new ScrollViewer
+            {
+                Content = image,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Background = new SolidColorBrush(Color.FromRgb(30, 30, 30))
+            };
+
+            ContentArea.Children.Clear();
+            ContentArea.Children.Add(scroll);
+        }
+
+        private void ShowVideo(string path)
+        {
+            var media = new MediaElement
+            {
+                Source = new Uri(Path.GetFullPath(path)),
+                LoadedBehavior = MediaState.Manual,
+                UnloadedBehavior = MediaState.Manual,
+                Stretch = Stretch.Uniform,
+                Volume = 0.4
+            };
+
+            media.MediaEnded += (s, e) => Next_Click(null, null);
+            ContentArea.Children.Clear();
+            ContentArea.Children.Add(media);
+            media.Play();
+        }
+        #endregion
+
+        #region === Навигация ===
+        private void Prev_Click(object sender, RoutedEventArgs e)
+        {
+            _currentIndex--;
+            ShowMedia(_currentIndex);
+        }
+
+        private void Next_Click(object sender, RoutedEventArgs e)
+        {
+            _currentIndex++;
+            ShowMedia(_currentIndex);
+        }
+
+        private void PlayPause_Click(object sender, RoutedEventArgs e)
+        {
+            _isPaused = !_isPaused;
+
+            if (_isPaused)
+            {
+                _autoTimer?.Stop();
+                PlayPauseButton.Content = "▶ Автопрокрутка";
             }
             else
             {
-                MediaImage.Source = null;
+                StartAutoCycle();
+                PlayPauseButton.Content = "⏸ Остановить";
             }
         }
+        #endregion
 
-        private void ShowImage()
+        #region === Автоматическая смена ===
+        private void StartAutoCycle()
         {
-            try
+            _autoTimer?.Stop();
+
+            var config = ConfigService.LoadConfig();
+            int seconds = config?.MediaAutoIntervalSeconds ?? 15;
+            if (seconds < 5) seconds = 5;
+
+            _autoTimer = new DispatcherTimer
             {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri(_mediaFiles[_currentIndex]);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                MediaImage.Source = bitmap;
-            }
-            catch
-            {
-                MediaImage.Source = null;
-            }
-        }
+                Interval = TimeSpan.FromSeconds(seconds)
+            };
+            _autoTimer.Tick += (s, e) => { if (!_isPaused) Next_Click(null, null); };
+            _autoTimer.Start();
 
-        private void StartSlideshow()
-        {
-            _mediaTimer = new DispatcherTimer();
-            _mediaTimer.Interval = TimeSpan.FromSeconds(8);
-            _mediaTimer.Tick += (s, e) => NextImage();
-            _mediaTimer.Start();
+            PlayPauseButton.Content = _isPaused ? "▶ Автопрокрутка" : "⏸ Остановить";
         }
+        #endregion
 
-        private void NextImage()
-        {
-            if (_mediaFiles == null || _mediaFiles.Length == 0) return;
-            _currentIndex = (_currentIndex + 1) % _mediaFiles.Length;
-            ShowImage();
-        }
+        private bool IsImage(string ext) =>
+            ext == ".jpg" || ext == ".png" || ext == ".jpeg" || ext == ".bmp";
 
-        private void PrevImage()
-        {
-            if (_mediaFiles == null || _mediaFiles.Length == 0) return;
-            _currentIndex = (_currentIndex - 1 + _mediaFiles.Length) % _mediaFiles.Length;
-            ShowImage();
-        }
-
-        private void Next_Click(object sender, RoutedEventArgs e) => NextImage();
-        private void Prev_Click(object sender, RoutedEventArgs e) => PrevImage();
+        private bool IsVideo(string ext) =>
+            ext == ".mp4" || ext == ".avi" || ext == ".mov" || ext == ".wmv";
     }
 }
-

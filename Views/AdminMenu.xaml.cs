@@ -34,6 +34,11 @@ namespace InfoKioskApp.Views
         {
             ContentArea.Content = new CalendarSettingsView();
         }
+        private void FilesSettings_Click(object sender, RoutedEventArgs e)
+        {
+            ContentArea.Content = new FilesSettingsView();
+        }
+
 
         private void RemoteSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -44,6 +49,10 @@ namespace InfoKioskApp.Views
             ContentArea.Content = new ChangePinView();
         }
 
+        private void AboutDeveloper_Click(object sender, RoutedEventArgs e)
+        {
+            ContentArea.Content = new AboutDeveloperView();
+        }
 
 
         private void Logout_Click(object sender, RoutedEventArgs e)
