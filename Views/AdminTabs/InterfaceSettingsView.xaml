@@ -10,10 +10,10 @@
 
         <!-- Тема -->
         <StackPanel Orientation="Horizontal" Margin="0 10">
-            <TextBlock Text="Тема:" Foreground="White" Width="150" VerticalAlignment="Center"/>
-            <ComboBox x:Name="ThemeSelector" Width="200" SelectionChanged="ThemeSelector_SelectionChanged">
-                <ComboBoxItem Content="Тёмная" Tag="dark"/>
-                <ComboBoxItem Content="Светлая" Tag="light"/>
+            <TextBlock Text="Тема:"  Width="150" VerticalAlignment="Center"/>
+            <ComboBox x:Name="ThemeSelector" Foreground="Black" Width="200" SelectionChanged="ThemeSelector_SelectionChanged">
+                <ComboBoxItem Content="Тёмная" Background="Gray" Foreground="Black" Tag="dark"/>
+                <ComboBoxItem Content="Светлая" Background="Gray" Foreground="Black" Tag="light"/>
             </ComboBox>
         </StackPanel>
 
@@ -21,6 +21,10 @@
         <StackPanel Orientation="Horizontal" Margin="0 10">
             <TextBlock Text="Цвет фона:" Foreground="White" Width="150" VerticalAlignment="Center"/>
             <xctk:ColorPicker x:Name="BackgroundColorPicker"
+                              Foreground="Black"
+HeaderForeground="Black"
+TabBackground="Gray"
+HeaderBackground="Gray"
                               Width="200"
                               SelectedColorChanged="ColorPicker_SelectedColorChanged"/>
         </StackPanel>
@@ -29,6 +33,10 @@
         <StackPanel Orientation="Horizontal" Margin="0 10">
             <TextBlock Text="Цвет кнопок:" Foreground="White" Width="150" VerticalAlignment="Center"/>
             <xctk:ColorPicker x:Name="ButtonColorPicker"
+                              Foreground="Black"
+HeaderForeground="Black"
+TabBackground="Gray"
+HeaderBackground="Gray"
                               Width="200"
                               SelectedColorChanged="ColorPicker_SelectedColorChanged"/>
         </StackPanel>
@@ -37,6 +45,10 @@
         <StackPanel Orientation="Horizontal" Margin="0 10">
             <TextBlock Text="Цвет текста:" Foreground="White" Width="150" VerticalAlignment="Center"/>
             <xctk:ColorPicker x:Name="TextColorPicker"
+                              Foreground="Black"
+                              HeaderForeground="Black"
+                              TabBackground="Gray"
+                              HeaderBackground="Gray"
                               Width="200"
                               SelectedColorChanged="ColorPicker_SelectedColorChanged"/>
         </StackPanel>

@@ -1,35 +1,69 @@
 ﻿<UserControl x:Class="InfoKioskApp.Views.CalendarView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             Background="#1E1E1E"
-             d:DesignHeight="600" d:DesignWidth="800">
+             Background="#1e1e1e">
 
-	<Grid Margin="20">
-		<Border CornerRadius="15" Background="#2A2A2A" Padding="20" >
-			<StackPanel>
-				<TextBlock Text="Календарь событий"
-                           FontSize="28"
-                           FontWeight="Bold"
-                           Foreground="White"
-                           Margin="0,0,0,15"/>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-				<Calendar x:Name="MainCalendar"
-                          Background="#333333"
-                          Foreground="White"
-                          BorderBrush="#444"
-                          BorderThickness="1"
-                          FontSize="16"/>
+        <!-- === Заголовок с месяцем === -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10">
+            <Button Content="⟨" Background="#2D2D30" Foreground="White"
+                    Width="40" Height="40" Margin="5" FontSize="18"
+                    BorderThickness="0" Cursor="Hand" Click="PrevMonth_Click"/>
+            <TextBlock x:Name="MonthLabel"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="White"
+                       VerticalAlignment="Center"
+                       Margin="10,0"/>
+            <Button Content="⟩" Background="#2D2D30" Foreground="White"
+                    Width="40" Height="40" Margin="5" FontSize="18"
+                    BorderThickness="0" Cursor="Hand" Click="NextMonth_Click"/>
+        </StackPanel>
 
-				<TextBlock x:Name="SelectedDateText"
-                           Text="Выберите дату"
-                           Foreground="LightGray"
-                           FontSize="18"
-                           Margin="0,20,0,0"
-                           TextAlignment="Center"/>
-			</StackPanel>
-		</Border>
-	</Grid>
+        <!-- === Заголовки дней недели === -->
+        <UniformGrid Grid.Row="1" Columns="7" Margin="0,10,0,0">
+            <TextBlock Text="Пн" Foreground="#BBBBBB" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Вт" Foreground="#BBBBBB" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Ср" Foreground="#BBBBBB" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Чт" Foreground="#BBBBBB" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Пт" Foreground="#BBBBBB" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Сб" Foreground="#9AD0FF" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Text="Вс" Foreground="#FF9999" FontWeight="Bold" TextAlignment="Center"/>
+        </UniformGrid>
+
+        <!-- === Сетка дней === -->
+        <UniformGrid x:Name="CalendarGrid"
+                     Grid.Row="2"
+                     Columns="7"
+                     Margin="0,10"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch"/>
+
+        <!-- === Легенда === -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,5">
+            <StackPanel Orientation="Horizontal" Margin="10,0">
+                <Border Background="#b42828" Width="18" Height="18" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Праздник" Foreground="White" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="10,0">
+                <Border Background="#289628" Width="18" Height="18" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Каникулы" Foreground="White" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="10,0">
+                <Border Background="#1e50b4" Width="18" Height="18" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Выходной" Foreground="White" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="10,0">
+                <Border Background="#009696" Width="18" Height="18" CornerRadius="3" Margin="0,0,5,0"/>
+                <TextBlock Text="Другое" Foreground="White" VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
 </UserControl>

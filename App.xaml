@@ -2,6 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             
+
              StartupUri="MainWindow.xaml">
 	<Application.Resources>
 
@@ -19,7 +21,9 @@
 
 			</ResourceDictionary.MergedDictionaries>
 
-			<!-- 🎨 Основные кисти -->
+            
+
+            <!-- 🎨 Основные кисти -->
 			<SolidColorBrush x:Key="BackgroundBrush" Color="{DynamicResource BackgroundColor}" />
 			<SolidColorBrush x:Key="PanelBrush" Color="{DynamicResource PanelColor}" />
 			<SolidColorBrush x:Key="TextBrush" Color="{DynamicResource TextColor}" />
