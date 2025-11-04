@@ -1,31 +1,35 @@
 ﻿<UserControl x:Class="InfoKioskApp.Views.AdminTabs.WeatherSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
-             Background="#1E1E1E"
-             d:DesignHeight="400" d:DesignWidth="600">
+             Background="#1e1e1e">
 
-    <StackPanel Margin="30" VerticalAlignment="Top">
-        <TextBlock Text="Настройки погоды (Open-Meteo)" 
-                   FontSize="22" Foreground="White"
-                   Margin="0,0,0,20"/>
+    <Border Background="#2b2b2b" CornerRadius="10" Padding="15" Margin="15">
+        <StackPanel>
+            <TextBlock Text="Настройки погоды" 
+                       FontSize="20" 
+                       FontWeight="Bold" 
+                       Foreground="White"
+                       Margin="0,0,0,15"/>
 
-        <TextBlock Text="Город (на английском или русском):" 
-                   Foreground="#CCCCCC"/>
-        <TextBox x:Name="CityBox" 
-                 Margin="0,5,0,20" 
-                 Height="30"
-                 Background="#2D2D2D" Foreground="White"
-                 BorderThickness="0" Padding="5"/>
+            <StackPanel Orientation="Horizontal" Margin="0,5">
+                <TextBlock Text="Город:" Foreground="White" Width="120" VerticalAlignment="Center"/>
+                <TextBox x:Name="CityBox" Width="200" Background="#333" Foreground="White"/>
+            </StackPanel>
 
-        <Button Content="💾 Сохранить" 
-                Width="150" Height="40"
-                HorizontalAlignment="Left"
-                Background="#007ACC" 
-                Foreground="White"
-                BorderThickness="0"
-                Click="Save_Click"/>
-    </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,10">
+                <TextBlock Text="Широта:" Foreground="White" Width="120" VerticalAlignment="Center"/>
+                <TextBox x:Name="LatitudeBox" Width="120" Background="#333" Foreground="White" Margin="5,0"/>
+                <TextBlock Text="Долгота:" Foreground="White" Width="120" VerticalAlignment="Center"/>
+                <TextBox x:Name="LongitudeBox" Width="120" Background="#333" Foreground="White" Margin="5,0"/>
+            </StackPanel>
+
+            <Button Content="💾 Сохранить настройки" 
+                    Width="220" Height="40" 
+                    Margin="0,20,0,0"
+                    Background="#3a6df0" 
+                    Foreground="White"
+                    FontWeight="Bold"
+                    Click="Save_Click"/>
+        </StackPanel>
+    </Border>
 </UserControl>

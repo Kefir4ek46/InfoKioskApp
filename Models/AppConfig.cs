@@ -36,5 +36,7 @@ namespace InfoKioskApp
         public string City { get; set; } = "Warsaw";
         public double CachedLatitude { get; set; }
         public double CachedLongitude { get; set; }
+
+        public string OpenWeatherApiKey { get; set; } = "4fca50ecc7eb8fa8d8ae1021853e0e7c";
     }
 }

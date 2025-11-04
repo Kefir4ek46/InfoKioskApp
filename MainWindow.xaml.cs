@@ -32,6 +32,7 @@ namespace InfoKioskApp
             StartLessonTimer();
             ApplyInterfaceSettings();
             _ = UpdateWeatherAsync();
+            StartWeatherTimer();
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -54,45 +55,15 @@ namespace InfoKioskApp
         #endregion
 
         #region === Погода ===
-        private async Task<(double lat, double lon)?> GetCoordinatesAsync(string city)
+        private string GetWeatherEmoji(int code)
         {
-            try
-            {
-                string q = Uri.EscapeDataString(city);
-                string url = $"https://nominatim.openstreetmap.org/search?format=json&q={q}";
-
-                using (var client = new HttpClient())
-                {
-                    client.DefaultRequestHeaders.Add("User-Agent", "InfoKioskApp");
-                    string json = await client.GetStringAsync(url);
-                    dynamic arr = JsonConvert.DeserializeObject(json);
-                    if (arr == null || arr.Count == 0) return null;
-
-                    string latStr = (string)arr[0].lat;
-                    string lonStr = (string)arr[0].lon;
-
-                    double lat = double.Parse(latStr, CultureInfo.InvariantCulture);
-                    double lon = double.Parse(lonStr, CultureInfo.InvariantCulture);
-                    return (lat, lon);
-                }
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private string GetWeatherIcon(int code)
-        {
-            if (code == 0) return "☀️";
-            if (code == 1 || code == 2) return "🌤️";
-            if (code == 3) return "☁️";
-            if (code >= 45 && code <= 48) return "🌫️";
-            if (code >= 51 && code <= 57) return "🌦️";
-            if (code >= 61 && code <= 67) return "🌧️";
-            if (code >= 71 && code <= 77) return "❄️";
-            if (code >= 80 && code <= 82) return "🌧️";
-            if (code >= 95 && code <= 99) return "⛈️";
+            if (code >= 200 && code < 300) return "⛈️"; // гроза
+            if (code >= 300 && code < 400) return "🌦️"; // морось
+            if (code >= 500 && code < 600) return "🌧️"; // дождь
+            if (code >= 600 && code < 700) return "❄️"; // снег
+            if (code >= 700 && code < 800) return "🌫️"; // туман
+            if (code == 800) return "☀️";               // ясно
+            if (code > 800) return "⛅";                 // облачно
             return "🌍";
         }
 
@@ -101,55 +72,65 @@ namespace InfoKioskApp
             try
             {
                 var config = ConfigService.LoadConfig();
-                string city = config.City ?? "Warsaw";
+                double lat = config.CachedLatitude;
+                double lon = config.CachedLongitude;
+                string city = config.City ?? "Местоположение не указано";
 
-                double lat, lon;
-
-                if (config.CachedLatitude != 0 && config.CachedLongitude != 0)
+                if (lat == 0 || lon == 0)
                 {
-                    lat = config.CachedLatitude;
-                    lon = config.CachedLongitude;
-                }
-                else
-                {
-                    var coords = await GetCoordinatesAsync(city);
-                    if (coords == null)
-                    {
-                        WeatherTemp.Text = "--°C";
-                        WeatherCity.Text = "город не найден";
-                        return;
-                    }
-
-                    lat = coords.Value.lat;
-                    lon = coords.Value.lon;
-
-                    config.CachedLatitude = lat;
-                    config.CachedLongitude = lon;
-                    ConfigService.SaveConfig(config);
+                    WeatherTemp.Text = "--°C";
+                    WeatherCity.Text = "Не заданы координаты";
+                    WeatherExtra.Text = "Введите широту и долготу в настройках";
+                    WeatherTomorrow.Text = "";
+                    return;
                 }
 
-                string url = $"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true";
+                string apiKey = "4fca50ecc7eb8fa8d8ae1021853e0e7c"; // OpenWeather API ключ
+                string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&lang=ru&appid={apiKey}";
+
                 using (HttpClient client = new HttpClient())
                 {
                     string json = await client.GetStringAsync(url);
                     dynamic data = JsonConvert.DeserializeObject(json);
 
-                    double temp = data.current_weather.temperature;
-                    int weatherCode = data.current_weather.weathercode;
+                    double temp = data.main.temp;
+                    double wind = data.wind.speed;
+                    int humidity = data.main.humidity;
+                    int pressure = data.main.pressure;
+                    int code = data.weather[0].id;
+                    string description = data.weather[0].description;
 
+                    WeatherIcon.Text = GetWeatherEmoji(code);
                     WeatherTemp.Text = $"{temp:F0}°C";
                     WeatherCity.Text = city;
-                    WeatherIcon.Text = GetWeatherIcon(weatherCode);
+                    WeatherExtra.Text = $"{description}, ветер {wind:F1} м/с, влажность {humidity}%, давление {pressure} гПа";
+                    WeatherTomorrow.Text = "";
                 }
             }
             catch (Exception ex)
             {
                 WeatherTemp.Text = "--°C";
-                WeatherCity.Text = "нет данных";
+                WeatherCity.Text = "Ошибка загрузки";
+                WeatherExtra.Text = "";
+                WeatherTomorrow.Text = "";
                 Console.WriteLine($"Ошибка погоды: {ex.Message}");
             }
         }
+
+        private DispatcherTimer _weatherTimer;
+        private void StartWeatherTimer()
+        {
+            _weatherTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMinutes(15)
+            };
+            _weatherTimer.Tick += async (s, e) => await UpdateWeatherAsync();
+            _weatherTimer.Start();
+        }
         #endregion
+
+
+
 
         #region === Звонки ===
         private void LoadBellSchedule()
@@ -195,44 +176,62 @@ namespace InfoKioskApp
 
             DateTime now = DateTime.Now;
 
-            foreach (var lesson in _bellSchedule)
+            for (int i = 0; i < _bellSchedule.Count; i++)
             {
+                var lesson = _bellSchedule[i];
                 var start = DateTime.Today.Add(TimeSpan.Parse(lesson.Start));
                 var end = DateTime.Today.Add(TimeSpan.Parse(lesson.End));
 
+                // 🟢 Идёт урок
                 if (now >= start && now <= end)
                 {
                     var elapsed = now - start;
                     var remaining = end - now;
 
                     LessonStatusText.Text = $"Идёт {lesson.Number}-й урок";
-                    LessonTimeInfo.Text = $"Прошло: {elapsed.Minutes} мин, осталось: {remaining.Minutes} мин";
+                    LessonTimeInfo.Text = $"Прошло: {Math.Floor(elapsed.TotalMinutes)} мин, осталось: {Math.Ceiling(remaining.TotalMinutes)} мин";
                     return;
+                }
+
+                // 🟡 Перемена между уроками
+                if (i < _bellSchedule.Count - 1)
+                {
+                    var next = _bellSchedule[i + 1];
+                    var nextStart = DateTime.Today.Add(TimeSpan.Parse(next.Start));
+
+                    if (now > end && now < nextStart)
+                    {
+                        var untilNext = nextStart - now;
+                        LessonStatusText.Text = $"Перемена между {lesson.Number}-м и {next.Number}-м уроками";
+                        LessonTimeInfo.Text = $"До звонка осталось {Math.Ceiling(untilNext.TotalMinutes)} мин";
+                        return;
+                    }
                 }
             }
 
-            var first = _bellSchedule[0];
-            var last = _bellSchedule[_bellSchedule.Count - 1];
+            // 💤 До начала уроков
+            var first = _bellSchedule.First();
             var firstStart = DateTime.Today.Add(TimeSpan.Parse(first.Start));
-            var lastEnd = DateTime.Today.Add(TimeSpan.Parse(last.End));
 
             if (now < firstStart)
             {
                 var until = firstStart - now;
                 LessonStatusText.Text = "До начала уроков";
-                LessonTimeInfo.Text = $"Осталось {until.Minutes} мин";
+                LessonTimeInfo.Text = $"Осталось {Math.Ceiling(until.TotalMinutes)} мин";
+                return;
             }
-            else if (now > lastEnd)
+
+            // 🏁 После уроков
+            var last = _bellSchedule.Last();
+            var lastEnd = DateTime.Today.Add(TimeSpan.Parse(last.End));
+
+            if (now > lastEnd)
             {
                 LessonStatusText.Text = "Уроки окончены";
                 LessonTimeInfo.Text = "";
             }
-            else
-            {
-                LessonStatusText.Text = "Перемена";
-                LessonTimeInfo.Text = "";
-            }
         }
+
         #endregion
 
         #region === Навигация ===
