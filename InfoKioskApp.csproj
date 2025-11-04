@@ -155,6 +155,9 @@
     <Compile Include="Views\AdminTabs\CalendarSettingsView.xaml.cs">
       <DependentUpon>CalendarSettingsView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\AdminTabs\ChangePinWindow.xaml.cs">
+      <DependentUpon>ChangePinWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\AdminTabs\CustomSectionsView.xaml.cs">
       <DependentUpon>CustomSectionsView.xaml</DependentUpon>
     </Compile>
@@ -212,6 +215,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\AdminTabs\CalendarSettingsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AdminTabs\ChangePinWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

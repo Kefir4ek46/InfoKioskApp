@@ -39,6 +39,12 @@ namespace InfoKioskApp.Views
         {
             ContentArea.Content = new RemoteSettingsView();
         }
+        private void ChangePin_Click(object sender, RoutedEventArgs e)
+        {
+            ContentArea.Content = new ChangePinView();
+        }
+
+
 
         private void Logout_Click(object sender, RoutedEventArgs e)
         {
@@ -52,7 +58,15 @@ namespace InfoKioskApp.Views
 
         private void Minimize_Click(object sender, RoutedEventArgs e)
         {
+            // Сворачивает главное окно (MainWindow)
+            if (Application.Current.MainWindow != null)
+            {
+                Application.Current.MainWindow.WindowState = WindowState.Minimized;
+            }
+
+            // Сворачивает также само админ-меню (чтобы не висело отдельно)
             this.WindowState = WindowState.Minimized;
         }
+
     }
 }
