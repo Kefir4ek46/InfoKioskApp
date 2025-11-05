@@ -36,7 +36,22 @@ namespace InfoKioskApp
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
+            var config = ConfigService.LoadConfig();
+            if (config.RemoteAutoStart)
+            {
+                try
+                {
+                    RemoteServerService.Start(config.RemotePort);
+                    Console.WriteLine($"🌐 Сервер запущен автоматически на порту {config.RemotePort}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Ошибка автозапуска сервера: {ex.Message}");
+                }
+            }
+
         }
+
 
         #region === Время и дата ===
         private void StartClock()

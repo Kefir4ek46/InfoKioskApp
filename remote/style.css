@@ -1,0 +1,120 @@
+﻿body {
+    background: #1e1e1e;
+    color: white;
+    font-family: "Segoe UI", sans-serif;
+    padding: 20px;
+}
+
+h2 {
+    color: #3A6DF0;
+    margin-bottom: 20px;
+}
+
+.tabs {
+    margin-bottom: 15px;
+}
+
+    .tabs button {
+        padding: 10px 20px;
+        background: #333;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-right: 8px;
+        border-radius: 6px;
+        transition: background 0.2s;
+    }
+
+        .tabs button:hover {
+            background: #444;
+        }
+
+        .tabs button.active {
+            background: #3A6DF0;
+        }
+
+section {
+    display: none;
+    margin-top: 20px;
+}
+
+    section.active {
+        display: block;
+    }
+
+textarea {
+    width: 100%;
+    max-width: 800px;
+    height: 400px;
+    background: #2a2a2a;
+    color: white;
+    border: 1px solid #555;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+#categoryButtons button {
+    background: #2b2b2b;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    margin-right: 6px;
+    transition: background 0.2s;
+}
+
+    #categoryButtons button.active {
+        background: #3A6DF0;
+    }
+
+#dropZone {
+    background: #2a2a2a;
+    border: 2px dashed #3A6DF0;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    margin: 10px 0;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+    #dropZone.dragover {
+        background: #333;
+    }
+
+#fileList {
+    list-style: none;
+    padding: 0;
+}
+
+    #fileList li {
+        padding: 8px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        #fileList li button {
+            background: #d9534f;
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+button {
+    background: #3A6DF0;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+    button:hover {
+        background: #2c54c0;
+    }

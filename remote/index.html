@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>InfoKiosk Remote Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2>🌐 Удалённое управление InfoKiosk</h2>
+
+    <div class="tabs">
+        <button onclick="showTab(0)" class="active">⚙ Настройки</button>
+        <button onclick="showTab(1)">📁 Файлы</button>
+        <button onclick="showTab(2)">🔄 Система</button>
+    </div>
+
+    <!-- === Настройки === -->
+    <section id="tab0" class="active">
+        <h3>⚙ Текущие настройки</h3>
+        <textarea id="configArea" rows="18"></textarea><br>
+        <button onclick="saveConfig()">💾 Сохранить</button>
+    </section>
+
+    <!-- === Файлы === -->
+    <section id="tab1">
+        <h3>📁 Управление файлами</h3>
+        <div class="file-controls">
+            <div id="categoryButtons">
+                <button onclick="setFolder('data/media')" id="cat_media">🖼 Медиа</button>
+                <button onclick="setFolder('data/documents')" id="cat_documents">📄 Документы</button>
+                <button onclick="setFolder('data/schedule')" id="cat_schedule">📅 Расписания</button>
+            </div>
+            <p id="currentFolder">📂 Текущая папка: <span>data/media</span></p>
+            <div id="dropZone">📤 Перетащите файлы сюда или выберите вручную</div>
+            <input type="file" id="fileInput" multiple>
+            <button onclick="uploadFile()">⬆ Загрузить</button>
+        </div>
+        <ul id="fileList"></ul>
+    </section>
+
+    <!-- === Система === -->
+    <section id="tab2">
+        <h3>🔄 Управление системой</h3>
+        <button onclick="restartApp()">Перезапустить приложение</button>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>

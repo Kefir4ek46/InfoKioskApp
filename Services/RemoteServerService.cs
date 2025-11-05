@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -9,8 +10,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Linq;
-
 
 namespace InfoKioskApp.Services
 {
@@ -22,12 +21,13 @@ namespace InfoKioskApp.Services
 
         public static bool IsRunning => _listener != null && _listener.IsListening;
 
-        public static void Start()
+        public static void Start(int port = 8080)
         {
             if (IsRunning) return;
-            int port = 8080;
+
             while (!IsPortFree(port))
                 port++;
+
             Directory.CreateDirectory(WebRoot);
             _cts = new CancellationTokenSource();
             _listener = new HttpListener();
@@ -35,7 +35,8 @@ namespace InfoKioskApp.Services
             _listener.Start();
 
             Task.Run(() => ListenLoop(_cts.Token));
-            Console.WriteLine("🌐 Remote Admin running on http://localhost:8080/");
+
+            Console.WriteLine($"🌐 Remote Admin running on port {port}");
         }
 
         public static void Stop()
@@ -65,82 +66,54 @@ namespace InfoKioskApp.Services
                 }
             }
         }
+
         private static bool IsPortFree(int port)
         {
-            bool isAvailable = true;
             var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
             var tcpConnections = ipGlobalProperties.GetActiveTcpListeners();
-            if (tcpConnections.Any(p => p.Port == port))
-                isAvailable = false;
-            return isAvailable;
+            return !tcpConnections.Any(p => p.Port == port);
         }
-        private static void EnsureUrlAcl(string prefix)
-        {
-            try
-            {
-                var user = Environment.UserName;
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "netsh",
-                    Arguments = $"http add urlacl url={prefix} user={user}",
-                    Verb = "runas", // требует запуск от имени администратора
-                    CreateNoWindow = true,
-                    UseShellExecute = true
-                };
-                Process.Start(psi)?.WaitForExit();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Не удалось зарегистрировать URLACL: {ex.Message}");
-            }
-        }
-        private static void EnsureFirewallRule(int port)
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "netsh",
-                    Arguments = $"advfirewall firewall add rule name=\"InfoKiosk Local Server\" dir=in action=allow protocol=TCP localport={port}",
-                    Verb = "runas",
-                    CreateNoWindow = true,
-                    UseShellExecute = true
-                };
-                Process.Start(psi)?.WaitForExit();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Не удалось добавить правило брандмауэра: {ex.Message}");
-            }
-        }
-        private static bool IsReachableFromNetwork(string ip, int port)
-        {
-            try
-            {
-                using (var client = new TcpClient())
-                {
-                    var result = client.BeginConnect(ip, port, null, null);
-                    bool success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(2));
-                    return success && client.Connected;
-                }
-            }
-            catch { return false; }
-        }
-
 
         private static async Task HandleRequest(HttpListenerContext ctx)
         {
-            string path = ctx.Request.Url.AbsolutePath;
+            string path = ctx.Request.Url.AbsolutePath.TrimStart('/');
 
             try
             {
-                if (path == "/" || path == "/index.html")
+                // === Обработка корня ===
+                if (string.IsNullOrEmpty(path))
+                    path = "index.html";
+
+                string filePath = Path.Combine(WebRoot, path.Replace('/', Path.DirectorySeparatorChar));
+
+                // === Отдаём статические файлы (HTML, CSS, JS) ===
+                if (File.Exists(filePath))
                 {
-                    await WriteHtml(ctx, GetHtmlInterface());
+                    string ext = Path.GetExtension(filePath).ToLower();
+                    string mime;
+                    switch (ext)
+                    {
+                        case ".html": mime = "text/html"; break;
+                        case ".css": mime = "text/css"; break;
+                        case ".js": mime = "application/javascript"; break;
+                        case ".png": mime = "image/png"; break;
+                        case ".jpg":
+                        case ".jpeg": mime = "image/jpeg"; break;
+                        case ".ico": mime = "image/x-icon"; break;
+                        default: mime = "text/plain"; break;
+                    }
+
+
+                    byte[] data = File.ReadAllBytes(filePath);
+                    ctx.Response.ContentType = $"{mime}; charset=utf-8";
+                    ctx.Response.ContentLength64 = data.Length;
+                    await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+                    ctx.Response.OutputStream.Close();
                     return;
                 }
 
-                if (path == "/config" && ctx.Request.HttpMethod == "GET")
+                // === Получение конфигурации ===
+                if (path == "config" && ctx.Request.HttpMethod == "GET")
                 {
                     var config = ConfigService.LoadConfig();
                     string json = JsonConvert.SerializeObject(config, Formatting.Indented);
@@ -148,7 +121,8 @@ namespace InfoKioskApp.Services
                     return;
                 }
 
-                if (path == "/config" && ctx.Request.HttpMethod == "POST")
+                // === Сохранение конфигурации ===
+                if (path == "config" && ctx.Request.HttpMethod == "POST")
                 {
                     using (var reader = new StreamReader(ctx.Request.InputStream))
                     {
@@ -160,43 +134,52 @@ namespace InfoKioskApp.Services
                     return;
                 }
 
-                if (path == "/files" && ctx.Request.HttpMethod == "GET")
+                // === Файлы ===
+                if (path.StartsWith("files"))
                 {
-                    string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uploads");
+                    string category = ctx.Request.QueryString["cat"] ?? "documents";
+                    string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", category);
                     Directory.CreateDirectory(folder);
-                    var files = Directory.GetFiles(folder);
-                    await WriteJson(ctx, JsonConvert.SerializeObject(files, Formatting.Indented));
-                    return;
-                }
 
-                if (path.StartsWith("/files") && ctx.Request.HttpMethod == "DELETE")
-                {
-                    var query = ctx.Request.QueryString["name"];
-                    if (!string.IsNullOrEmpty(query))
+                    // Получение списка файлов
+                    if (ctx.Request.HttpMethod == "GET")
                     {
-                        string pathToDelete = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uploads", query);
-                        if (File.Exists(pathToDelete)) File.Delete(pathToDelete);
-                        await WriteText(ctx, $"🗑 Удалён файл {query}");
+                        var files = Directory.GetFiles(folder)
+                            .Select(f => Path.GetFileName(f))
+                            .ToList();
+                        await WriteJson(ctx, JsonConvert.SerializeObject(files, Formatting.Indented));
+                        return;
+                    }
+
+                    // Удаление файла
+                    if (ctx.Request.HttpMethod == "DELETE")
+                    {
+                        var name = ctx.Request.QueryString["name"];
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            string pathToDelete = Path.Combine(folder, name);
+                            if (File.Exists(pathToDelete)) File.Delete(pathToDelete);
+                            await WriteText(ctx, $"🗑 Удалён файл {name}");
+                            return;
+                        }
+                    }
+
+                    // Загрузка файла
+                    if (ctx.Request.HttpMethod == "POST")
+                    {
+                        string fileName = ctx.Request.Headers["X-Filename"] ?? $"file_{DateTime.Now.Ticks}";
+                        string filePathUpload = Path.Combine(folder, fileName);
+
+                        using (var fs = new FileStream(filePathUpload, FileMode.Create))
+                            await ctx.Request.InputStream.CopyToAsync(fs);
+
+                        await WriteText(ctx, $"✅ Файл {fileName} загружен");
                         return;
                     }
                 }
 
-                if (path == "/upload" && ctx.Request.HttpMethod == "POST")
-                {
-                    string uploadDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "uploads");
-                    Directory.CreateDirectory(uploadDir);
-
-                    string fileName = ctx.Request.Headers["X-Filename"] ?? $"file_{DateTime.Now.Ticks}";
-                    string filePath = Path.Combine(uploadDir, fileName);
-
-                    using (var fs = new FileStream(filePath, FileMode.Create))
-                        await ctx.Request.InputStream.CopyToAsync(fs);
-
-                    await WriteText(ctx, $"✅ Файл {fileName} загружен");
-                    return;
-                }
-
-                if (path == "/restart")
+                // === Перезапуск приложения ===
+                if (path == "restart")
                 {
                     await WriteText(ctx, "🔄 Перезапуск...");
                     Application.Current.Dispatcher.Invoke(() =>
@@ -216,16 +199,6 @@ namespace InfoKioskApp.Services
         }
 
         #region === Ответы ===
-        private static async Task WriteHtml(HttpListenerContext ctx, string html)
-        {
-            byte[] data = Encoding.UTF8.GetBytes(html);
-            ctx.Response.ContentType = "text/html; charset=utf-8";
-            ctx.Response.ContentLength64 = data.Length;
-            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
-            ctx.Response.OutputStream.Close();
-            ctx.Response.Close();
-        }
-
         private static async Task WriteJson(HttpListenerContext ctx, string json)
         {
             byte[] data = Encoding.UTF8.GetBytes(json);
@@ -233,7 +206,6 @@ namespace InfoKioskApp.Services
             ctx.Response.ContentLength64 = data.Length;
             await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
             ctx.Response.OutputStream.Close();
-            ctx.Response.Close();
         }
 
         private static async Task WriteText(HttpListenerContext ctx, string text, int code = 200)
@@ -244,119 +216,6 @@ namespace InfoKioskApp.Services
             ctx.Response.ContentLength64 = data.Length;
             await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
             ctx.Response.OutputStream.Close();
-            ctx.Response.Close();
-        }
-        #endregion
-
-
-        #region === HTML интерфейс ===
-        private static string GetHtmlInterface()
-        {
-            return @"
-<!DOCTYPE html>
-<html lang='ru'>
-<head>
-<meta charset='UTF-8'>
-<title>InfoKiosk Remote Admin</title>
-<style>
-body {
-  background:#1e1e1e; color:white;
-  font-family:Segoe UI, sans-serif;
-  padding:20px;
-}
-.tabs button {
-  padding:10px 20px;
-  background:#333;
-  color:white;
-  border:none;
-  cursor:pointer;
-  margin-right:8px;
-  border-radius:6px;
-}
-.tabs button.active { background:#3A6DF0; }
-section { display:none; margin-top:20px; }
-section.active { display:block; }
-input,textarea {
-  background:#333; color:white; border:none;
-  padding:8px; width:300px; border-radius:4px;
-}
-</style>
-</head>
-<body>
-<h2>🌐 Удалённое управление InfoKiosk</h2>
-<div class='tabs'>
-  <button onclick='showTab(0)' class='active'>⚙ Настройки</button>
-  <button onclick='showTab(1)'>📁 Файлы</button>
-  <button onclick='showTab(2)'>🔄 Система</button>
-</div>
-
-<section id='tab0' class='active'>
-  <h3>⚙ Текущие настройки</h3>
-  <textarea id='configArea' rows='18'></textarea><br>
-  <button onclick='saveConfig()'>💾 Сохранить</button>
-</section>
-
-<section id='tab1'>
-  <h3>📁 Файлы</h3>
-  <input type='file' id='fileInput'>
-  <button onclick='uploadFile()'>⬆ Загрузить</button>
-  <ul id='fileList'></ul>
-</section>
-
-<section id='tab2'>
-  <h3>🔄 Управление</h3>
-  <button onclick='restartApp()'>Перезапустить приложение</button>
-</section>
-
-<script>
-function showTab(i){
-  document.querySelectorAll('.tabs button').forEach((b,j)=>b.classList.toggle('active',i===j));
-  document.querySelectorAll('section').forEach((s,j)=>s.classList.toggle('active',i===j));
-  if(i===1) loadFiles();
-  if(i===0) loadConfig();
-}
-
-async function loadConfig(){
-  const res = await fetch('/config');
-  const txt = await res.text();
-  document.getElementById('configArea').value = txt;
-}
-async function saveConfig(){
-  const data = document.getElementById('configArea').value;
-  await fetch('/config',{method:'POST',body:data});
-  alert('✅ Настройки сохранены');
-}
-
-async function loadFiles(){
-  const res = await fetch('/files');
-  const arr = await res.json();
-  const list = document.getElementById('fileList');
-  list.innerHTML = '';
-  arr.forEach(f=>{
-    const li = document.createElement('li');
-    li.textContent = f.split('/').pop();
-    li.onclick = ()=>deleteFile(li.textContent);
-    list.appendChild(li);
-  });
-}
-async function deleteFile(name){
-  await fetch('/files?name='+encodeURIComponent(name),{method:'DELETE'});
-  loadFiles();
-}
-async function uploadFile(){
-  const file = document.getElementById('fileInput').files[0];
-  if(!file) return alert('Выберите файл!');
-  await fetch('/upload',{method:'POST',headers:{'X-Filename':file.name},body:file});
-  loadFiles();
-}
-async function restartApp(){
-  await fetch('/restart');
-  alert('Приложение перезапускается...');
-}
-loadConfig();
-</script>
-</body>
-</html>";
         }
         #endregion
     }

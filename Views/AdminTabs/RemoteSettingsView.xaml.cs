@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using InfoKioskApp.Services;
 using QRCoder;
@@ -13,13 +14,37 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class RemoteSettingsView : UserControl
     {
-        private bool _serverRunning = false;
+        private bool _serverRunning;
         private string _currentUrl;
 
         public RemoteSettingsView()
         {
             InitializeComponent();
+            LoadSettings();
             UpdateNetworkInfo();
+        }
+
+        private void LoadSettings()
+        {
+            var config = ConfigService.LoadConfig();
+            PortBox.Text = config.RemotePort > 0 ? config.RemotePort.ToString() : "8080";
+            AutoStartCheck.IsChecked = config.RemoteAutoStart;
+        }
+
+        private void SaveSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(PortBox.Text, out int port) || port < 1024 || port > 65535)
+            {
+                MessageBox.Show("Введите корректный порт (1024–65535).", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var config = ConfigService.LoadConfig();
+            config.RemotePort = port;
+            config.RemoteAutoStart = AutoStartCheck.IsChecked == true;
+            ConfigService.SaveConfig(config);
+
+            MessageBox.Show("Настройки удалённого доступа сохранены ✅", "Сохранено", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void UpdateNetworkInfo()
@@ -27,22 +52,24 @@ namespace InfoKioskApp.Views.AdminTabs
             string ip = GetLocalIp();
             IpText.Text = ip ?? "Не найден";
             ServerStatus.Text = "Сервер не запущен";
-            ServerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.OrangeRed);
+            ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
         }
 
         private void StartServer_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                RemoteServerService.Start();
+                if (!int.TryParse(PortBox.Text, out int port))
+                    port = 8080;
+
+                RemoteServerService.Start(port);
                 _serverRunning = true;
 
                 string ip = GetLocalIp();
-                _currentUrl = $"http://{ip}:8080/";
+                _currentUrl = $"http://{ip}:{port}/";
                 ServerStatus.Text = "Сервер запущен ✅";
-                ServerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LimeGreen);
+                ServerStatus.Foreground = new SolidColorBrush(Colors.LimeGreen);
 
-                // Показываем QR-код
                 GenerateQr(_currentUrl);
                 QrPanel.Visibility = Visibility.Visible;
                 ConnectUrl.Text = _currentUrl;
@@ -62,7 +89,7 @@ namespace InfoKioskApp.Views.AdminTabs
                 QrPanel.Visibility = Visibility.Collapsed;
 
                 ServerStatus.Text = "Сервер остановлен ⏹";
-                ServerStatus.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.OrangeRed);
+                ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
             }
             catch (Exception ex)
             {
@@ -84,11 +111,10 @@ namespace InfoKioskApp.Views.AdminTabs
                 img.StreamSource = ms;
                 img.CacheOption = BitmapCacheOption.OnLoad;
                 img.EndInit();
-                img.Freeze(); // важно: предотвращает утечку ресурсов и делает изображение пригодным для UI
+                img.Freeze();
                 QrImage.Source = img;
             }
         }
-
 
         private string GetLocalIp()
         {

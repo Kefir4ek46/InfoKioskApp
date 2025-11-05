@@ -33,6 +33,9 @@ namespace InfoKioskApp
         public string MediaPath { get; set; } = "data/media";
         public string DocumentsPath { get; set; } = "data/documents";
         public string BellSchedulePath { get; set; } = "data/BellSchedule.json";
+        public bool RemoteAutoStart { get; set; } = true;
+        public int RemotePort { get; set; } = 8080;
+
 
         public string Theme { get; set; } = "Dark";
 
