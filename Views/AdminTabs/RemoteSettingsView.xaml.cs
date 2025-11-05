@@ -63,7 +63,7 @@ namespace InfoKioskApp.Views.AdminTabs
                     port = 8080;
 
                 RemoteServerService.Start(port);
-                _serverRunning = true;
+                _serverRunning = false;
 
                 string ip = GetLocalIp();
                 _currentUrl = $"http://{ip}:{port}/";

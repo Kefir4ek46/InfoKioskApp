@@ -1,7 +1,7 @@
-﻿using InfoKioskApp.Models;
-using InfoKioskApp.Services;
+﻿using InfoKioskApp.Services;
 using Microsoft.Win32;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,102 +10,111 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class ScheduleSettingsView : UserControl
     {
-        private List<ScheduleFile> _schedules;
+        private List<AppConfig.ScheduleItem> _others = new List<AppConfig.ScheduleItem>();
+
 
         public ScheduleSettingsView()
         {
             InitializeComponent();
-            LoadSchedules();
+            LoadConfig();
         }
 
-        private void LoadSchedules()
+        private void LoadConfig()
         {
             var config = ConfigService.LoadConfig();
-            _schedules = config.Schedules ?? new List<ScheduleFile>();
-            RefreshList();
-        }
+            MainScheduleBox.Text = config.MainSchedulePath;
+            ChangesBox.Text = config.ChangesPath;
 
-        private void RefreshList()
+            _others = config.Schedules ?? new List<AppConfig.ScheduleItem>();
+            RefreshOtherList();
+        }
+        private void DeleteOther_Click(object sender, RoutedEventArgs e)
         {
-            ScheduleList.ItemsSource = null;
-            ScheduleList.ItemsSource = _schedules;
+            string selected = (sender as Button)?.CommandParameter as string;
+            if (selected == null) return;
+
+            var item = _others.FirstOrDefault(x => $"{x.Name} — {x.FilePath}" == selected);
+            if (item != null)
+            {
+                if (MessageBox.Show($"Удалить расписание '{item.Name}'?", "Подтверждение",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    _others.Remove(item);
+                    RefreshOtherList();
+                }
+            }
         }
 
-        private void Browse_Click(object sender, RoutedEventArgs e)
+        private void RefreshOtherList()
+        {
+            OtherSchedulesList.ItemsSource = null;
+            OtherSchedulesList.ItemsSource = _others.Select(s => $"{s.Name} — {s.FilePath}").ToList();
+        }
+
+        private void BrowseMain_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog { Filter = "Excel|*.xlsx;*.xls" };
+            if (dlg.ShowDialog() == true)
+                MainScheduleBox.Text = dlg.FileName;
+        }
+
+        private void BrowseChanges_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new OpenFileDialog
             {
-                Filter = "Все поддерживаемые|*.xlsx;*.xls;*.pdf;*.png;*.jpg;*.jpeg|Excel|*.xlsx;*.xls|PDF|*.pdf|Изображения|*.png;*.jpg;*.jpeg"
+                Filter = "Поддерживаемые файлы|*.xlsx;*.xls;*.pdf;*.png;*.jpg;*.jpeg;*.docx"
             };
             if (dlg.ShowDialog() == true)
-                PathBox.Text = dlg.FileName;
+                ChangesBox.Text = dlg.FileName;
         }
 
-        private void Add_Click(object sender, RoutedEventArgs e)
+        private void BrowseOther_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(NameBox.Text) || string.IsNullOrWhiteSpace(PathBox.Text))
+            var dlg = new OpenFileDialog
+            {
+                Filter = "Все поддерживаемые|*.xlsx;*.xls;*.pdf;*.png;*.jpg;*.jpeg;*.docx"
+            };
+            if (dlg.ShowDialog() == true)
+                OtherPathBox.Text = dlg.FileName;
+        }
+
+        private void AddOther_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(OtherNameBox.Text) || string.IsNullOrWhiteSpace(OtherPathBox.Text))
             {
                 MessageBox.Show("Введите название и выберите файл.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            string type = (TypeBox.SelectedItem as ComboBoxItem)?.Content.ToString().ToLower() ?? "excel";
-
-            var existing = _schedules.FirstOrDefault(x => x.Name == NameBox.Text);
+            var existing = _others.FirstOrDefault(x => x.Name == OtherNameBox.Text);
             if (existing != null)
             {
-                existing.FilePath = PathBox.Text;
-                existing.Type = type;
+                existing.FilePath = OtherPathBox.Text;
             }
             else
             {
-                _schedules.Add(new ScheduleFile
+                _others.Add(new AppConfig.ScheduleItem
                 {
-                    Name = NameBox.Text,
-                    FilePath = PathBox.Text,
-                    Type = type
+                    Name = OtherNameBox.Text,
+                    FilePath = OtherPathBox.Text
                 });
             }
 
-            RefreshList();
-            NameBox.Text = "";
-            PathBox.Text = "";
-        }
-
-        private void Edit_Click(object sender, RoutedEventArgs e)
-        {
-            if ((sender as Button)?.DataContext is ScheduleFile file)
-            {
-                NameBox.Text = file.Name;
-                PathBox.Text = file.FilePath;
-                TypeBox.SelectedItem = TypeBox.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Content == file.Type);
-            }
-        }
-
-        private void Delete_Click(object sender, RoutedEventArgs e)
-        {
-            if ((sender as Button)?.DataContext is ScheduleFile file)
-            {
-                if (MessageBox.Show($"Удалить расписание «{file.Name}»?", "Подтверждение", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-                {
-                    _schedules.Remove(file);
-                    RefreshList();
-                }
-            }
+            OtherNameBox.Clear();
+            OtherPathBox.Clear();
+            RefreshOtherList();
         }
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
             var config = ConfigService.LoadConfig();
-            config.Schedules = _schedules;
+            config.MainSchedulePath = MainScheduleBox.Text;
+            config.ChangesPath = ChangesBox.Text;
+            config.Schedules = _others;
             ConfigService.SaveConfig(config);
 
-            MessageBox.Show("Расписания сохранены ✅", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
-        private void NameBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-
+            MessageBox.Show("Настройки расписаний сохранены ✅", "Успешно",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

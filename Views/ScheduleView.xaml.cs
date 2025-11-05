@@ -10,6 +10,10 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
+// === Для DOCX (Open XML SDK) ===
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+
 namespace InfoKioskApp.Views
 {
     public partial class ScheduleView : UserControl
@@ -45,7 +49,7 @@ namespace InfoKioskApp.Views
             var btn = new Button
             {
                 Content = text,
-                Background = new SolidColorBrush(Color.FromRgb(68, 68, 68)),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(68, 68, 68)),
                 Foreground = Brushes.White,
                 Margin = new Thickness(6),
                 Padding = new Thickness(14, 8, 14, 8),
@@ -65,7 +69,7 @@ namespace InfoKioskApp.Views
             foreach (Button b in panel.Children)
             {
                 bool isActive = (string)b.Tag == key;
-                b.Background = new SolidColorBrush(isActive ? Color.FromRgb(58, 159, 255) : Color.FromRgb(68, 68, 68));
+                b.Background = new SolidColorBrush(isActive ? System.Windows.Media.Color.FromRgb(58, 159, 255) : System.Windows.Media.Color.FromRgb(68, 68, 68));
             }
         }
 
@@ -88,6 +92,8 @@ namespace InfoKioskApp.Views
                 LoadPdfSchedule(path);
             else if (ext == ".jpg" || ext == ".jpeg" || ext == ".png")
                 LoadImageSchedule(path);
+            else if (ext == ".docx")
+                LoadDocxSchedule(path);
             else
                 MessageBox.Show("Неподдерживаемый формат файла.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -121,7 +127,103 @@ namespace InfoKioskApp.Views
             }
         }
 
-        
+        private void ShowExcelSheet(string path, string sheetName)
+        {
+            _activeSheetName = sheetName;
+            HighlightActiveButton(ClassButtonsPanel, sheetName);
+
+            using (var wb = new XLWorkbook(path))
+            {
+                var ws = wb.Worksheet(sheetName);
+
+                // Соберём используемые ячейки — но хотим отображать пустые ячейки тоже.
+                // Определим максимальную используемую колонку и строку в листе.
+                var lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
+                var lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
+
+                // Если нет данных
+                if (lastRow == 0 || lastCol == 0)
+                {
+                    ContentArea.Children.Clear();
+                    ContentArea.Children.Add(new TextBlock
+                    {
+                        Text = "Нет данных для отображения",
+                        Foreground = Brushes.Gray,
+                        FontSize = 16,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    });
+                    return;
+                }
+
+                // === Контейнер прокрутки ===
+                var scroll = new ScrollViewer
+                {
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30))
+                };
+
+                // === Таблица с равными колонками ===
+                var grid = new Grid
+                {
+                    Margin = new Thickness(10)
+                };
+
+                // Равные ширины колонок
+                for (int c = 0; c < lastCol; c++)
+                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                for (int r = 0; r < lastRow; r++)
+                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                // Чтение всех ячеек, включая пустые
+                for (int r = 1; r <= lastRow; r++)
+                {
+                    for (int c = 1; c <= lastCol; c++)
+                    {
+                        var cell = ws.Cell(r, c);
+                        string cellText = (cell == null || cell.IsEmpty()) ? string.Empty : cell.GetString();
+
+                        bool isHeader = r == 1 || c == 1;
+
+                        var border = new System.Windows.Controls.Border
+                        {
+                            BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 70, 70)),
+                            BorderThickness = new Thickness(1),
+                            Background = isHeader
+                                ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 60))
+                                : new SolidColorBrush(System.Windows.Media.Color.FromRgb(35, 35, 35)),
+                            Padding = new Thickness(8),
+                            Margin = new Thickness(2),
+                            CornerRadius = new CornerRadius(isHeader ? 5 : 0)
+                        };
+
+                        var text = new TextBlock
+                        {
+                            Text = string.IsNullOrWhiteSpace(cellText) ? " " : cellText,
+                            Foreground = Brushes.White,
+                            FontWeight = isHeader ? FontWeights.Bold : FontWeights.Normal,
+                            TextAlignment = System.Windows.TextAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            FontSize = isHeader ? 15 : 14,
+                            TextWrapping = TextWrapping.Wrap
+                        };
+
+                        border.Child = text;
+                        Grid.SetRow(border, r - 1);
+                        Grid.SetColumn(border, c - 1);
+                        grid.Children.Add(border);
+                    }
+                }
+
+                scroll.Content = grid;
+                ContentArea.Children.Clear();
+                ContentArea.Children.Add(scroll);
+            }
+        }
+
         #endregion
 
 
@@ -145,118 +247,184 @@ namespace InfoKioskApp.Views
                 MessageBox.Show($"Ошибка при открытии PDF: {ex.Message}");
             }
         }
-        private void ShowExcelSheet(string path, string sheetName)
+        #endregion
+
+        #region === DOCX (Word) ===
+        private void LoadDocxSchedule(string path)
         {
-            _activeSheetName = sheetName;
-            HighlightActiveButton(ClassButtonsPanel, sheetName);
-
-            using (var wb = new XLWorkbook(path))
+            try
             {
-                var ws = wb.Worksheet(sheetName);
-
-                // Читаем все строки, включая пустые ячейки
-                var data = new List<List<string>>();
-                int maxColumns = 0;
-
-                foreach (var row in ws.RowsUsed())
-                {
-                    var rowValues = new List<string>();
-                    int lastUsedColumn = ws.LastColumnUsed().ColumnNumber();
-
-                    for (int i = 1; i <= lastUsedColumn; i++)
-                    {
-                        var cell = row.Cell(i);
-                        rowValues.Add(cell != null ? cell.Value.ToString() : string.Empty);
-
-                    }
-
-                    data.Add(rowValues);
-                    if (rowValues.Count > maxColumns)
-                        maxColumns = rowValues.Count;
-                }
-
-                // Если нет данных — выходим
-                if (data.Count == 0)
-                {
-                    ContentArea.Children.Clear();
-                    ContentArea.Children.Add(new TextBlock
-                    {
-                        Text = "Нет данных для отображения",
-                        Foreground = Brushes.Gray,
-                        FontSize = 16,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                    return;
-                }
-
-                // === Контейнер прокрутки ===
+                // Container with scroll
                 var scroll = new ScrollViewer
                 {
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    Background = new SolidColorBrush(Color.FromRgb(30, 30, 30))
+                    Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30))
                 };
 
-                // === Таблица ===
-                var grid = new Grid
+                var stack = new StackPanel
                 {
-                    Margin = new Thickness(10)
+                    Margin = new Thickness(12),
+                    Orientation = Orientation.Vertical
                 };
 
-                for (int i = 0; i < maxColumns; i++)
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                for (int i = 0; i < data.Count; i++)
-                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                // === Отрисовка ===
-                for (int r = 0; r < data.Count; r++)
+                using (var doc = WordprocessingDocument.Open(path, false))
                 {
-                    for (int c = 0; c < maxColumns; c++)
+                    var body = doc.MainDocumentPart?.Document?.Body;
+                    if (body == null)
                     {
-                        bool isHeader = r == 0 || c == 0;
-
-                        string cellText = c < data[r].Count ? data[r][c] : "";
-
-                        var border = new Border
+                        ContentArea.Children.Clear();
+                        ContentArea.Children.Add(new TextBlock
                         {
-                            BorderBrush = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
-                            BorderThickness = new Thickness(1),
-                            Background = isHeader
-                                ? new SolidColorBrush(Color.FromRgb(45, 45, 60))
-                                : new SolidColorBrush(Color.FromRgb(35, 35, 35)),
-                            Padding = new Thickness(8),
-                            Margin = new Thickness(2),
-                            CornerRadius = new CornerRadius(isHeader ? 5 : 0)
-                        };
+                            Text = "Документ пуст.",
+                            Foreground = Brushes.Gray,
+                            FontSize = 16
+                        });
+                        return;
+                    }
 
-                        var text = new TextBlock
+                    foreach (var element in body.Elements())
+                    {
+                        if (element is Paragraph p)
                         {
-                            Text = string.IsNullOrWhiteSpace(cellText) ? " " : cellText, // отображаем пустые
-                            Foreground = Brushes.White,
-                            FontWeight = isHeader ? FontWeights.Bold : FontWeights.Normal,
-                            TextAlignment = TextAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center,
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            FontSize = isHeader ? 15 : 14,
-                            TextWrapping = TextWrapping.Wrap
-                        };
+                            var text = GetParagraphText(p);
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                var tb = new TextBlock
+                                {
+                                    Text = text,
+                                    Foreground = Brushes.White,
+                                    TextWrapping = TextWrapping.Wrap,
+                                    Margin = new Thickness(0, 4, 0, 4),
+                                    FontSize = 14
+                                };
 
-                        border.Child = text;
-                        Grid.SetRow(border, r);
-                        Grid.SetColumn(border, c);
-                        grid.Children.Add(border);
+                                // если параграф явно отмечен как заголовок — повысим размер (простая эвристика)
+                                var pStyle = p.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
+                                if (!string.IsNullOrEmpty(pStyle) && pStyle.ToLower().Contains("heading"))
+                                {
+                                    tb.FontSize = 18;
+                                    tb.FontWeight = FontWeights.SemiBold;
+                                    tb.Margin = new Thickness(0, 8, 0, 8);
+                                }
+
+                                stack.Children.Add(tb);
+                            }
+                        }
+                        else if (element is Table tbl)
+                        {
+                            // Рендерим таблицу Word как WPF Grid
+                            var tableGrid = RenderWordTable(tbl);
+                            stack.Children.Add(tableGrid);
+                        }
+                        else
+                        {
+                            // другие элементы — игнорируем или обрабатываем при надобности
+                        }
                     }
                 }
 
-                scroll.Content = grid;
+                scroll.Content = stack;
+                ClassButtonsPanel.Visibility = Visibility.Collapsed;
                 ContentArea.Children.Clear();
                 ContentArea.Children.Add(scroll);
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка открытия DOCX: {ex.Message}");
+            }
         }
 
+        private string GetParagraphText(Paragraph p)
+        {
+            // Собираем весь текст параграфа (включая runs)
+            var runs = p.Descendants<Run>();
+            var parts = runs.Select(r => r.GetFirstChild<Text>()?.Text).Where(t => t != null);
+            return string.Join("", parts).Trim();
+        }
 
+        private Grid RenderWordTable(Table tbl)
+        {
+            var grid = new Grid
+            {
+                Margin = new Thickness(0, 8, 0, 8),
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(35, 35, 35))
+            };
+
+            // Определим количество столбцов — возьмём максимум по строкам
+            int maxCols = tbl.Elements<TableRow>().Max(tr => tr.Elements<TableCell>().Count());
+
+            for (int c = 0; c < maxCols; c++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            int rIndex = 0;
+            foreach (var tr in tbl.Elements<TableRow>())
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+                int cIndex = 0;
+                foreach (var tc in tr.Elements<TableCell>())
+                {
+                    string cellText = string.Join("", tc.Descendants<Text>().Select(t => t.Text)).Trim();
+
+                    var border = new System.Windows.Controls.Border
+                    {
+                        BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 70, 70)),
+                        BorderThickness = new Thickness(1),
+                        Padding = new Thickness(6),
+                        Margin = new Thickness(1),
+                        Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 60))
+                    };
+
+                    var tb = new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(cellText) ? " " : cellText,
+                        Foreground = Brushes.White,
+                        TextWrapping = TextWrapping.Wrap,
+                        FontSize = 13,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    border.Child = tb;
+                    Grid.SetRow(border, rIndex);
+                    Grid.SetColumn(border, cIndex);
+                    grid.Children.Add(border);
+
+                    cIndex++;
+                }
+
+                // если в строке меньше столбцов — добавляем пустые ячейки
+                while (cIndex < maxCols)
+                {
+                    var border = new System.Windows.Controls.Border
+                    {
+                        BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 70, 70)),
+                        BorderThickness = new Thickness(1),
+                        Padding = new Thickness(6),
+                        Margin = new Thickness(1),
+                        Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(35, 35, 35))
+                    };
+
+                    var tb = new TextBlock
+                    {
+                        Text = " ",
+                        Foreground = Brushes.White
+                    };
+
+                    border.Child = tb;
+                    Grid.SetRow(border, rIndex);
+                    Grid.SetColumn(border, cIndex);
+                    grid.Children.Add(border);
+
+                    cIndex++;
+                }
+
+                rIndex++;
+            }
+
+            return grid;
+        }
         #endregion
 
         #region === Изображения ===
