@@ -1,0 +1,16 @@
+﻿<UserControl x:Class="InfoKioskApp.Views.AdminTabs.RemoteAccessView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:InfoKioskApp.Views.AdminTabs"
+
+             Background="#1E1E1E">
+
+    <TabControl Background="#1E1E1E" Foreground="White">
+        <TabItem Header="⚙ Настройки сервера" Background="Gray" Foreground="Black">
+            <local:RemoteSettingsView/>
+        </TabItem>
+        <TabItem Header="🗂 Контент и календарь" Background="Gray" Foreground="Black">
+            <local:RemoteContentView/>
+        </TabItem>
+    </TabControl>
+</UserControl>

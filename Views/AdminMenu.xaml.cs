@@ -42,8 +42,9 @@ namespace InfoKioskApp.Views
 
         private void RemoteSettings_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new RemoteSettingsView();
+            ContentArea.Content = new AdminTabs.RemoteAccessView();
         }
+
         private void ChangePin_Click(object sender, RoutedEventArgs e)
         {
             ContentArea.Content = new ChangePinView();

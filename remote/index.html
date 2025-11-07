@@ -1,254 +1,55 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfoKiosk Remote Admin</title>
-    <style>
-        body {
-            background: #1e1e1e;
-            color: #eee;
-            font-family: Segoe UI,system-ui;
-            padding: 18px
-        }
-
-        h1 {
-            font-weight: 600;
-            margin-bottom: 8px
-        }
-
-        .tabs button {
-            padding: 8px 14px;
-            margin-right: 6px;
-            border-radius: 6px;
-            border: 0;
-            background: #333;
-            color: #fff;
-            cursor: pointer
-        }
-
-            .tabs button.active {
-                background: #3A6DF0
-            }
-
-        section {
-            display: none
-        }
-
-            section.active {
-                display: block
-            }
-
-        .panel {
-            background: #252525;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 10px
-        }
-
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.05)
-        }
-
-        .dropzone {
-            border: 2px dashed #555;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: center;
-            margin-top: 12px;
-            color: #999
-        }
-
-            .dropzone.dragover {
-                background: #333;
-                color: #3A6DF0;
-                border-color: #3A6DF0
-            }
-
-        .progress-bar {
-            height: 6px;
-            background: #3A6DF0;
-            margin-top: 6px;
-            border-radius: 3px;
-            transition: width .2s
-        }
-
-        button.small {
-            padding: 5px 9px;
-            margin-left: 4px;
-            border: 0;
-            border-radius: 6px;
-            background: #3A6DF0;
-            color: white;
-            cursor: pointer
-        }
-
-            button.small:hover {
-                background: #2F59C5
-            }
-
-        .muted {
-            color: #aaa;
-            font-size: 13px
-        }
-
-        select, textarea {
-            background: #333;
-            color: #fff;
-            border: 0;
-            border-radius: 6px;
-            padding: 6px;
-            margin-top: 6px
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>🌐 InfoKiosk — Удалённое управление</h1>
+    <header>
+        <h1>🌐 InfoKiosk Remote Admin</h1>
+        <p id="server-status">🔄 Подключение...</p>
+    </header>
 
-    <div class="tabs">
-        <button class="tabbtn active" data-tab="documents">📄 Документы</button>
-        <button class="tabbtn" data-tab="media">🖼 Медиа</button>
-        <button class="tabbtn" data-tab="schedule">📅 Расписания</button>
-        <button class="tabbtn" data-tab="system">🔧 Система</button>
-    </div>
+    <main>
+        <section>
+            <h2>📂 Файлы и расписания</h2>
+            <div class="upload-block">
+                <label>Тип загрузки:</label>
+                <select id="upload-type">
+                    <option value="main">Основное расписание</option>
+                    <option value="changes">Изменённое расписание</option>
+                    <option value="schedules">Другое расписание</option>
+                    <option value="media">Медиа</option>
+                    <option value="docs">Документы</option>
+                </select>
 
-    <section id="documents" class="active">
-        <div class="panel">
-            <h3>📄 Документы</h3>
-            <div id="drop_docs" class="dropzone">Перетащите документы сюда или выберите</div>
-            <input type="file" id="file_docs" multiple />
-            <button class="small" onclick="uploadSelected('documents')">⬆ Загрузить</button>
-            <div id="list_docs"></div>
-        </div>
-    </section>
+                <input type="file" id="file-input">
+                <button onclick="uploadFile()">⬆ Загрузить</button>
+            </div>
 
-    <section id="media">
-        <div class="panel">
-            <h3>🖼 Медиафайлы</h3>
-            <div id="drop_media" class="dropzone">Перетащите изображения/видео сюда</div>
-            <input type="file" id="file_media" multiple />
-            <button class="small" onclick="uploadSelected('media')">⬆ Загрузить</button>
-            <div id="list_media"></div>
-        </div>
-    </section>
+            <div class="file-list">
+                <button onclick="loadFileList()">🔄 Обновить список</button>
+                <ul id="files"></ul>
+            </div>
+        </section>
 
-    <section id="schedule">
-        <div class="panel">
-            <h3>📅 Расписания</h3>
-            <p class="muted">Выберите тип расписания для редактирования:</p>
-            <select id="scheduleType">
-                <option value="main">Основное расписание</option>
-                <option value="changes">Изменённое расписание</option>
-                <option value="others">Другие расписания</option>
-            </select>
+        <section>
+            <h2>📅 Календарь событий</h2>
+            <div class="calendar-form">
+                <input id="event-title" placeholder="Название события">
+                <input id="event-date" type="date">
+                <button onclick="addEvent()">➕ Добавить</button>
+            </div>
+            <ul id="calendar"></ul>
+        </section>
+    </main>
 
-            <div id="drop_schedules" class="dropzone">Перетащите файлы расписаний сюда</div>
-            <input type="file" id="file_schedules" multiple />
-            <button class="small" onclick="uploadSelected('schedules')">⬆ Загрузить</button>
-            <div id="list_schedules"></div>
-        </div>
-    </section>
+    <footer>
+        <p>© InfoKioskApp Remote Interface</p>
+    </footer>
 
-    <section id="system">
-        <div class="panel">
-            <h3>🔧 Система</h3>
-            <button class="small" onclick="restartApp()">Перезапустить приложение</button>
-        </div>
-    </section>
-
-    <script>
-        const sections = document.querySelectorAll('section');
-        const buttons = document.querySelectorAll('.tabbtn');
-        buttons.forEach(btn => btn.onclick = () => {
-        buttons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        sections.forEach(s => s.classList.remove('active'));
-        document.getElementById(btn.dataset.tab).classList.add('active');
-        loadFiles(btn.dataset.tab);
-        });
-
-        async function loadFiles(type, sub = "") {
-        const list = document.getElementById('list_' + type);
-        if (!list) return;
-        list.innerHTML = '<div class="muted">Загрузка...</div>';
-        const res = await fetch(`/files?type=${type}${sub ? '&sub=' + sub : ''}`);
-        if (!res.ok) { list.innerHTML = '<div class="muted">Ошибка загрузки</div>'; return; }
-        const arr = await res.json();
-        if (arr.length === 0) { list.innerHTML = '<div class="muted">Папка пуста</div>'; return; }
-        list.innerHTML = '';
-        arr.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'file-item';
-        div.innerHTML = `
-        <span>${f.name}</span>
-        <span>
-        <button class="small" onclick="window.open('/raw?type=${type}&sub=${sub}&name=${encodeURIComponent(f.name)}')">▶</button>
-        <button class="small" onclick="deleteFile('${type}','${encodeURIComponent(f.name)}','${sub}')">🗑</button>
-        </span>`;
-        list.appendChild(div);
-        });
-        }
-
-        async function deleteFile(type, name, sub = "") {
-        if (!confirm('Удалить файл?')) return;
-        await fetch(`/files?type=${type}&name=${name}&sub=${sub}`, { method: 'DELETE' });
-        loadFiles(type, sub);
-        }
-
-        async function uploadSelected(type, sub = "") {
-        const input = document.getElementById('file_' + type);
-        if (input.files.length === 0) return alert('Выберите файл');
-        for (let f of input.files) {
-        await uploadFile(f, type, sub);
-        }
-        loadFiles(type, sub);
-        }
-
-        async function uploadFile(file, type, sub = "") {
-        const drop = document.getElementById('drop_' + type);
-        drop.innerHTML = `<div>${file.name}</div><div class='progress-bar' id='prog_${type}'></div>`;
-        const prog = document.getElementById('prog_' + type);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `/upload?type=${type}&sub=${sub}`, true);
-        xhr.setRequestHeader('X-Filename', file.name);
-        xhr.upload.onprogress = e => {
-        if (e.lengthComputable) prog.style.width = (e.loaded / e.total * 100) + '%';
-        };
-        xhr.onload = () => {
-        prog.style.width = '100%';
-        setTimeout(() => { drop.innerHTML = 'Перетащите файлы сюда или выберите'; loadFiles(type, sub); }, 1000);
-        };
-        xhr.send(file);
-        }
-
-        // --- Drag&Drop ---
-        ['documents','media','schedules'].forEach(type => {
-        const dz = document.getElementById('drop_' + type);
-        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-        dz.addEventListener('dragleave', e => { e.preventDefault(); dz.classList.remove('dragover'); });
-        dz.addEventListener('drop', e => {
-        e.preventDefault();
-        dz.classList.remove('dragover');
-        const files = Array.from(e.dataTransfer.files);
-        const sub = (type === 'schedules') ? document.getElementById('scheduleType').value : "";
-        files.forEach(f => uploadFile(f, type, sub));
-        });
-        });
-
-        async function restartApp() {
-        await fetch('/restart');
-        alert('Перезапуск приложения...');
-        }
-
-        // автообновление списков
-        setInterval(() => ['documents','media','schedules'].forEach(loadFiles), 5000);
-        loadFiles('documents'); loadFiles('media'); loadFiles('schedules');
-    </script>
-
+    <script src="script.js"></script>
 </body>
 </html>

@@ -32,8 +32,22 @@ namespace InfoKioskApp.Views
         {
             var config = ConfigService.LoadConfig();
 
-            _schedules = config.Schedules?.ToDictionary(s => s.Name, s => s.FilePath)
-                          ?? new Dictionary<string, string>();
+            _schedules = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (config.Schedules != null)
+            {
+                foreach (var s in config.Schedules)
+                {
+                    if (string.IsNullOrWhiteSpace(s.Name) || string.IsNullOrWhiteSpace(s.FilePath))
+                        continue;
+
+                    if (!_schedules.ContainsKey(s.Name))
+                        _schedules[s.Name] = s.FilePath;
+                    else
+                        Console.WriteLine($"⚠ Пропущено дубликатное расписание: {s.Name}");
+                }
+            }
+
 
             ScheduleButtonsPanel.Children.Clear();
 

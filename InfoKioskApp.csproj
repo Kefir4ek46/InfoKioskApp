@@ -182,6 +182,12 @@
     <Compile Include="Views\AdminTabs\InterfaceSettingsView.xaml.cs">
       <DependentUpon>InterfaceSettingsView.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\AdminTabs\RemoteAccessView.xaml.cs">
+      <DependentUpon>RemoteAccessView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\AdminTabs\RemoteContentView.xaml.cs">
+      <DependentUpon>RemoteContentView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\AdminTabs\RemoteSettingsView.xaml.cs">
       <DependentUpon>RemoteSettingsView.xaml</DependentUpon>
     </Compile>
@@ -253,6 +259,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\AdminTabs\InterfaceSettingsView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AdminTabs\RemoteAccessView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\AdminTabs\RemoteContentView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -364,9 +378,15 @@
     <Resource Include="For run.txt" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="remote\index.html">
+    <Resource Include="Data\about_developer.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
+    </Resource>
+    <Content Include="remote\index.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="remote\script.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="remote\style.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
