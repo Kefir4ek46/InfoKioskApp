@@ -1,82 +1,222 @@
-﻿body {
-    font-family: "Segoe UI", sans-serif;
-    background: #1e1e1e;
-    color: #fff;
+﻿:root {
+    --bg: #1e1e1e;
+    --surface: #2b2b2b;
+    --accent: #3a6df0;
+    --accent-hover: #2b58d4;
+    --text: #fff;
+    --muted: #aaa;
+    --radius: 12px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    --transition: 0.25s ease;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", "Roboto", sans-serif;
+    background: var(--bg);
+    color: var(--text);
     margin: 0;
-    padding: 0;
+    line-height: 1.5;
 }
 
 header {
-    background: #2b2b2b;
-    padding: 15px;
-    border-bottom: 1px solid #444;
+    background: var(--surface);
+    padding: 20px;
     text-align: center;
+    border-bottom: 1px solid #444;
+    box-shadow: var(--shadow);
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8em;
 }
 
 main {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
     padding: 20px;
+    max-width: 1000px;
+    margin: auto;
 }
 
-section {
-    background: #2c2c2c;
-    border-radius: 10px;
-    padding: 20px;
-    width: 45%;
+/* --- Вкладки --- */
+.tabs {
+    display: flex;
+    justify-content: center;
     margin-bottom: 20px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-}
-
-.upload-block {
-    display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
-    margin-bottom: 15px;
 }
 
-input[type="file"], select, input[type="text"], input[type="date"] {
-    background: #3a3a3a;
-    color: #fff;
+.tab {
+    background: #333;
+    color: var(--text);
     border: none;
-    padding: 5px 10px;
-    border-radius: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    transition: background var(--transition);
 }
+
+    .tab.active {
+        background: var(--accent);
+        box-shadow: 0 0 10px rgba(58,109,240,0.6);
+    }
+
+/* --- Контент --- */
+.tab-content {
+    display: none;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 25px;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.3s ease;
+}
+
+    .tab-content.active {
+        display: block;
+    }
+
+.card {
+    background: #323232;
+    border-radius: var(--radius);
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: inset 0 0 0 1px #3b3b3b;
+}
+   
+
+
+/* --- Элементы управления --- */
+input[type="file"],
+input[type="text"],
+input[type="date"],
+select {
+    background: #3a3a3a;
+    color: var(--text);
+    border: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    outline: none;
+    transition: background var(--transition);
+}
+
+    input:hover,
+    select:hover {
+        background: #444;
+    }
 
 button {
-    background: #3a6df0;
-    color: white;
+    background: var(--accent);
     border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    color: #fff;
     cursor: pointer;
+    transition: background var(--transition), transform 0.1s;
 }
 
     button:hover {
-        background: #2b58d4;
+        background: var(--accent-hover);
+        transform: scale(1.03);
     }
 
+/* --- Списки --- */
 ul {
     list-style: none;
-    padding-left: 10px;
+    padding: 0;
 }
 
 li {
-    margin: 5px 0;
     background: #333;
-    padding: 8px;
-    border-radius: 5px;
+    margin: 6px 0;
+    padding: 10px;
+    border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    transition: background var(--transition);
+}
+
+    li:hover {
+        background: #3a3a3a;
+    }
+
+    li button {
+        background: #c0392b;
+    }
+
+        li button:hover {
+            background: #a93226;
+        }
+
+/* --- Анимации --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Адаптивность --- */
+@media (max-width: 768px) {
+    main {
+        padding: 10px;
+    }
+
+    .tab {
+        padding: 8px 14px;
+        font-size: 0.9em;
+    }
+
+    .card {
+        padding: 12px;
+    }
+
+    button {
+        width: 100%;
+    }
+
+    input[type="file"] {
+        width: 100%;
+    }
 }
 
 footer {
     text-align: center;
-    padding: 10px;
+    padding: 15px;
     background: #222;
-    border-top: 1px solid #444;
-    color: #aaa;
-    font-size: 0.9em;
+    color: var(--muted);
+    border-top: 1px solid #333;
+    margin-top: 30px;
+}
+
+/* === Drag & Drop улучшения === */
+.drop-zone {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+    .drop-zone input[type="file"] {
+        display: block;
+        margin: 10px 0;
+    }
+
+    .drop-zone .hint {
+        font-size: 0.9em;
+        color: #aaa;
+        margin-bottom: 5px;
+    }
+
+.card.drag-hover {
+    border: 2px dashed #3a9fff;
+    background: rgba(58, 159, 255, 0.1);
+    box-shadow: 0 0 10px rgba(58, 159, 255, 0.4);
 }

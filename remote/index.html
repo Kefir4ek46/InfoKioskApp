@@ -13,31 +13,74 @@
     </header>
 
     <main>
-        <section>
-            <h2>📂 Файлы и расписания</h2>
-            <div class="upload-block">
-                <label>Тип загрузки:</label>
-                <select id="upload-type">
-                    <option value="main">Основное расписание</option>
-                    <option value="changes">Изменённое расписание</option>
-                    <option value="schedules">Другое расписание</option>
-                    <option value="media">Медиа</option>
-                    <option value="docs">Документы</option>
-                </select>
+        <nav class="tabs">
+            <button class="tab active" data-tab="schedules">📅 Расписания</button>
+            <button class="tab" data-tab="files">🗂 Файлы</button>
+            <button class="tab" data-tab="calendar">📆 Календарь</button>
+        </nav>
 
-                <input type="file" id="file-input">
-                <button onclick="uploadFile()">⬆ Загрузить</button>
+        <!-- === Расписания === -->
+        <section id="tab-schedules" class="tab-content active animate-fade">
+            <h2>📂 Управление расписаниями</h2>
+
+            <div class="card drop-zone">
+                <h3>Основное расписание</h3>
+                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <input type="file" id="main-file" multiple>
+                <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
+            </div>
+
+            <div class="card drop-zone">
+                <h3>Изменённое расписание</h3>
+                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <input type="file" id="changes-file" multiple>
+                <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
+            </div>
+
+            <div class="card drop-zone">
+                <h3>Другое расписание</h3>
+                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <input type="file" id="other-file" multiple>
+                <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
+            </div>
+
+            <h3>📋 Список дополнительных расписаний</h3>
+            <ul id="other-files"></ul>
+        </section>
+
+        <!-- === Файлы === -->
+        <section id="tab-files" class="tab-content animate-fade">
+            <h2>🗂 Управление файлами</h2>
+
+            <div class="card drop-zone">
+                <h3>Медиа</h3>
+                <p class="hint">Перетащите сюда медиафайлы или выберите вручную:</p>
+                <input type="file" id="media-file" multiple>
+                <button onclick="uploadFileType('media')">⬆ Загрузить</button>
+            </div>
+
+            <div class="card drop-zone">
+                <h3>Документы</h3>
+                <p class="hint">Перетащите сюда файлы документов или выберите вручную:</p>
+                <input type="file" id="docs-file" multiple>
+                <button onclick="uploadFileType('docs')">⬆ Загрузить</button>
             </div>
 
             <div class="file-list">
-                <button onclick="loadFileList()">🔄 Обновить список</button>
-                <ul id="files"></ul>
+                <h3>📁 Список файлов</h3>
+                <select id="file-category" onchange="loadFilesCategory()">
+                    <option value="media">Медиа</option>
+                    <option value="docs">Документы</option>
+                </select>
+                <button onclick="loadFilesCategory()">🔄 Обновить</button>
+                <ul id="files-list"></ul>
             </div>
         </section>
 
-        <section>
-            <h2>📅 Календарь событий</h2>
-            <div class="calendar-form">
+        <!-- === Календарь === -->
+        <section id="tab-calendar" class="tab-content animate-fade">
+            <h2>📆 Календарь событий</h2>
+            <div class="calendar-form card">
                 <input id="event-title" placeholder="Название события">
                 <input id="event-date" type="date">
                 <button onclick="addEvent()">➕ Добавить</button>

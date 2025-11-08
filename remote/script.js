@@ -1,62 +1,185 @@
 ﻿const api = location.origin;
 
-// === Проверка состояния сервера ===
+// === Инициализация ===
 window.addEventListener("load", () => {
   document.getElementById("server-status").textContent = "✅ Подключено: " + api;
-  loadFileList();
+  loadOtherSchedules();
+  loadFilesCategory();
   loadCalendar();
+  setupTabs();
+  setupDragAndDrop();
 });
 
-// === Загрузка файла ===
-async function uploadFile() {
-  const fileInput = document.getElementById("file-input");
-  const type = document.getElementById("upload-type").value;
-  const file = fileInput.files[0];
-  if (!file) return alert("Выберите файл!");
+// === Переключение вкладок ===
+function setupTabs() {
+  const tabs = document.querySelectorAll(".tab");
+  const contents = document.querySelectorAll(".tab-content");
 
-  const url = `${api}/upload?target=${type}&name=${encodeURIComponent(file.name)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    body: file
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      tabs.forEach(t => t.classList.remove("active"));
+      contents.forEach(c => c.classList.remove("active"));
+
+      tab.classList.add("active");
+      document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+    });
   });
+}
 
-  if (res.ok) {
-    alert("✅ Файл загружен!");
-    loadFileList();
+// =========================================================
+// 📦 === DRAG & DROP ===
+// =========================================================
+function setupDragAndDrop() {
+  const dropZones = document.querySelectorAll("input[type='file']");
+
+  dropZones.forEach(input => {
+    const parent = input.parentElement;
+
+    parent.addEventListener("dragover", e => {
+      e.preventDefault();
+      parent.classList.add("drag-hover");
+    });
+
+    parent.addEventListener("dragleave", () => {
+      parent.classList.remove("drag-hover");
+    });
+
+    parent.addEventListener("drop", e => {
+      e.preventDefault();
+      parent.classList.remove("drag-hover");
+
+      const files = e.dataTransfer.files;
+      if (!files.length) return;
+
+      input.files = files;
+      const type = input.id.replace("-file", "");
+      if (["main", "changes", "other"].includes(type)) uploadSchedule(type);
+      else uploadFileType(type);
+    });
+  });
+}
+
+// =========================================================
+// 📅 === РАСПИСАНИЯ ===
+// =========================================================
+async function uploadSchedule(type) {
+  const input = document.getElementById(type + "-file");
+  const files = Array.from(input.files);
+  if (!files.length) return alert("Выберите файл(ы)!");
+
+  for (const file of files) {
+    try {
+      const utf8Name = unescape(encodeURIComponent(file.name));
+      const nameB64 = btoa(utf8Name);
+
+      const url = `${api}/upload?target=${type}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "X-Filename-Base64": nameB64 },
+        body: file
+      });
+
+      if (!res.ok) throw new Error("Ошибка загрузки " + file.name);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Ошибка при загрузке: " + err.message);
+    }
+  }
+
+  alert("✅ Файлы загружены!");
+  if (type === "other") loadOtherSchedules();
+}
+
+async function loadOtherSchedules() {
+  const res = await fetch(`${api}/list?target=other`);
+  const data = await res.json();
+  const list = document.getElementById("other-files");
+  list.innerHTML = "";
+  if (data.files && data.files.length > 0) {
+    data.files.forEach(f => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${f.name}</span> <button onclick="deleteFile('${f.name}','other')">🗑</button>`;
+      list.appendChild(li);
+    });
   } else {
-    alert("❌ Ошибка загрузки");
+    list.innerHTML = "<li>Нет файлов</li>";
   }
 }
 
-// === Получить список файлов ===
-async function loadFileList() {
-  const res = await fetch(`${api}/list?target=schedules`);
+// =========================================================
+// 🗂 === ФАЙЛЫ ===
+// =========================================================
+async function uploadFileType(type) {
+  const input = document.getElementById(type + "-file");
+  const files = Array.from(input.files);
+  if (!files.length) return alert("Выберите файл(ы)!");
+
+  for (const file of files) {
+    try {
+      const utf8Name = unescape(encodeURIComponent(file.name));
+      const nameB64 = btoa(utf8Name);
+
+      const url = `${api}/upload?target=${type}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "X-Filename-Base64": nameB64 },
+        body: file
+      });
+
+      if (!res.ok) throw new Error(file.name);
+    } catch (err) {
+      console.error(err);
+      alert("❌ Ошибка при загрузке: " + err.message);
+    }
+  }
+
+  alert("✅ Файлы загружены!");
+  loadFilesCategory();
+}
+
+async function loadFilesCategory() {
+  const category = document.getElementById("file-category").value;
+  const res = await fetch(`${api}/list?target=${category}`);
   const data = await res.json();
-  const filesList = document.getElementById("files");
-  filesList.innerHTML = "";
+  const list = document.getElementById("files-list");
+  list.innerHTML = "";
 
   if (data.files && data.files.length > 0) {
     data.files.forEach(f => {
       const li = document.createElement("li");
-      li.innerHTML = `
-        <span>${f.name}</span>
-        <button onclick="deleteFile('${f.name}')">🗑</button>
-      `;
-      filesList.appendChild(li);
+      li.innerHTML = `<span>${f.name}</span> <button onclick="deleteFile('${f.name}','${category}')">🗑</button>`;
+      list.appendChild(li);
     });
   } else {
-    filesList.innerHTML = "<li>Нет файлов</li>";
+    list.innerHTML = "<li>Нет файлов</li>";
   }
 }
 
-// === Удаление файла ===
-async function deleteFile(name) {
+// =========================================================
+// 🗑 === УДАЛЕНИЕ ===
+// =========================================================
+async function deleteFile(name, type) {
   if (!confirm(`Удалить ${name}?`)) return;
-  const res = await fetch(`${api}/delete?target=schedules&name=${encodeURIComponent(name)}`);
-  if (res.ok) loadFileList();
+
+  const utf8Name = unescape(encodeURIComponent(name));
+  const nameB64 = btoa(utf8Name);
+
+  const res = await fetch(`${api}/delete?target=${type}`, {
+    method: "GET",
+    headers: { "X-Filename-Base64": nameB64 }
+  });
+
+  if (res.ok) {
+    if (type === "other") loadOtherSchedules();
+    else loadFilesCategory();
+  } else {
+    alert("❌ Ошибка удаления файла");
+  }
 }
 
-// === Календарь ===
+// =========================================================
+// 📆 === КАЛЕНДАРЬ ===
+// =========================================================
 async function loadCalendar() {
   const res = await fetch(`${api}/calendar/list`);
   const events = await res.json();
@@ -89,4 +212,3 @@ async function deleteEvent(title) {
   await fetch(`${api}/calendar/delete?title=${encodeURIComponent(title)}`);
   loadCalendar();
 }
-

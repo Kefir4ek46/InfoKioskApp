@@ -31,7 +31,10 @@ namespace InfoKioskApp.Services
 
             Directory.CreateDirectory(DataRoot);
             _cts = new CancellationTokenSource();
-            _listener = new HttpListener();
+            _listener = new HttpListener
+            {
+                IgnoreWriteExceptions = true
+            };
             _listener.Prefixes.Add($"http://+:{port}/");
             _listener.Start();
 
@@ -40,6 +43,7 @@ namespace InfoKioskApp.Services
             Console.WriteLine($"🌐 RemoteServerService запущен на порту {port}");
             ServerStatusChanged?.Invoke(true);
         }
+
 
         public static void Stop()
         {
@@ -58,7 +62,7 @@ namespace InfoKioskApp.Services
             return !tcpConnections.Any(p => p.Port == port);
         }
 
-        // ---------------------------- MAIN LISTEN LOOP ----------------------------
+        // ---------------------------- MAIN LOOP ----------------------------
 
         private static async Task ListenLoop(CancellationToken token)
         {
@@ -80,7 +84,7 @@ namespace InfoKioskApp.Services
             }
         }
 
-        // ---------------------------- CORE REQUEST HANDLER ----------------------------
+        // ---------------------------- ROUTING ----------------------------
 
         private static async Task HandleRequest(HttpListenerContext ctx)
         {
@@ -89,24 +93,12 @@ namespace InfoKioskApp.Services
             {
                 switch (path)
                 {
-                    case "/list":
-                        await HandleList(ctx);
-                        break;
-                    case "/upload":
-                        await HandleUpload(ctx);
-                        break;
-                    case "/delete":
-                        await HandleDelete(ctx);
-                        break;
-                    case "/calendar/list":
-                        await HandleCalendarList(ctx);
-                        break;
-                    case "/calendar/add":
-                        await HandleCalendarAdd(ctx);
-                        break;
-                    case "/calendar/delete":
-                        await HandleCalendarDelete(ctx);
-                        break;
+                    case "/list": await HandleList(ctx); break;
+                    case "/upload": await HandleUpload(ctx); break;
+                    case "/delete": await HandleDelete(ctx); break;
+                    case "/calendar/list": await HandleCalendarList(ctx); break;
+                    case "/calendar/add": await HandleCalendarAdd(ctx); break;
+                    case "/calendar/delete": await HandleCalendarDelete(ctx); break;
                     case "/config":
                         if (ctx.Request.HttpMethod == "GET")
                             await HandleGetConfig(ctx);
@@ -116,64 +108,8 @@ namespace InfoKioskApp.Services
                             await WriteText(ctx, "Unsupported method", 405);
                         break;
                     default:
-                        {
-                            string webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "remote");
-                            string requestPath = ctx.Request.Url.AbsolutePath.TrimStart('/');
-
-                            // Если запрошен корень — отдаем index.html
-                            if (string.IsNullOrEmpty(requestPath))
-                                requestPath = "index.html";
-
-                            string filePath = Path.Combine(webRoot, requestPath);
-
-                            if (File.Exists(filePath))
-                            {
-                                try
-                                {
-                                    string ext = Path.GetExtension(filePath).ToLowerInvariant();
-                                    string mime;
-
-                                    // C# 7.3: используем обычный if/else, не switch expression
-                                    if (ext == ".html" || ext == ".htm")
-                                        mime = "text/html; charset=utf-8";
-                                    else if (ext == ".js")
-                                        mime = "application/javascript";
-                                    else if (ext == ".css")
-                                        mime = "text/css";
-                                    else if (ext == ".png")
-                                        mime = "image/png";
-                                    else if (ext == ".jpg" || ext == ".jpeg")
-                                        mime = "image/jpeg";
-                                    else if (ext == ".json")
-                                        mime = "application/json";
-                                    else if (ext == ".svg")
-                                        mime = "image/svg+xml";
-                                    else
-                                        mime = "application/octet-stream";
-
-                                    ctx.Response.StatusCode = 200;
-                                    ctx.Response.ContentType = mime;
-
-                                    // C# 7.3: нет File.ReadAllBytesAsync — читаем синхронно, затем пишем асинхронно
-                                    byte[] data = File.ReadAllBytes(filePath);
-                                    ctx.Response.ContentLength64 = data.Length;
-                                    await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
-
-                                    ctx.Response.OutputStream.Close();
-                                    ctx.Response.Close();
-                                }
-                                catch (Exception ex)
-                                {
-                                    await WriteText(ctx, $"Ошибка при отдаче файла: {ex.Message}", 500);
-                                }
-                            }
-                            else
-                            {
-                                await WriteText(ctx, "404 Not Found", 404);
-                            }
-                            break;
-                        }
-
+                        await HandleStaticFiles(ctx);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -182,15 +118,61 @@ namespace InfoKioskApp.Services
             }
         }
 
-        // ---------------------------- API IMPLEMENTATION ----------------------------
+        // ---------------------------- STATIC FILES ----------------------------
+
+        private static async Task HandleStaticFiles(HttpListenerContext ctx)
+        {
+            string webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "remote");
+            string requestPath = ctx.Request.Url.AbsolutePath.TrimStart('/');
+
+            if (string.IsNullOrEmpty(requestPath))
+                requestPath = "index.html";
+
+            string filePath = Path.Combine(webRoot, requestPath);
+
+            if (!File.Exists(filePath))
+            {
+                await WriteText(ctx, "404 Not Found", 404);
+                return;
+            }
+
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            string mime =
+                ext == ".html" || ext == ".htm" ? "text/html; charset=utf-8" :
+                ext == ".js" ? "application/javascript" :
+                ext == ".css" ? "text/css" :
+                ext == ".png" ? "image/png" :
+                ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" :
+                ext == ".json" ? "application/json" :
+                "application/octet-stream";
+
+            ctx.Response.StatusCode = 200;
+            ctx.Response.ContentType = mime;
+            byte[] data = File.ReadAllBytes(filePath);
+            ctx.Response.ContentLength64 = data.Length;
+            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+            ctx.Response.OutputStream.Close();
+            ctx.Response.Close();
+        }
+
+        // ---------------------------- FILE MANAGEMENT ----------------------------
 
         private static string GetFolderByTarget(string target)
         {
             target = (target ?? "").ToLowerInvariant();
-            if (target == "media") return Path.Combine(DataRoot, "media");
-            if (target == "docs" || target == "documents") return Path.Combine(DataRoot, "documents");
-            if (target == "schedule" || target == "schedules") return Path.Combine(DataRoot, "schedules");
-            return DataRoot;
+            string schedulesRoot = Path.Combine(DataRoot, "schedules");
+
+            switch (target)
+            {
+                case "main": return Path.Combine(schedulesRoot, "main");
+                case "changes": return Path.Combine(schedulesRoot, "changes");
+                case "schedules":
+                case "other": return Path.Combine(schedulesRoot, "other");
+                case "media": return Path.Combine(DataRoot, "media");
+                case "docs":
+                case "documents": return Path.Combine(DataRoot, "documents");
+                default: return DataRoot;
+            }
         }
 
         private static async Task HandleList(HttpListenerContext ctx)
@@ -204,8 +186,9 @@ namespace InfoKioskApp.Services
                 {
                     name = Path.GetFileName(f),
                     size = new FileInfo(f).Length,
-                    modified = File.GetLastWriteTimeUtc(f)
+                    modified = File.GetLastWriteTime(f)
                 })
+                .OrderByDescending(f => f.modified)
                 .ToList();
 
             await WriteJson(ctx, JsonConvert.SerializeObject(new { target, files }, Formatting.Indented));
@@ -216,62 +199,31 @@ namespace InfoKioskApp.Services
             try
             {
                 string target = ctx.Request.QueryString["target"] ?? "media";
-                string folder = GetFolderByTarget("schedules"); // всё хранится в одной папке
+                string folder = GetFolderByTarget(target);
                 Directory.CreateDirectory(folder);
 
-                string fileName = ctx.Request.QueryString["name"] ?? ctx.Request.Headers["X-Filename"];
-                if (string.IsNullOrWhiteSpace(fileName))
-                    fileName = $"file_{DateTime.Now:yyyyMMdd_HHmmss}";
+                // используем универсальный резолвер имени
+                string fileName = ResolveFileName(ctx.Request);
+
+                // очистка имени от недопустимых символов
+                foreach (char c in Path.GetInvalidFileNameChars())
+                    fileName = fileName.Replace(c, '_');
 
                 string path = Path.Combine(folder, fileName);
+
+                // Для main/changes — храним только один файл (удаляем предыдущие)
+                if (target == "main" || target == "changes")
+                {
+                    foreach (var f in Directory.GetFiles(folder))
+                    {
+                        try { File.Delete(f); } catch { }
+                    }
+                }
+
                 using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
                     await ctx.Request.InputStream.CopyToAsync(fs);
 
                 Console.WriteLine($"✅ Загружен файл {fileName} → {folder}");
-
-                // === ЛОГИКА ДЛЯ РАСПИСАНИЙ ===
-                if (target == "main" || target == "changes" || target == "schedules")
-                {
-                    var config = ConfigService.LoadConfig();
-
-                    if (target == "main")
-                    {
-                        config.MainSchedulePath = path;
-                        Console.WriteLine($"📘 Установлено основное расписание: {fileName}");
-                    }
-                    else if (target == "changes")
-                    {
-                        config.ChangesPath = path;
-                        Console.WriteLine($"🗓 Установлено изменённое расписание: {fileName}");
-                    }
-                    else // schedules = "дополнительные"
-                    {
-                        if (config.Schedules == null)
-                            config.Schedules = new List<AppConfig.ScheduleItem>();
-
-                        string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-                        var existing = config.Schedules.FirstOrDefault(x =>
-                            x.Name.Equals(nameWithoutExt, StringComparison.OrdinalIgnoreCase));
-
-                        if (existing != null)
-                        {
-                            existing.FilePath = path;
-                            Console.WriteLine($"♻ Обновлено расписание {nameWithoutExt}");
-                        }
-                        else
-                        {
-                            config.Schedules.Add(new AppConfig.ScheduleItem
-                            {
-                                Name = nameWithoutExt,
-                                FilePath = path
-                            });
-                            Console.WriteLine($"➕ Добавлено новое расписание {nameWithoutExt}");
-                        }
-                    }
-
-                    ConfigService.SaveConfig(config);
-                }
-
                 await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", name = fileName, savedTo = path }));
             }
             catch (Exception ex)
@@ -281,11 +233,13 @@ namespace InfoKioskApp.Services
         }
 
 
-
         private static async Task HandleDelete(HttpListenerContext ctx)
         {
             string target = ctx.Request.QueryString["target"] ?? "media";
-            string name = ctx.Request.QueryString["name"];
+
+            // имя — пробуем читать безопасно так же, как для загрузки
+            string name = ResolveFileName(ctx.Request);
+
             if (string.IsNullOrWhiteSpace(name))
             {
                 await WriteText(ctx, "Missing file name", 400);
@@ -295,17 +249,65 @@ namespace InfoKioskApp.Services
             string folder = GetFolderByTarget(target);
             string path = Path.Combine(folder, name);
 
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
-                File.Delete(path);
-                Console.WriteLine($"🗑 Удалён файл {name}");
+                await WriteText(ctx, "File not found", 404);
+                return;
+            }
+
+            bool deleted = TryDeleteFile(path);
+
+            if (deleted)
+            {
                 await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "deleted", file = name }));
             }
             else
             {
-                await WriteText(ctx, "File not found", 404);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "error", file = name, message = "Файл занят или не удалось удалить." }));
             }
+
         }
+
+        // ===================== SAFE FILE DELETE =====================
+
+        private static bool TryDeleteFile(string path, int retries = 3, int delayMs = 250)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return false;
+
+            for (int i = 0; i < retries; i++)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        File.Delete(path);
+                        Console.WriteLine($"🗑 Удалён файл: {path}");
+                    }
+
+                    return true;
+                }
+                catch (IOException)
+                {
+                    // файл может быть временно занят просмотром — ждём
+                    Thread.Sleep(delayMs);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // тоже может быть при блокировке
+                    Thread.Sleep(delayMs);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠ Ошибка при удалении {path}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            Console.WriteLine($"⚠ Не удалось удалить файл (занят или отсутствует): {path}");
+            return false;
+        }
+
 
         // ---------------------------- CALENDAR API ----------------------------
 
@@ -321,7 +323,6 @@ namespace InfoKioskApp.Services
             using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
             {
                 string body = await reader.ReadToEndAsync();
-
                 try
                 {
                     var newEvent = JsonConvert.DeserializeObject<CalendarEvent>(body);
@@ -418,6 +419,78 @@ namespace InfoKioskApp.Services
             ctx.Response.OutputStream.Close();
             ctx.Response.Close();
         }
+        // helper: безопасно получить корректное имя файла из запроса или заголовка
+        private static string ResolveFileName(HttpListenerRequest req)
+        {
+            // 1) сначала проверяем заголовок Base64 (самый надёжный метод)
+            string base64Header = req.Headers["X-Filename-Base64"];
+            if (!string.IsNullOrWhiteSpace(base64Header))
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(base64Header);
+                    return Encoding.UTF8.GetString(bytes);
+                }
+                catch
+                {
+                    // fallthrough to other methods
+                }
+            }
+
+            // 2) затем проверяем заголовок X-Filename (percent-encoded or raw)
+            string header = req.Headers["X-Filename"];
+            if (!string.IsNullOrWhiteSpace(header))
+            {
+                // header may be percent-encoded (encodeURIComponent) — try unescape
+                try
+                {
+                    string decoded = Uri.UnescapeDataString(header);
+                    // if decoded looks like mojibake (contains many high-ASCII characters), try fix
+                    if (LooksLikeMojibake(decoded))
+                    {
+                        var bytes = decoded.Select(c => (byte)c).ToArray();
+                        try { return Encoding.UTF8.GetString(bytes); } catch { /* ignore */ }
+                    }
+                    return decoded;
+                }
+                catch { /* ignore and fallback */ }
+            }
+
+            // 3) finally try querystring name
+            string q = req.QueryString["name"];
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                try
+                {
+                    string decoded = Uri.UnescapeDataString(q);
+                    if (LooksLikeMojibake(decoded))
+                    {
+                        var bytes = decoded.Select(c => (byte)c).ToArray();
+                        try { return Encoding.UTF8.GetString(bytes); } catch { /* ignore */ }
+                    }
+                    return decoded;
+                }
+                catch { /* ignore */ }
+            }
+
+            // 4) fallback: generate unique name
+            return $"file_{DateTime.Now:yyyyMMdd_HHmmss}";
+        }
+
+        // helper: crude check for mojibake like "Ð" "Ñ" or sequences "Р" etc.
+        private static bool LooksLikeMojibake(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return false;
+            int weird = 0;
+            foreach (char c in s)
+            {
+                // count C1/C2 block characters common in mojibake results (e.g. 'Ð', 'Ñ', 'Р', 'С')
+                if (c >= 0x00C0 && c <= 0x00FF) weird++;
+                // also count 'Р' (U+0420) etc may indicate double-decoded, but we focus on Latin-1 high range
+            }
+            // if many such chars -> likely mojibake
+            return weird * 2 > s.Length; // >50% high-ascii
+        }
+
     }
 }
-
