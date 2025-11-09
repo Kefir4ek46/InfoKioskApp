@@ -21,20 +21,21 @@
             <TextBlock Text="Админ меню" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0 0 0 20"/>
 
             <Button Content="⚙ Настройки интерфейса" Style="{StaticResource MenuButtonStyle}" Click="InterfaceSettings_Click"/>
-            <Button Content="📅 Расписания" Style="{StaticResource MenuButtonStyle}" Click="ScheduleSettings_Click"/>
+           <!-- <Button Content="📅 Расписания" Style="{StaticResource MenuButtonStyle}" Click="ScheduleSettings_Click"/> -->
             <Button Content="🔔 Расписание звонков" Style="{StaticResource MenuButtonStyle}" Click="BellSettings_Click"/>
             <Button Content="🌤 Погода" Style="{StaticResource MenuButtonStyle}" Click="WeatherSettings_Click"/>
             <Button Content="📆 Календарь" Style="{StaticResource MenuButtonStyle}" Click="CalendarSettings_Click"/>
-            <Button Content="📂 Медиа и документы" Style="{StaticResource MenuButtonStyle}" Click="FilesSettings_Click"/>
+            <!-- <Button Content="📂 Медиа и документы" Style="{StaticResource MenuButtonStyle}" Click="FilesSettings_Click"/> -->
             <Button Content="🌐 Удалённое подключение" Style="{StaticResource MenuButtonStyle}" Click="RemoteSettings_Click"/>
             <Button Content="🔐 Сменить PIN"  Style="{StaticResource MenuButtonStyle}"  Click="ChangePin_Click"/>
 
 
-            <StackPanel VerticalAlignment="Bottom"  Margin="0,100,0,0">
-                <Button Content="👨‍💻 О разработчике" Style="{StaticResource MenuButtonStyle}" Click="AboutDeveloper_Click"/>
+            <StackPanel VerticalAlignment="Bottom"  Margin="0,50,0,0">
+                
                 <Button Content="🔒 Выйти" Style="{StaticResource MenuButtonStyle}" Click="Logout_Click"/>
                 <Button Content="❌ Закрыть приложение" Style="{StaticResource MenuButtonStyle}" Click="Exit_Click"/>
                 <Button Content="🗕 Свернуть" Style="{StaticResource MenuButtonStyle}" Click="Minimize_Click"/>
+                <Button Content="👨‍💻 О разработчике" Style="{StaticResource MenuButtonStyle}" Margin="0,20,0,0" Click="AboutDeveloper_Click"/>
             </StackPanel>
         </StackPanel>
 

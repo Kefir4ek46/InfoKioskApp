@@ -22,6 +22,10 @@ namespace InfoKioskApp.Views
 
         // C# 7.3: явный конструктор, а не target-typed new()
         private Dictionary<string, string> _scheduleFiles = new Dictionary<string, string>();
+        private Button _activeButton; // текущая активная кнопка (для подсветки)
+        private Button _activeClassButton; // активная кнопка класса (листа Excel)
+
+
 
         public ScheduleView()
         {
@@ -62,8 +66,18 @@ namespace InfoKioskApp.Views
                 // === Создание кнопок ===
                 ScheduleButtonsPanel.Children.Clear();
 
-                var btnMain = CreateButton("📘 Основное", (s, e) => ShowSchedule("main"));
-                var btnChanges = CreateButton("📕 Изменённое", (s, e) => ShowSchedule("changes"));
+                var btnMain = CreateButton("📘 Основное", (s, e) =>
+                {
+                    HighlightActiveButton((Button)s);
+                    ShowSchedule("main");
+                });
+
+                var btnChanges = CreateButton("📕 Изменённое", (s, e) =>
+                {
+                    HighlightActiveButton((Button)s);
+                    ShowSchedule("changes");
+                });
+
 
                 ScheduleButtonsPanel.Children.Add(btnMain);
                 ScheduleButtonsPanel.Children.Add(btnChanges);
@@ -71,7 +85,12 @@ namespace InfoKioskApp.Views
                 foreach (var file in otherFiles)
                 {
                     string name = Path.GetFileNameWithoutExtension(file);
-                    var btn = CreateButton("📄 " + name, (s, e) => ShowScheduleFile(file));
+                    var btn = CreateButton("📄 " + name, (s, e) =>
+                    {
+                        HighlightActiveButton((Button)s);
+                        ShowScheduleFile(file);
+                    });
+
                     ScheduleButtonsPanel.Children.Add(btn);
                 }
 
@@ -80,7 +99,14 @@ namespace InfoKioskApp.Views
                     ShowSchedule("main");
                 else if (changesFile != null)
                     ShowSchedule("changes");
+                if (ScheduleButtonsPanel.Children.Count > 0)
+                {
+                    var firstBtn = ScheduleButtonsPanel.Children[0] as Button;
+                    HighlightActiveButton(firstBtn);
+                }
+
             }
+
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка загрузки расписаний: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -110,10 +136,35 @@ namespace InfoKioskApp.Views
             foreach (Button b in ScheduleButtonsPanel.Children)
             {
                 b.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(68, 68, 68));
+                b.Foreground = Brushes.White;
             }
+
             if (active != null)
+            {
                 active.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(58, 159, 255));
+                active.Foreground = Brushes.White;
+            }
+
+            _activeButton = active;
         }
+        private void HighlightActiveClassButton(Button active)
+        {
+            foreach (Button b in ClassButtonsPanel.Children)
+            {
+                b.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(68, 68, 68));
+                b.Foreground = Brushes.White;
+            }
+
+            if (active != null)
+            {
+                active.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(58, 159, 255));
+                active.Foreground = Brushes.White;
+            }
+
+            _activeClassButton = active;
+        }
+
+
 
         private void ShowSchedule(string key)
         {
@@ -147,6 +198,42 @@ namespace InfoKioskApp.Views
             else
                 MessageBox.Show($"Неподдерживаемый формат: {ext}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+        private int GetCurrentLessonIndex()
+        {
+            try
+            {
+                string bellFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "BellSchedule.json");
+                if (!File.Exists(bellFile))
+                    return -1;
+
+                var json = File.ReadAllText(bellFile);
+                var bells = Newtonsoft.Json.JsonConvert.DeserializeObject<List<BellInfo>>(json);
+                if (bells == null || bells.Count == 0)
+                    return -1;
+
+                DateTime now = DateTime.Now;
+                for (int i = 0; i < bells.Count; i++)
+                {
+                    if (DateTime.TryParse(bells[i].Start, out DateTime start) &&
+                        DateTime.TryParse(bells[i].End, out DateTime end))
+                    {
+                        if (now >= start && now <= end)
+                            return i; // текущий урок
+                    }
+                }
+            }
+            catch { }
+            return -1;
+        }
+
+        private class BellInfo
+        {
+            public string Start { get; set; }
+            public string End { get; set; }
+            public string Name { get; set; }
+        }
+
+
 
         #region === Excel ===
         private void LoadExcelSchedule(string path)
@@ -162,12 +249,25 @@ namespace InfoKioskApp.Views
 
                     foreach (var sheet in sheetNames)
                     {
-                        var btn = CreateButton(sheet, (s, e) => ShowExcelSheet(path, sheet));
+                        var btn = CreateButton(sheet, (s, e) =>
+                        {
+                            HighlightActiveClassButton((Button)s);
+                            ShowExcelSheet(path, sheet);
+                        });
                         ClassButtonsPanel.Children.Add(btn);
                     }
 
+
                     if (sheetNames.Any())
+                    {
                         ShowExcelSheet(path, sheetNames[0]);
+
+                        // Подсветка первой кнопки
+                        var firstBtn = ClassButtonsPanel.Children.OfType<Button>().FirstOrDefault();
+                        if (firstBtn != null)
+                            HighlightActiveClassButton(firstBtn);
+                    }
+
                 }
             }
             catch (Exception ex)
@@ -182,6 +282,10 @@ namespace InfoKioskApp.Views
             {
                 var ws = wb.Worksheet(sheetName);
                 var lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
+                int currentLesson = -1;
+                if (_scheduleFiles.ContainsKey("changes") && path == _scheduleFiles["changes"])
+                    currentLesson = GetCurrentLessonIndex();
+
                 var lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
 
                 // Если нет данных — показываем сообщение
@@ -244,6 +348,11 @@ namespace InfoKioskApp.Views
                         border.Child = text;
                         Grid.SetRow(border, r - 1);
                         Grid.SetColumn(border, c - 1);
+                        if (r == currentLesson + 1 && !isHeader) // +1 потому что первая строка — заголовки
+                        {
+                            border.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 100, 180));
+                        }
+
                         grid.Children.Add(border);
                     }
                 }
@@ -369,15 +478,36 @@ namespace InfoKioskApp.Views
             for (int c = 0; c < maxCols; c++)
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+            // === определяем номер текущего урока ===
+            int currentLesson = GetCurrentLessonIndex();
+
             int rIndex = 0;
             foreach (var tr in tbl.Elements<TableRow>())
             {
                 grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
                 int cIndex = 0;
+
+                // Собираем текст всей строки
+                string rowText = string.Join(" ", tr.Descendants<Text>().Select(t => t.Text)).Trim();
+
+                // Если в строке упоминается "N урок", где N — текущий урок
+                bool highlightRow = false;
+                if (currentLesson > 0)
+                {
+                    string pattern1 = $"{currentLesson} урок";
+                    string pattern2 = $"{currentLesson}-й урок";
+                    if (rowText.Contains(pattern1) || rowText.Contains(pattern2))
+                        highlightRow = true;
+                }
+
                 foreach (var tc in tr.Elements<TableCell>())
                 {
                     string cellText = string.Join("", tc.Descendants<Text>().Select(t => t.Text)).Trim();
+
+                    // цвет ячейки
+                    var background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 60));
+                    if (highlightRow)
+                        background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(80, 100, 180)); // подсветка активного урока
 
                     var border = new System.Windows.Controls.Border
                     {
@@ -385,7 +515,7 @@ namespace InfoKioskApp.Views
                         BorderThickness = new Thickness(1),
                         Padding = new Thickness(6),
                         Margin = new Thickness(1),
-                        Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 45, 60))
+                        Background = background
                     };
 
                     var tb = new TextBlock
@@ -437,6 +567,7 @@ namespace InfoKioskApp.Views
 
             return grid;
         }
+
         #endregion
 
 

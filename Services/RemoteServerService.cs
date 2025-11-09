@@ -347,21 +347,29 @@ namespace InfoKioskApp.Services
 
         private static async Task HandleCalendarDelete(HttpListenerContext ctx)
         {
+            string id = ctx.Request.QueryString["id"];
             string title = ctx.Request.QueryString["title"];
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                await WriteText(ctx, "Missing title", 400);
-                return;
-            }
 
             var events = CalendarService.LoadEvents() ?? new List<CalendarEvent>();
             int before = events.Count;
-            events.RemoveAll(e => e.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrEmpty(id))
+                events.RemoveAll(e => e.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+            else if (!string.IsNullOrEmpty(title))
+                events.RemoveAll(e => e.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
+            else
+            {
+                await WriteText(ctx, "Missing id or title", 400);
+                return;
+            }
+
             CalendarService.SaveEvents(events);
 
             int removed = before - events.Count;
             await WriteJson(ctx, JsonConvert.SerializeObject(new { removed }));
         }
+
+
 
         // ---------------------------- CONFIG API ----------------------------
 

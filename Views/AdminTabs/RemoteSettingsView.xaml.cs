@@ -22,6 +22,9 @@ namespace InfoKioskApp.Views.AdminTabs
             InitializeComponent();
             LoadSettings();
             UpdateNetworkInfo();
+
+            // ✅ Подписываемся на изменение статуса сервера
+            RemoteServerService.ServerStatusChanged += OnServerStatusChanged;
         }
 
         private void LoadSettings()
@@ -29,6 +32,13 @@ namespace InfoKioskApp.Views.AdminTabs
             var config = ConfigService.LoadConfig();
             PortBox.Text = config.RemotePort > 0 ? config.RemotePort.ToString() : "8080";
             AutoStartCheck.IsChecked = config.RemoteAutoStart;
+
+            // Если сервер уже работает — обновляем статус
+            if (RemoteServerService.IsRunning)
+            {
+                _serverRunning = true;
+                UpdateServerStatus(true);
+            }
         }
 
         private void SaveSettings_Click(object sender, RoutedEventArgs e)
@@ -51,8 +61,13 @@ namespace InfoKioskApp.Views.AdminTabs
         {
             string ip = GetLocalIp();
             IpText.Text = ip ?? "Не найден";
-            ServerStatus.Text = "Сервер не запущен";
-            ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+
+            if (!_serverRunning)
+            {
+                ServerStatus.Text = "Сервер не запущен";
+                ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+                QrPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void StartServer_Click(object sender, RoutedEventArgs e)
@@ -62,17 +77,14 @@ namespace InfoKioskApp.Views.AdminTabs
                 if (!int.TryParse(PortBox.Text, out int port))
                     port = 8080;
 
+                // 🟢 Запускаем сервер
                 RemoteServerService.Start(port);
-                _serverRunning = false;
+                _serverRunning = true;
 
+                // Обновляем интерфейс
                 string ip = GetLocalIp();
                 _currentUrl = $"http://{ip}:{port}/";
-                ServerStatus.Text = "Сервер запущен ✅";
-                ServerStatus.Foreground = new SolidColorBrush(Colors.LimeGreen);
-
-                GenerateQr(_currentUrl);
-                QrPanel.Visibility = Visibility.Visible;
-                ConnectUrl.Text = _currentUrl;
+                UpdateServerStatus(true);
             }
             catch (Exception ex)
             {
@@ -86,15 +98,44 @@ namespace InfoKioskApp.Views.AdminTabs
             {
                 RemoteServerService.Stop();
                 _serverRunning = false;
-                QrPanel.Visibility = Visibility.Collapsed;
-
-                ServerStatus.Text = "Сервер остановлен ⏹";
-                ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+                UpdateServerStatus(false);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка остановки сервера: {ex.Message}");
             }
+        }
+
+        private void UpdateServerStatus(bool running)
+        {
+            if (running)
+            {
+                string ip = GetLocalIp();
+                _currentUrl = $"http://{ip}:{PortBox.Text}/";
+
+                ServerStatus.Text = "Сервер запущен ✅";
+                ServerStatus.Foreground = new SolidColorBrush(Colors.LimeGreen);
+
+                QrPanel.Visibility = Visibility.Visible;
+                ConnectUrl.Text = _currentUrl;
+                GenerateQr(_currentUrl);
+            }
+            else
+            {
+                ServerStatus.Text = "Сервер остановлен ⏹";
+                ServerStatus.Foreground = new SolidColorBrush(Colors.OrangeRed);
+                QrPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        // 🟢 Обновляем UI при изменении статуса сервера
+        private void OnServerStatusChanged(bool running)
+        {
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _serverRunning = running;
+                UpdateServerStatus(running);
+            });
         }
 
         private void GenerateQr(string text)

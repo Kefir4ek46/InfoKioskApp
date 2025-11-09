@@ -180,35 +180,117 @@ async function deleteFile(name, type) {
 // =========================================================
 // 📆 === КАЛЕНДАРЬ ===
 // =========================================================
+// map типов -> цвет (css-hex)
+const categoryColors = {
+  "Праздник": "#b42828",
+  "Каникулы": "#289628",
+  "Выходной": "#1e50b4",
+  "Другое": "#009696"
+};
+
 async function loadCalendar() {
   const res = await fetch(`${api}/calendar/list`);
+  if (!res.ok) {
+    console.error('Ошибка загрузки календаря', res.status);
+    return;
+  }
+
   const events = await res.json();
   const ul = document.getElementById("calendar");
   ul.innerHTML = "";
+
   events.forEach(e => {
+    const start = e.startDate ? new Date(e.startDate).toLocaleDateString("ru-RU") : "";
+    const end = e.endDate ? new Date(e.endDate).toLocaleDateString("ru-RU") : "";
+    const range = (end && end !== start) ? `${start} — ${end}` : start;
+    const type = e.type || "Другое";
+
     const li = document.createElement("li");
-    li.innerHTML = `${e.title} (${e.date}) <button onclick="deleteEvent('${e.title}')">🗑</button>`;
+    li.style.display = "flex";
+    li.style.justifyContent = "space-between";
+    li.style.alignItems = "center";
+    li.style.padding = "8px 12px";
+    li.style.margin = "6px 0";
+    li.style.borderRadius = "6px";
+    li.style.background = "#2e2e2e";
+    li.style.color = "#fff";
+
+    // цветная метка
+    const color = categoryColors[type] || categoryColors["Другое"];
+    const mark = document.createElement("span");
+    mark.style.display = "inline-block";
+    mark.style.width = "12px";
+    mark.style.height = "12px";
+    mark.style.background = color;
+    mark.style.borderRadius = "3px";
+    mark.style.marginRight = "10px";
+
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.alignItems = "center";
+    left.innerHTML = `<strong style="margin-right:8px">${escapeHtml(e.title)}</strong> <span style="color:#bbb">${range}</span> <em style="margin-left:10px;color:#9fc2ff">${type}</em>`;
+    left.prepend(mark);
+
+    const btn = document.createElement("button");
+    btn.textContent = "🗑";
+    btn.style.background = "transparent";
+    btn.style.border = "none";
+    btn.style.color = "#ff6b6b";
+    btn.style.cursor = "pointer";
+    btn.onclick = () => {
+      if (confirm(`Удалить событие "${e.title}"?`)) deleteEvent(e.id);
+    };
+
+    li.appendChild(left);
+    li.appendChild(btn);
+
     ul.appendChild(li);
   });
 }
 
+function escapeHtml(str) {
+  return (str || "").replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+async function deleteEvent(id) {
+  const res = await fetch(`${api}/calendar/delete?id=${encodeURIComponent(id)}`);
+  if (res.ok) {
+    await loadCalendar();
+  } else {
+    alert("Ошибка удаления события");
+  }
+}
+
+
 async function addEvent() {
   const title = document.getElementById("event-title").value.trim();
-  const date = document.getElementById("event-date").value;
-  if (!title || !date) return alert("Введите данные!");
+  const start = document.getElementById("event-start").value;
+  const end = document.getElementById("event-end").value || start;
+  const type = document.getElementById("event-type").value;
 
-  const body = JSON.stringify({ title, date });
-  await fetch(`${api}/calendar/add`, {
+  if (!title || !start) {
+    alert("Введите название и дату начала!");
+    return;
+  }
+
+  const body = JSON.stringify({
+    title,
+    startDate: start,
+    endDate: end,
+    type
+  });
+
+  const res = await fetch(`${api}/calendar/add`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body
   });
 
-  document.getElementById("event-title").value = "";
-  loadCalendar();
-}
-
-async function deleteEvent(title) {
-  await fetch(`${api}/calendar/delete?title=${encodeURIComponent(title)}`);
-  loadCalendar();
+  if (res.ok) {
+    alert("✅ Событие добавлено!");
+    document.getElementById("event-title").value = "";
+    loadCalendar();
+  } else {
+    alert("❌ Ошибка при добавлении события");
+  }
 }

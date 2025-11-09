@@ -116,7 +116,10 @@
                 <Button Content="🖼️ Медиа" Click="Media_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
                 <Button Content="📄 Документы" Click="Documents_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
                 <Button Content="📆 Календарь" Click="Calendar_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-			</StackPanel>
+                <Button Content="🌐 Сайт школы" Click="SchoolSite_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
+             
+
+            </StackPanel>
 
 			<Separator DockPanel.Dock="Bottom" Margin="0,10,0,10" Background="#444" Height="2"/>
 

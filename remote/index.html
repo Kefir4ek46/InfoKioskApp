@@ -82,11 +82,27 @@
             <h2>📆 Календарь событий</h2>
             <div class="calendar-form card">
                 <input id="event-title" placeholder="Название события">
-                <input id="event-date" type="date">
+
+                <label>Начало:</label>
+                <input id="event-start" type="date">
+
+                <label>Окончание:</label>
+                <input id="event-end" type="date">
+
+                <label>Тип события:</label>
+                <select id="event-type">
+                    <option value="Праздник">🎉 Праздник</option>
+                    <option value="Каникулы">🏖 Каникулы</option>
+                    <option value="Выходной">🕊 Выходной</option>
+                    <option value="Другое" selected>📌 Другое</option>
+                </select>
+
                 <button onclick="addEvent()">➕ Добавить</button>
             </div>
+
             <ul id="calendar"></ul>
         </section>
+
     </main>
 
     <footer>

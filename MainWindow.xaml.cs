@@ -33,6 +33,7 @@ namespace InfoKioskApp
             ApplyInterfaceSettings();
             _ = UpdateWeatherAsync();
             StartWeatherTimer();
+            
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -269,6 +270,12 @@ namespace InfoKioskApp
         {
             ContentArea.Content = new ScheduleView();
         }
+        private void SchoolSite_Click(object sender, RoutedEventArgs e)
+        {
+            ContentArea.Content = new SchoolWebsiteView();
+        }
+        
+
 
         private void Admin_Click(object sender, RoutedEventArgs e)
         {
