@@ -220,3 +220,144 @@ footer {
     background: rgba(58, 159, 255, 0.1);
     box-shadow: 0 0 10px rgba(58, 159, 255, 0.4);
 }
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+    .switch input {
+        display: none;
+    }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #444;
+    transition: .4s;
+    border-radius: 28px;
+}
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 22px;
+        width: 22px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: .4s;
+    }
+
+input:checked + .slider {
+    background: var(--accent);
+}
+
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+
+.preview-area {
+    background: #2c2c2c;
+    padding: 10px;
+    border-radius: 8px;
+    min-height: 200px;
+    overflow: auto;
+}
+
+    .preview-area img {
+        max-width: 100%;
+        border-radius: 6px;
+    }
+
+    .preview-area iframe {
+        width: 100%;
+        height: 600px;
+        border: none;
+    }
+    .preview-area table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #fff;
+        background: #222;
+    }
+
+    .preview-area td {
+        border: 1px solid #555;
+        padding: 4px 6px;
+    }
+
+
+/* === Новая навигационная панель === */
+.menu {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    background: #262626;
+    padding: 12px 18px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.25s ease;
+    color: white;
+    font-size: 16px;
+}
+
+    .menu-item:hover,
+    .menu-item.active {
+        background: #333;
+    }
+
+    .menu-item .icon {
+        font-size: 20px;
+    }
+
+    /* Текст скрыт по умолчанию */
+    .menu-item .title {
+        opacity: 0;
+        max-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        transition: 0.25s ease;
+        transform: translateX(-6px);
+    }
+
+    /* При наведении раскрывается */
+    .menu-item:hover .title,
+    .menu-item:focus-visible .title,
+    .menu-item.active .title {
+        opacity: 1;
+        max-width: 160px;
+        transform: translateX(0);
+    }
+.download-btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--accent);
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+    .download-btn:hover {
+        background: var(--accent-hover);
+    }

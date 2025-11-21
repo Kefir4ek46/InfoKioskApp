@@ -93,6 +93,9 @@ namespace InfoKioskApp.Services
             {
                 switch (path)
                 {
+                    case "/settings/get": await HandleGetConfig(ctx); break;
+                    case "/download": await HandleDownload(ctx); break;
+
                     case "/list": await HandleList(ctx); break;
                     case "/upload": await HandleUpload(ctx); break;
                     case "/delete": await HandleDelete(ctx); break;
@@ -116,6 +119,31 @@ namespace InfoKioskApp.Services
             {
                 await WriteText(ctx, $"Ошибка: {ex.Message}", 500);
             }
+        }
+
+        private static async Task HandleDownload(HttpListenerContext ctx)
+        {
+            string target = ctx.Request.QueryString["target"] ?? "media";
+            string name = ResolveFileName(ctx.Request);
+
+            string folder = GetFolderByTarget(target);
+            string filePath = Path.Combine(folder, name);
+
+            if (!File.Exists(filePath))
+            {
+                await WriteText(ctx, "File not found", 404);
+                return;
+            }
+
+            byte[] data = File.ReadAllBytes(filePath);
+
+            ctx.Response.StatusCode = 200;
+            ctx.Response.ContentType = "application/octet-stream";
+            ctx.Response.ContentLength64 = data.Length;
+
+            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+            ctx.Response.OutputStream.Close();
+            ctx.Response.Close();
         }
 
         // ---------------------------- STATIC FILES ----------------------------

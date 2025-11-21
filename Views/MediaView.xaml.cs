@@ -84,24 +84,26 @@ namespace InfoKioskApp.Views
             {
                 Source = new BitmapImage(new Uri(Path.GetFullPath(path))),
                 Stretch = Stretch.Uniform,
+                StretchDirection = StretchDirection.DownOnly, // ← ключевой параметр
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 1400,
-                MaxHeight = 900,
                 Margin = new Thickness(10)
             };
 
-            var scroll = new ScrollViewer
+            // Картинка будет автоматически масштабироваться под размер ContentArea
+            image.MaxWidth = ContentArea.ActualWidth - 20;
+            image.MaxHeight = ContentArea.ActualHeight - 20;
+
+            ContentArea.SizeChanged += (s, e) =>
             {
-                Content = image,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                Background = new SolidColorBrush(Color.FromRgb(30, 30, 30))
+                image.MaxWidth = ContentArea.ActualWidth - 20;
+                image.MaxHeight = ContentArea.ActualHeight - 20;
             };
 
             ContentArea.Children.Clear();
-            ContentArea.Children.Add(scroll);
+            ContentArea.Children.Add(image);
         }
+
 
         private void ShowVideo(string path)
         {

@@ -159,13 +159,34 @@ namespace InfoKioskApp.Views.AdminTabs
 
         private string GetLocalIp()
         {
-            var ip = NetworkInterface.GetAllNetworkInterfaces()
-                .SelectMany(i => i.GetIPProperties().UnicastAddresses)
-                .Where(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !IPAddress.IsLoopback(a.Address))
-                .Select(a => a.Address.ToString())
-                .FirstOrDefault();
+            try
+            {
+                var networkInterfaces = NetworkInterface.GetAllNetworkInterfaces()
+                    .Where(nic =>
+                        nic.OperationalStatus == OperationalStatus.Up &&
+                        (nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ||
+                         nic.NetworkInterfaceType == NetworkInterfaceType.Ethernet));
 
-            return ip ?? "localhost";
+                foreach (var nic in networkInterfaces)
+                {
+                    var ipProps = nic.GetIPProperties();
+                    foreach (var addr in ipProps.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork &&
+                            !IPAddress.IsLoopback(addr.Address))
+                        {
+                            return addr.Address.ToString();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка определения IP: {ex.Message}");
+            }
+
+            return "localhost";
         }
+
     }
 }

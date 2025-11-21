@@ -8,23 +8,26 @@ window.addEventListener("load", () => {
   loadCalendar();
   setupTabs();
   setupDragAndDrop();
+  loadSettings();
+
 });
 
 // === Переключение вкладок ===
 function setupTabs() {
-  const tabs = document.querySelectorAll(".tab");
-  const contents = document.querySelectorAll(".tab-content");
+    const tabs = document.querySelectorAll(".menu-item");
+    const contents = document.querySelectorAll(".tab-content");
 
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      tabs.forEach(t => t.classList.remove("active"));
-      contents.forEach(c => c.classList.remove("active"));
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            contents.forEach(c => c.classList.remove("active"));
 
-      tab.classList.add("active");
-      document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+            tab.classList.add("active");
+            document.getElementById("tab-" + tab.dataset.tab).classList.add("active");
+        });
     });
-  });
 }
+
 
 // =========================================================
 // 📦 === DRAG & DROP ===
@@ -58,6 +61,15 @@ function setupDragAndDrop() {
     });
   });
 }
+
+async function loadSettings() {
+    const res = await fetch(`${api}/settings/get`);
+    const data = await res.json();
+
+    document.getElementById("autostart-toggle").checked = data.autostart;
+    document.getElementById("sleep-time").value = data.sleepMinutes;
+}
+
 
 // =========================================================
 // 📅 === РАСПИСАНИЯ ===
@@ -147,7 +159,14 @@ async function loadFilesCategory() {
   if (data.files && data.files.length > 0) {
     data.files.forEach(f => {
       const li = document.createElement("li");
-      li.innerHTML = `<span>${f.name}</span> <button onclick="deleteFile('${f.name}','${category}')">🗑</button>`;
+      li.innerHTML = `
+    <span>${f.name}</span>
+    <div>
+        <button onclick="previewFile('${f.name}','${category}')">👁 Просмотр</button>
+        <button onclick="deleteFile('${f.name}','${category}')">🗑</button>
+    </div>
+`;
+
       list.appendChild(li);
     });
   } else {
@@ -176,6 +195,86 @@ async function deleteFile(name, type) {
     alert("❌ Ошибка удаления файла");
   }
 }
+
+
+// =========================================================
+//  === Просмотр ===
+// =========================================================
+async function previewFile(name, type) {
+    // расписания не просматриваем
+    if (type === "main" || type === "changes" || type === "other") {
+        alert("Просмотр расписаний отключён. Эти файлы можно только загрузить или удалить.");
+        return;
+    }
+
+    const utf8Name = unescape(encodeURIComponent(name));
+    const nameB64 = btoa(utf8Name);
+
+    const url = `${api}/download?target=${type}`;
+
+    // получаем файл
+    const res = await fetch(url, {
+        method: "GET",
+        headers: { "X-Filename-Base64": nameB64 }
+    });
+
+    if (!res.ok) {
+        document.getElementById("preview-area").innerHTML = "<p>Ошибка загрузки файла</p>";
+        return;
+    }
+
+    const blob = await res.blob();
+    const fileUrl = URL.createObjectURL(blob);
+    const preview = document.getElementById("preview-area");
+
+    preview.innerHTML = "";
+
+    // === изображения ===
+    if (name.match(/\.(jpg|jpeg|png|gif)$/i)) {
+        const img = document.createElement("img");
+        img.src = fileUrl;
+        preview.appendChild(img);
+        return;
+    }
+
+    // === PDF ===
+    if (name.match(/\.pdf$/i)) {
+        const iframe = document.createElement("iframe");
+        iframe.src = fileUrl;
+        preview.appendChild(iframe);
+        return;
+    }
+
+    // === видео ===
+    if (name.match(/\.(mp4|mov|avi|wmv|mkv)$/i)) {
+        const video = document.createElement("video");
+        video.src = fileUrl;
+        video.controls = true;
+        video.style.width = "100%";
+        preview.appendChild(video);
+        return;
+    }
+
+    // === xlsx/docx — НЕ отображаем, только загрузка ===
+    if (name.match(/\.(xlsx|xls|docx|doc)$/i)) {
+        preview.innerHTML = `
+            <p>Этот формат не поддерживается предпросмотром.</p>
+            <a href="${fileUrl}" download="${name}" class="download-btn">⬇ Скачать файл</a>
+        `;
+        return;
+    }
+
+    // === Остальные файлы ===
+    preview.innerHTML = `
+        <p>Предпросмотр этого файла не поддерживается.</p>
+        <a href="${fileUrl}" download="${name}" class="download-btn">⬇ Скачать файл</a>`;
+    
+
+}
+
+
+
+
 
 // =========================================================
 // 📆 === КАЛЕНДАРЬ ===

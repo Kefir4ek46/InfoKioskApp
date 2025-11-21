@@ -91,6 +91,9 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="OpenXmlPowerTools, Version=4.5.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\OpenXmlPowerTools.4.5.3.2\lib\net45\OpenXmlPowerTools.dll</HintPath>
+    </Reference>
     <Reference Include="QRCoder, Version=1.7.0.0, Culture=neutral, PublicKeyToken=c4ed5b9ae8358a28, processorArchitecture=MSIL">
       <HintPath>packages\QRCoder.1.7.0\lib\net40\QRCoder.dll</HintPath>
     </Reference>
@@ -105,6 +108,9 @@
       <HintPath>packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Management.Automation, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\System.Management.Automation.dll.10.0.10586.0\lib\net40\System.Management.Automation.dll</HintPath>
+    </Reference>
     <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
     </Reference>
@@ -155,8 +161,10 @@
     <Compile Include="Models\CustomSection.cs" />
     <Compile Include="Models\InterfaceSettings.cs" />
     <Compile Include="Models\WeatherData.cs" />
+    <Compile Include="preview\excel.cs" />
     <Compile Include="Services\CalendarService.cs" />
     <Compile Include="Services\ConfigService.cs" />
+    <Compile Include="Services\DocxRenderer.cs" />
     <Compile Include="Services\RemoteServerService.cs" />
     <Compile Include="Services\WeatherService.cs" />
     <Compile Include="Views\AdminMenu.xaml.cs">

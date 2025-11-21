@@ -13,11 +13,28 @@
     </header>
 
     <main>
-        <nav class="tabs">
-            <button class="tab active" data-tab="schedules">📅 Расписания</button>
-            <button class="tab" data-tab="files">🗂 Файлы</button>
-            <button class="tab" data-tab="calendar">📆 Календарь</button>
+        <nav class="menu">
+            <div class="menu-item active" data-tab="schedules">
+                <span class="icon">📜</span>
+                <span class="title">Расписания</span>
+            </div>
+
+            <div class="menu-item" data-tab="files">
+                <span class="icon">🗂️</span>
+                <span class="title">Файлы</span>
+            </div>
+
+            <div class="menu-item" data-tab="calendar">
+                <span class="icon">🗓️</span>
+                <span class="title">Календарь</span>
+            </div>
+
+            <div class="menu-item" data-tab="settings">
+                <span class="icon">⚙️</span>
+                <span class="title">Настройки</span>
+            </div>
         </nav>
+
 
         <!-- === Расписания === -->
         <section id="tab-schedules" class="tab-content active animate-fade">
@@ -75,6 +92,14 @@
                 <button onclick="loadFilesCategory()">🔄 Обновить</button>
                 <ul id="files-list"></ul>
             </div>
+
+            <div class="file-preview card">
+                <h3>📄 Предпросмотр</h3>
+                <div id="preview-area" class="preview-area">
+                    <p>Выберите файл для просмотра</p>
+                </div>
+            </div>
+
         </section>
 
         <!-- === Календарь === -->
@@ -102,6 +127,29 @@
 
             <ul id="calendar"></ul>
         </section>
+
+        <!-- === Настройки === -->
+        <section id="tab-settings" class="tab-content animate-fade">
+            <h2>⚙ Настройки устройства</h2>
+
+            <div class="card">
+                <h3>Автозапуск InfoKioskApp</h3>
+                <p class="hint">Включите, чтобы приложение автоматически запускалось при включении ПК.</p>
+                <label class="switch">
+                    <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="card">
+                <h3>Спящий режим</h3>
+                <p class="hint">Количество минут бездействия перед переходом в сон.</p>
+
+                <input id="sleep-time" type="number" min="0" max="240" placeholder="минуты (0 — выключить)">
+                <button onclick="saveSleepMode()">💾 Сохранить</button>
+            </div>
+        </section>
+
 
     </main>
 
