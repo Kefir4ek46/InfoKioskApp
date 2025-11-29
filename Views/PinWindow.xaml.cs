@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using InfoKioskApp.Models;
 using InfoKioskApp.Services;
 
 namespace InfoKioskApp.Views

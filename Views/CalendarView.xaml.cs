@@ -24,7 +24,7 @@ namespace InfoKioskApp.Views
 
         private void LoadEvents()
         {
-            _events = CalendarService.LoadEvents() ?? new List<CalendarEvent>();
+            _events = CalendarService.LoadEvents() ?? [];
         }
 
         private void BuildCalendar()
@@ -32,7 +32,7 @@ namespace InfoKioskApp.Views
             CalendarGrid.Children.Clear();
             MonthLabel.Text = _currentMonth.ToString("MMMM yyyy", new System.Globalization.CultureInfo("ru-RU"));
 
-            DateTime firstDay = new DateTime(_currentMonth.Year, _currentMonth.Month, 1);
+            DateTime firstDay = new(_currentMonth.Year, _currentMonth.Month, 1);
             int daysInMonth = DateTime.DaysInMonth(_currentMonth.Year, _currentMonth.Month);
 
             int startOffset = ((int)firstDay.DayOfWeek + 6) % 7;
@@ -42,7 +42,7 @@ namespace InfoKioskApp.Views
 
             for (int day = 1; day <= daysInMonth; day++)
             {
-                DateTime currentDate = new DateTime(_currentMonth.Year, _currentMonth.Month, day);
+                DateTime currentDate = new(_currentMonth.Year, _currentMonth.Month, day);
 
                 // ✅ Сравниваем только дату, без времени
                 var dayEvents = _events
@@ -69,14 +69,14 @@ namespace InfoKioskApp.Views
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     FontSize = 16,
-                    FontWeight = dayEvents.Any() ? FontWeights.Bold : FontWeights.Normal
+                    FontWeight = dayEvents.Count != 0 ? FontWeights.Bold : FontWeights.Normal
                 };
 
                 border.Child = text;
 
                 border.MouseLeftButtonUp += (s, e) =>
                 {
-                    if (dayEvents.Any())
+                    if (dayEvents.Count != 0)
                         ShowEventDialog(currentDate, dayEvents);
                     else
                         MessageBox.Show($"{currentDate:dd MMMM yyyy}\nНет событий", "Календарь",
@@ -87,10 +87,10 @@ namespace InfoKioskApp.Views
             }
         }
 
-        private Brush CreateDayBackground(DateTime date, List<CalendarEvent> dayEvents)
+        private static Brush CreateDayBackground(DateTime date, List<CalendarEvent> dayEvents)
         {
             // выходные без событий
-            if (!dayEvents.Any() && (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday))
+            if (dayEvents.Count == 0 && (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday))
                 return new SolidColorBrush(Color.FromRgb(55, 55, 75));
 
             // без событий
@@ -134,16 +134,16 @@ namespace InfoKioskApp.Views
 
                  
 
-        private Color GetColorForTypeRaw(string type)
+        private static Color GetColorForTypeRaw(string type)
         {
-            switch (type)
+            return type switch
             {
-                case "Выходной": return Color.FromRgb(30, 80, 180);
-                case "Праздник": return Color.FromRgb(180, 40, 40);
-                case "Каникулы": return Color.FromRgb(40, 150, 40);
-                case "Другое": return Color.FromRgb(0, 150, 150);
-                default: return Color.FromRgb(70, 70, 90);
-            }
+                "Выходной" => Color.FromRgb(30, 80, 180),
+                "Праздник" => Color.FromRgb(180, 40, 40),
+                "Каникулы" => Color.FromRgb(40, 150, 40),
+                "Другое" => Color.FromRgb(0, 150, 150),
+                _ => Color.FromRgb(70, 70, 90),
+            };
         }
 
         private void PrevMonth_Click(object sender, RoutedEventArgs e)
@@ -158,7 +158,7 @@ namespace InfoKioskApp.Views
             BuildCalendar();
         }
 
-        private void ShowEventDialog(DateTime date, List<CalendarEvent> events)
+        private static void ShowEventDialog(DateTime date, List<CalendarEvent> events)
         {
             var dialog = new Window
             {

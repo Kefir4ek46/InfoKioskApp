@@ -7,12 +7,13 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Controls;
+using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class CustomSectionsView : System.Windows.Controls.UserControl
     {
-        private AppConfig _config;
+        private readonly AppConfig _config;
 
         public CustomSectionsView()
         {
@@ -28,25 +29,18 @@ namespace InfoKioskApp.Views.AdminTabs
 
         private void Add_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new System.Windows.Forms.FolderBrowserDialog();
-            if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            var dlg = new CommonOpenFileDialog
             {
-                var folder = dlg.SelectedPath;
-                string type = DetectType(folder);
+                IsFolderPicker = true
+            };
 
-                var section = new CustomSection
-                {
-                    Name = System.IO.Path.GetFileName(folder),
-                    FolderPath = folder,
-                    Type = type
-                };
-
-                _config.CustomSections.Add(section);
-                LoadSections();
+            if (dlg.ShowDialog() == CommonFileDialogResult.Ok)
+            {
+                _ = dlg.FileName;
             }
         }
 
-        private string DetectType(string folder)
+        private static string DetectType(string folder)
         {
             var files = Directory.GetFiles(folder);
             if (files.Any(f => f.EndsWith(".pdf"))) return "pdf";

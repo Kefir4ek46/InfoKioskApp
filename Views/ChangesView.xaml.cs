@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using ClosedXML.Excel;
 using System.Windows.Media.Imaging;
 using InfoKioskApp.Services;
+using InfoKioskApp.Models;
 
 namespace InfoKioskApp.Views
 {
@@ -106,7 +107,7 @@ namespace InfoKioskApp.Views
         private void LoadImage(string path)
         {
             ImageContainer.Visibility = Visibility.Visible;
-            BitmapImage img = new BitmapImage();
+            BitmapImage img = new();
             img.BeginInit();
             img.UriSource = new Uri(Path.GetFullPath(path));
             img.CacheOption = BitmapCacheOption.OnLoad;

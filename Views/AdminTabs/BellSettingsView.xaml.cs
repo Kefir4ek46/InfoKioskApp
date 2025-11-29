@@ -27,11 +27,10 @@ namespace InfoKioskApp.Views.AdminTabs
             }
             else
             {
-                Bells = new ObservableCollection<BellItem>();
+                Bells = [];
             }
 
-            if (Bells == null)
-                Bells = new ObservableCollection<BellItem>();
+            Bells ??= [];
 
             BellsGrid.ItemsSource = Bells;
         }
@@ -47,7 +46,7 @@ namespace InfoKioskApp.Views.AdminTabs
             }
             else
             {
-                var last = Bells[Bells.Count - 1];
+                var last = Bells[^1];
                 startTime = TimeSpan.Parse(last.End).Add(TimeSpan.FromMinutes(last.BreakAfter));
             }
 

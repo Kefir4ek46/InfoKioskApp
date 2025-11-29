@@ -71,7 +71,7 @@ namespace InfoKioskApp.Services
                 try
                 {
                     var ctx = await _listener.GetContextAsync();
-                    _ = Task.Run(() => HandleRequest(ctx));
+                    _ = Task.Run(() => HandleRequest(ctx), token);
                 }
                 catch (HttpListenerException)
                 {
@@ -93,6 +93,21 @@ namespace InfoKioskApp.Services
             {
                 switch (path)
                 {
+                    case "/media/categories": await HandleMediaCategoriesList(ctx); break;
+                    case "/media/category/add": await HandleMediaCategoryAdd(ctx); break;
+                    case "/media/category/delete": await HandleMediaCategoryDelete(ctx); break;
+                    // в switch(path) добавьте:
+
+
+
+                    case "/media/posts": await HandleMediaPostsList(ctx); break; // ?category=&page=&pageSize=
+                    case "/media/post": await HandleMediaPostGet(ctx); break;  // ?category=&id=
+                    case "/media/post/create": await HandleMediaPostCreate(ctx); break;
+                    case "/media/post/delete": await HandleMediaPostDelete(ctx); break;
+                    case "/media/post/updateimages": await HandleMediaPostUpdateImages(ctx); break;
+
+
+
                     case "/settings/get": await HandleGetConfig(ctx); break;
                     case "/download": await HandleDownload(ctx); break;
 
@@ -121,30 +136,62 @@ namespace InfoKioskApp.Services
             }
         }
 
+
+
+
         private static async Task HandleDownload(HttpListenerContext ctx)
         {
             string target = ctx.Request.QueryString["target"] ?? "media";
-            string name = ResolveFileName(ctx.Request);
+            string name = ctx.Request.QueryString["name"];   // ← ВАЖНО
+            string category = ctx.Request.QueryString["category"];
+            string post = ctx.Request.QueryString["post"];
 
-            string folder = GetFolderByTarget(target);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                await WriteText(ctx, "No filename", 400);
+                return;
+            }
+
+            string folder;
+
+            if (target == "media" && !string.IsNullOrWhiteSpace(category))
+            {
+                folder = CategoryPath(category);
+
+                if (!string.IsNullOrWhiteSpace(post))
+                    folder = Path.Combine(folder, post);     // ← Переход в папку поста
+            }
+            else
+            {
+                folder = GetFolderByTarget(target);
+            }
+
             string filePath = Path.Combine(folder, name);
 
             if (!File.Exists(filePath))
             {
-                await WriteText(ctx, "File not found", 404);
+                await WriteText(ctx, "File not found: " + filePath, 404);
                 return;
             }
 
             byte[] data = File.ReadAllBytes(filePath);
-
             ctx.Response.StatusCode = 200;
-            ctx.Response.ContentType = "application/octet-stream";
-            ctx.Response.ContentLength64 = data.Length;
 
+            string ext = Path.GetExtension(filePath).ToLowerInvariant();
+            ctx.Response.ContentType =
+                ext == ".png" ? "image/png" :
+                ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" :
+                ext == ".gif" ? "image/gif" :
+                "application/octet-stream";
+
+            ctx.Response.ContentLength64 = data.Length;
             await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
             ctx.Response.OutputStream.Close();
             ctx.Response.Close();
         }
+
+
+
 
         // ---------------------------- STATIC FILES ----------------------------
 
@@ -178,7 +225,7 @@ namespace InfoKioskApp.Services
             ctx.Response.ContentType = mime;
             byte[] data = File.ReadAllBytes(filePath);
             ctx.Response.ContentLength64 = data.Length;
-            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+            await ctx.Response.OutputStream.WriteAsync(data);
             ctx.Response.OutputStream.Close();
             ctx.Response.Close();
         }
@@ -190,17 +237,15 @@ namespace InfoKioskApp.Services
             target = (target ?? "").ToLowerInvariant();
             string schedulesRoot = Path.Combine(DataRoot, "schedules");
 
-            switch (target)
+            return target switch
             {
-                case "main": return Path.Combine(schedulesRoot, "main");
-                case "changes": return Path.Combine(schedulesRoot, "changes");
-                case "schedules":
-                case "other": return Path.Combine(schedulesRoot, "other");
-                case "media": return Path.Combine(DataRoot, "media");
-                case "docs":
-                case "documents": return Path.Combine(DataRoot, "documents");
-                default: return DataRoot;
-            }
+                "main" => Path.Combine(schedulesRoot, "main"),
+                "changes" => Path.Combine(schedulesRoot, "changes"),
+                "schedules" or "other" => Path.Combine(schedulesRoot, "other"),
+                "media" => Path.Combine(DataRoot, "media"),
+                "docs" or "documents" => Path.Combine(DataRoot, "documents"),
+                _ => DataRoot,
+            };
         }
 
         private static async Task HandleList(HttpListenerContext ctx)
@@ -224,22 +269,94 @@ namespace InfoKioskApp.Services
 
         private static async Task HandleUpload(HttpListenerContext ctx)
         {
+            string categoryParam = ctx.Request.QueryString["category"];
+            string postParam = ctx.Request.QueryString["post"];
+
+            // ---------------------- UPLOAD ДЛЯ ПОСТОВ ----------------------
+            if (!string.IsNullOrWhiteSpace(categoryParam) && !string.IsNullOrWhiteSpace(postParam))
+            {
+                try
+                {
+                    EnsureCategoryStructure(categoryParam);
+
+                    string postFolder = Path.Combine(CategoryPostsPath(categoryParam), postParam);
+                    Directory.CreateDirectory(postFolder);
+
+                    // Определяем имя файла
+                    string fileName = ResolveFileName(ctx.Request);
+                    foreach (char c in Path.GetInvalidFileNameChars())
+                        fileName = fileName.Replace(c, '_');
+
+                    string filePath = Path.Combine(postFolder, fileName);
+
+                    // Сохраняем файл
+                    using (var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write))
+                        await ctx.Request.InputStream.CopyToAsync(fs);
+
+                    // Путь к post.json
+                    string postJsonPath = Path.Combine(postFolder, "post.json");
+                    if (!File.Exists(postJsonPath))
+                    {
+                        await WriteText(ctx, "Post JSON not found", 500);
+                        return;
+                    }
+
+                    // Загружаем и обновляем post.json
+                    var postObj = JsonConvert.DeserializeObject<MediaPost>(File.ReadAllText(postJsonPath, Encoding.UTF8));
+                    if (postObj.Images == null)
+                        postObj.Images = new List<MediaImage>();
+
+                    postObj.Images.Add(new MediaImage
+                    {
+                        File = fileName,
+                        
+                    });
+
+                    // Если не было обложки — назначим её
+                    if (string.IsNullOrEmpty(postObj.Cover))
+                        postObj.Cover = fileName;
+
+                    File.WriteAllText(postJsonPath, JsonConvert.SerializeObject(postObj, Formatting.Indented), Encoding.UTF8);
+
+                    // Обновляем posts.json
+                    string idxFile = CategoryPostsIndex(categoryParam);
+                    var previews = JsonConvert.DeserializeObject<List<MediaPostPreview>>(File.ReadAllText(idxFile, Encoding.UTF8)) ?? new();
+
+                    var preview = previews.FirstOrDefault(p => p.Id == postParam);
+                    if (preview != null)
+                    {
+                        preview.ImagesCount = postObj.Images.Count;
+                        if (string.IsNullOrEmpty(preview.Cover))
+                            preview.Cover = fileName;
+                    }
+
+                    File.WriteAllText(idxFile, JsonConvert.SerializeObject(previews, Formatting.Indented), Encoding.UTF8);
+
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", file = fileName }));
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    await WriteText(ctx, $"Ошибка загрузки поста: {ex.Message}", 500);
+                    return;
+                }
+            }
+
+            // ---------------------- СТАНДАРТНАЯ ЗАГРУЗКА ----------------------
             try
             {
                 string target = ctx.Request.QueryString["target"] ?? "media";
                 string folder = GetFolderByTarget(target);
                 Directory.CreateDirectory(folder);
 
-                // используем универсальный резолвер имени
                 string fileName = ResolveFileName(ctx.Request);
 
-                // очистка имени от недопустимых символов
                 foreach (char c in Path.GetInvalidFileNameChars())
                     fileName = fileName.Replace(c, '_');
 
-                string path = Path.Combine(folder, fileName);
+                string filePath2 = Path.Combine(folder, fileName);
 
-                // Для main/changes — храним только один файл (удаляем предыдущие)
+                // Для main/changes — только один файл
                 if (target == "main" || target == "changes")
                 {
                     foreach (var f in Directory.GetFiles(folder))
@@ -248,17 +365,18 @@ namespace InfoKioskApp.Services
                     }
                 }
 
-                using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write))
+                using (var fs = new FileStream(filePath2, FileMode.Create, FileAccess.Write))
                     await ctx.Request.InputStream.CopyToAsync(fs);
 
                 Console.WriteLine($"✅ Загружен файл {fileName} → {folder}");
-                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", name = fileName, savedTo = path }));
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", name = fileName, savedTo = filePath2 }));
             }
             catch (Exception ex)
             {
                 await WriteText(ctx, $"Ошибка загрузки: {ex.Message}", 500);
             }
         }
+
 
 
         private static async Task HandleDelete(HttpListenerContext ctx)
@@ -341,35 +459,33 @@ namespace InfoKioskApp.Services
 
         private static async Task HandleCalendarList(HttpListenerContext ctx)
         {
-            var events = CalendarService.LoadEvents() ?? new List<CalendarEvent>();
+            var events = CalendarService.LoadEvents() ?? [];
             string json = JsonConvert.SerializeObject(events, Formatting.Indented);
             await WriteJson(ctx, json);
         }
 
         private static async Task HandleCalendarAdd(HttpListenerContext ctx)
         {
-            using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            string body = await reader.ReadToEndAsync();
+            try
             {
-                string body = await reader.ReadToEndAsync();
-                try
+                var newEvent = JsonConvert.DeserializeObject<CalendarEvent>(body);
+                if (newEvent == null)
                 {
-                    var newEvent = JsonConvert.DeserializeObject<CalendarEvent>(body);
-                    if (newEvent == null)
-                    {
-                        await WriteText(ctx, "Invalid JSON", 400);
-                        return;
-                    }
-
-                    var events = CalendarService.LoadEvents() ?? new List<CalendarEvent>();
-                    events.Add(newEvent);
-                    CalendarService.SaveEvents(events);
-
-                    await WriteText(ctx, $"✅ Добавлено событие: {newEvent.Title}");
+                    await WriteText(ctx, "Invalid JSON", 400);
+                    return;
                 }
-                catch (Exception ex)
-                {
-                    await WriteText(ctx, $"Ошибка добавления: {ex.Message}", 500);
-                }
+
+                var events = CalendarService.LoadEvents() ?? [];
+                events.Add(newEvent);
+                CalendarService.SaveEvents(events);
+
+                await WriteText(ctx, $"✅ Добавлено событие: {newEvent.Title}");
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, $"Ошибка добавления: {ex.Message}", 500);
             }
         }
 
@@ -378,7 +494,7 @@ namespace InfoKioskApp.Services
             string id = ctx.Request.QueryString["id"];
             string title = ctx.Request.QueryString["title"];
 
-            var events = CalendarService.LoadEvents() ?? new List<CalendarEvent>();
+            var events = CalendarService.LoadEvents() ?? [];
             int before = events.Count;
 
             if (!string.IsNullOrEmpty(id))
@@ -410,25 +526,24 @@ namespace InfoKioskApp.Services
 
         private static async Task HandlePostConfig(HttpListenerContext ctx)
         {
-            using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
-            {
-                string body = await reader.ReadToEndAsync();
+            StreamReader streamReader = new(ctx.Request.InputStream, Encoding.UTF8);
+            using StreamReader reader = streamReader;
+            string body = await reader.ReadToEndAsync();
 
-                try
+            try
+            {
+                var newConfig = JsonConvert.DeserializeObject<AppConfig>(body);
+                if (newConfig != null)
                 {
-                    var newConfig = JsonConvert.DeserializeObject<AppConfig>(body);
-                    if (newConfig != null)
-                    {
-                        ConfigService.SaveConfig(newConfig);
-                        await WriteText(ctx, "✅ Конфигурация сохранена");
-                    }
-                    else
-                        await WriteText(ctx, "Bad JSON", 400);
+                    ConfigService.SaveConfig(newConfig);
+                    await WriteText(ctx, "✅ Конфигурация сохранена");
                 }
-                catch (Exception ex)
-                {
-                    await WriteText(ctx, $"Ошибка сохранения: {ex.Message}", 500);
-                }
+                else
+                    await WriteText(ctx, "Bad JSON", 400);
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, $"Ошибка сохранения: {ex.Message}", 500);
             }
         }
 
@@ -440,7 +555,7 @@ namespace InfoKioskApp.Services
             ctx.Response.StatusCode = code;
             ctx.Response.ContentType = "application/json; charset=utf-8";
             ctx.Response.ContentLength64 = data.Length;
-            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+            await ctx.Response.OutputStream.WriteAsync(data);
             ctx.Response.OutputStream.Close();
             ctx.Response.Close();
         }
@@ -451,7 +566,7 @@ namespace InfoKioskApp.Services
             ctx.Response.StatusCode = code;
             ctx.Response.ContentType = "text/plain; charset=utf-8";
             ctx.Response.ContentLength64 = data.Length;
-            await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+            await ctx.Response.OutputStream.WriteAsync(data);
             ctx.Response.OutputStream.Close();
             ctx.Response.Close();
         }
@@ -512,6 +627,302 @@ namespace InfoKioskApp.Services
             // 4) fallback: generate unique name
             return $"file_{DateTime.Now:yyyyMMdd_HHmmss}";
         }
+
+        // paths helpers
+        private static string MediaRoot => Path.Combine(DataRoot, "media");
+        private static string CategoryPath(string category) => Path.Combine(MediaRoot, category ?? "uncategorized");
+        static string CategoryPostsPath(string category) => CategoryPath(category);
+        private static string CategoryPostsIndex(string category) => Path.Combine(CategoryPath(category), "posts.json");
+
+        private static void EnsureCategoryStructure(string category)
+        {
+            var cat = CategoryPath(category);
+            Directory.CreateDirectory(cat);
+            Directory.CreateDirectory(CategoryPostsPath(category));
+            if (!File.Exists(CategoryPostsIndex(category)))
+                File.WriteAllText(CategoryPostsIndex(category), "[]", Encoding.UTF8);
+        }
+
+        private static async Task HandleMediaCategoriesList(HttpListenerContext ctx)
+        {
+            Directory.CreateDirectory(MediaRoot);
+            string catFile = Path.Combine(MediaRoot, "categories.json");
+            if (!File.Exists(catFile))
+            {
+                File.WriteAllText(catFile, "[]", Encoding.UTF8);
+            }
+            string json = File.ReadAllText(catFile, Encoding.UTF8);
+            await WriteJson(ctx, json);
+        }
+
+        private static async Task HandleMediaCategoryAdd(HttpListenerContext ctx)
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            string body = await reader.ReadToEndAsync();
+
+            try
+            {
+                var obj = JsonConvert.DeserializeObject<dynamic>(body);
+                string id = (string)obj.id;
+                string name = (string)obj.name;
+
+                if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name))
+                {
+                    await WriteText(ctx, "Bad JSON", 400);
+                    return;
+                }
+
+                Directory.CreateDirectory(MediaRoot);
+                string catFile = Path.Combine(MediaRoot, "categories.json");
+                if (!File.Exists(catFile)) File.WriteAllText(catFile, "[]", Encoding.UTF8);
+
+                var cats = JsonConvert.DeserializeObject<List<dynamic>>(File.ReadAllText(catFile, Encoding.UTF8));
+
+                // не добавляем дубликаты
+                if (!cats.Any(c => (string)c.id == id))
+                {
+                    cats.Add(new { id, name });
+                    File.WriteAllText(catFile, JsonConvert.SerializeObject(cats, Formatting.Indented), Encoding.UTF8);
+                }
+
+                EnsureCategoryStructure(id);
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", id, name }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "Error: " + ex.Message, 500);
+            }
+        }
+
+        private static async Task HandleMediaPostUpdateImages(HttpListenerContext ctx)
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            string body = await reader.ReadToEndAsync();
+
+            try
+            {
+                var update = JsonConvert.DeserializeObject<MediaPost>(body);
+                if (update == null)
+                {
+                    await WriteText(ctx, "Invalid JSON", 400);
+                    return;
+                }
+
+                string category = update.Category;
+                string id = update.Id;
+
+                if (string.IsNullOrWhiteSpace(category) || string.IsNullOrWhiteSpace(id))
+                {
+                    await WriteText(ctx, "Missing category or id", 400);
+                    return;
+                }
+
+                string postFolder = Path.Combine(CategoryPostsPath(category), id);
+                string postFile = Path.Combine(postFolder, "post.json");
+
+                if (!File.Exists(postFile))
+                {
+                    await WriteText(ctx, "Post not found", 404);
+                    return;
+                }
+
+                // читаем текущий пост
+                var post = JsonConvert.DeserializeObject<MediaPost>(File.ReadAllText(postFile, Encoding.UTF8));
+                post.Images = update.Images ?? new List<MediaImage>();
+
+                // cover = первая картинка
+                if (post.Images.Count > 0)
+                    post.Cover = post.Images[0].File;
+
+                // сохраняем post.json
+                File.WriteAllText(postFile, JsonConvert.SerializeObject(post, Formatting.Indented), Encoding.UTF8);
+
+                // обновляем posts.json (превью)
+                string idxFile = CategoryPostsIndex(category);
+                var previews = JsonConvert.DeserializeObject<List<MediaPostPreview>>(File.ReadAllText(idxFile, Encoding.UTF8));
+
+                var preview = previews.FirstOrDefault(p => p.Id == id);
+                if (preview != null)
+                {
+                    preview.ImagesCount = post.Images.Count;
+                    preview.Cover = post.Cover;
+                }
+
+                File.WriteAllText(idxFile, JsonConvert.SerializeObject(previews, Formatting.Indented), Encoding.UTF8);
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok" }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, $"Ошибка: {ex.Message}", 500);
+            }
+        }
+
+
+        private static async Task HandleMediaCategoryDelete(HttpListenerContext ctx)
+        {
+            string id = ctx.Request.QueryString["id"];
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                await WriteText(ctx, "Missing id", 400);
+                return;
+            }
+
+            string catFile = Path.Combine(MediaRoot, "categories.json");
+            if (!File.Exists(catFile))
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            var cats = JsonConvert.DeserializeObject<List<dynamic>>(File.ReadAllText(catFile, Encoding.UTF8));
+            cats.RemoveAll(c => (string)c.id == id);
+
+            File.WriteAllText(catFile, JsonConvert.SerializeObject(cats, Formatting.Indented), Encoding.UTF8);
+
+            // Полностью удаляем папку категории
+            var folder = CategoryPath(id);
+            try { if (Directory.Exists(folder)) Directory.Delete(folder, true); } catch { }
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "deleted", id }));
+        }
+
+
+        private static async Task HandleMediaPostsList(HttpListenerContext ctx)
+        {
+            string category = ctx.Request.QueryString["category"] ?? "default";
+            int page = int.TryParse(ctx.Request.QueryString["page"], out var p) ? Math.Max(1, p) : 1;
+            int pageSize = int.TryParse(ctx.Request.QueryString["pageSize"], out var ps) ? Math.Max(1, ps) : 9;
+
+            EnsureCategoryStructure(category);
+            string idxFile = CategoryPostsIndex(category);
+            var posts = JsonConvert.DeserializeObject<List<MediaPostPreview>>(File.ReadAllText(idxFile, Encoding.UTF8)) ?? [];
+
+            int total = posts.Count;
+            var pageItems = posts.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new
+            {
+                category,
+                page,
+                pageSize,
+                total,
+                items = pageItems
+            }, Formatting.Indented));
+        }
+
+        private static async Task HandleMediaPostGet(HttpListenerContext ctx)
+        {
+            string id = ctx.Request.QueryString["id"];
+            string category = ctx.Request.QueryString["category"] ?? "default";
+            if (string.IsNullOrWhiteSpace(id)) { await WriteText(ctx, "Missing id", 400); return; }
+
+            string postFolder = Path.Combine(CategoryPostsPath(category), id);
+            string postFile = Path.Combine(postFolder, "post.json");
+            if (!File.Exists(postFile)) { await WriteText(ctx, "Not found", 404); return; }
+
+            string json = File.ReadAllText(postFile, Encoding.UTF8);
+            await WriteJson(ctx, json);
+        }
+
+        private static async Task HandleMediaPostCreate(HttpListenerContext ctx)
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            string body = await reader.ReadToEndAsync();
+            try
+            {
+                var obj = JsonConvert.DeserializeObject<dynamic>(body);
+                string category = ((string)(obj.category ?? "default")).ToLowerInvariant();
+                string title = (string)obj.title ?? "Без названия";
+                string description = (string)obj.description ?? "";
+                string date = (string)obj.date ?? DateTime.Now.ToString("yyyy-MM-dd");
+
+                EnsureCategoryStructure(category);
+
+                string postId = $"post_{DateTime.Now:yyyyMMdd_HHmmss}";
+                string postFolder = Path.Combine(CategoryPostsPath(category), postId);
+                Directory.CreateDirectory(postFolder);
+
+                var post = new MediaPost
+                {
+                    Id = postId,
+                    Category = category,
+                    Title = title,
+                    Description = description,
+                    Date = date,
+                    Cover = "",
+                    Images = new List<MediaImage>()
+                };
+
+
+
+                string postJson = JsonConvert.SerializeObject(post, Formatting.Indented);
+                File.WriteAllText(Path.Combine(postFolder, "post.json"),
+    JsonConvert.SerializeObject(post, Formatting.Indented),
+    Encoding.UTF8);
+
+
+                // update posts index (preview)
+                string idxFile = CategoryPostsIndex(category);
+                List<MediaPostPreview> posts = JsonConvert.DeserializeObject<List<MediaPostPreview>>(File.ReadAllText(idxFile, Encoding.UTF8)) ?? [];
+                posts.Insert(0, new MediaPostPreview
+                {
+                    Id = postId,
+                    Title = title,
+                    Date = date,
+                    Cover = "",
+                    ImagesCount = 0
+                });
+
+                File.WriteAllText(idxFile, JsonConvert.SerializeObject(posts, Formatting.Indented), Encoding.UTF8);
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", id = postId, folder = postFolder }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "Error: " + ex.Message, 500);
+            }
+        }
+
+        private static async Task HandleMediaPostDelete(HttpListenerContext ctx)
+        {
+            string id = ctx.Request.QueryString["id"];
+            string category = ctx.Request.QueryString["category"] ?? "default";
+            if (string.IsNullOrWhiteSpace(id)) { await WriteText(ctx, "Missing id", 400); return; }
+            string postFolder = Path.Combine(CategoryPostsPath(category), id);
+            if (Directory.Exists(postFolder)) { Directory.Delete(postFolder, true); }
+            // remove from posts.json
+            string idxFile = CategoryPostsIndex(category);
+            List<MediaPostPreview> posts = JsonConvert.DeserializeObject<List<MediaPostPreview>>(File.ReadAllText(idxFile, Encoding.UTF8)) ?? [];
+            posts.RemoveAll(p => p.Id == id);
+            File.WriteAllText(idxFile, JsonConvert.SerializeObject(posts, Formatting.Indented), Encoding.UTF8);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "deleted", id }));
+        }
+
+
+
+
+
+        // simple DTO for list (to keep posts.json lightweight)
+        class MediaPostPreview
+        {
+            internal string cover;
+            internal string date;
+
+            public required string Id { get; set; }
+            public required string Title { get; set; }
+            public required string Date { get; set; }
+            public required string Cover { get; set; } // filename of first image
+            public int ImagesCount { get; set; }
+        }
+
+
+
+
+
+
+
 
         // helper: crude check for mojibake like "Ð" "Ñ" or sequences "Р" etc.
         private static bool LooksLikeMojibake(string s)

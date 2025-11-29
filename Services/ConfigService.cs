@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using InfoKioskApp.Models;
 using Newtonsoft.Json;
 
 namespace InfoKioskApp.Services

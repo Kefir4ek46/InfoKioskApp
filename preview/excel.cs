@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace InfoKioskApp.preview
 {
-    internal class excel
+    internal class Excel
     {
     }
 }

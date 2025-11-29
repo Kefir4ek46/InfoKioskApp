@@ -1,4 +1,5 @@
-﻿using InfoKioskApp.Services;
+﻿using InfoKioskApp.Models;
+using InfoKioskApp.Services;
 using Microsoft.Win32;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +11,7 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class ScheduleSettingsView : UserControl
     {
-        private List<AppConfig.ScheduleItem> _others = new List<AppConfig.ScheduleItem>();
+        private List<AppConfig.ScheduleItem> _others = [];
 
 
         public ScheduleSettingsView()
@@ -25,13 +26,12 @@ namespace InfoKioskApp.Views.AdminTabs
             MainScheduleBox.Text = config.MainSchedulePath;
             ChangesBox.Text = config.ChangesPath;
 
-            _others = config.Schedules ?? new List<AppConfig.ScheduleItem>();
+            _others = config.Schedules ?? [];
             RefreshOtherList();
         }
         private void DeleteOther_Click(object sender, RoutedEventArgs e)
         {
-            string selected = (sender as Button)?.CommandParameter as string;
-            if (selected == null) return;
+            if ((sender as Button)?.CommandParameter is not string selected) return;
 
             var item = _others.FirstOrDefault(x => $"{x.Name} — {x.FilePath}" == selected);
             if (item != null)

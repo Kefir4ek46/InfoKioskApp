@@ -13,7 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
-using static InfoKioskApp.AppConfig;
+using static InfoKioskApp.Models.AppConfig;
 
 
 namespace InfoKioskApp
@@ -71,7 +71,7 @@ namespace InfoKioskApp
         #endregion
 
         #region === Погода ===
-        private string GetWeatherEmoji(int code)
+        private static string GetWeatherEmoji(int code)
         {
             if (code >= 200 && code < 300) return "⛈️"; // гроза
             if (code >= 300 && code < 400) return "🌦️"; // морось
@@ -104,24 +104,23 @@ namespace InfoKioskApp
                 string apiKey = "4fca50ecc7eb8fa8d8ae1021853e0e7c"; // OpenWeather API ключ
                 string url = $"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&lang=ru&appid={apiKey}";
 
-                using (HttpClient client = new HttpClient())
-                {
-                    string json = await client.GetStringAsync(url);
-                    dynamic data = JsonConvert.DeserializeObject(json);
+                HttpClient httpClient = new();
+                using HttpClient client = httpClient;
+                string json = await client.GetStringAsync(url);
+                dynamic data = JsonConvert.DeserializeObject(json);
 
-                    double temp = data.main.temp;
-                    double wind = data.wind.speed;
-                    int humidity = data.main.humidity;
-                    int pressure = data.main.pressure;
-                    int code = data.weather[0].id;
-                    string description = data.weather[0].description;
+                double temp = data.main.temp;
+                double wind = data.wind.speed;
+                int humidity = data.main.humidity;
+                int pressure = data.main.pressure;
+                int code = data.weather[0].id;
+                string description = data.weather[0].description;
 
-                    WeatherIcon.Text = GetWeatherEmoji(code);
-                    WeatherTemp.Text = $"{temp:F0}°C";
-                    WeatherCity.Text = city;
-                    WeatherExtra.Text = $"{description}, ветер {wind:F1} м/с, влажность {humidity}%, давление {pressure} гПа";
-                    WeatherTomorrow.Text = "";
-                }
+                WeatherIcon.Text = GetWeatherEmoji(code);
+                WeatherTemp.Text = $"{temp:F0}°C";
+                WeatherCity.Text = city;
+                WeatherExtra.Text = $"{description}, ветер {wind:F1} м/с, влажность {humidity}%, давление {pressure} гПа";
+                WeatherTomorrow.Text = "";
             }
             catch (Exception ex)
             {
@@ -161,12 +160,12 @@ namespace InfoKioskApp
                 }
                 else
                 {
-                    _bellSchedule = new List<LessonTime>();
+                    _bellSchedule = [];
                 }
             }
             catch
             {
-                _bellSchedule = new List<LessonTime>();
+                _bellSchedule = [];
             }
         }
 
@@ -298,8 +297,7 @@ namespace InfoKioskApp
             if (config.CustomSections == null || config.CustomSections.Count == 0)
                 return;
 
-            var leftMenu = FindName("LeftMenuPanel") as StackPanel;
-            if (leftMenu == null) return;
+            if (FindName("LeftMenuPanel") is not StackPanel leftMenu) return;
 
             // Удаляем старые кнопки пользовательских разделов
             if (refresh)

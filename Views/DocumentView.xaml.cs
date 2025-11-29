@@ -12,7 +12,7 @@ namespace InfoKioskApp.Views
 {
     public partial class DocumentsView : UserControl
     {
-        private string _docsFolder;
+        private readonly string _docsFolder;
 
         public DocumentsView()
         {
@@ -53,7 +53,7 @@ namespace InfoKioskApp.Views
             }
         }
 
-        private Button CreateDocButton(string title, RoutedEventHandler onClick)
+        private static Button CreateDocButton(string title, RoutedEventHandler onClick)
         {
             return new Button
             {

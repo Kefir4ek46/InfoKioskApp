@@ -10,7 +10,7 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class CalendarSettingsView : UserControl
     {
-        private List<CalendarEvent> _events;
+        private readonly List<CalendarEvent> _events;
 
         public CalendarSettingsView()
         {

@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InfoKiosk Remote Admin</title>
+    <link rel="icon" href="Logo.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="Logo.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
+
     <header>
         <h1>🌐 InfoKiosk Remote Admin</h1>
-        <p id="server-status">🔄 Подключение...</p>
+        <p id="server-status">Подключение...</p>
     </header>
 
     <main>
+
+        <!-- Навигация -->
         <nav class="menu">
             <div class="menu-item active" data-tab="schedules">
                 <span class="icon">📜</span>
@@ -24,57 +30,58 @@
                 <span class="title">Файлы</span>
             </div>
 
+            <div class="menu-item" data-tab="media">
+                <span class="icon">🖼️</span>
+                <span class="title">Медиа</span>
+            </div>
+
             <div class="menu-item" data-tab="calendar">
                 <span class="icon">🗓️</span>
                 <span class="title">Календарь</span>
             </div>
-
+            <!-- Навигация
             <div class="menu-item" data-tab="settings">
-                <span class="icon">⚙️</span>
-                <span class="title">Настройки</span>
-            </div>
+                  <span class="icon">⚙️</span>
+                 <span class="title">Настройки</span>
+            </div> -->
         </nav>
 
+        <!-- ТАБ: Расписания -->
+        <section id="tab-schedules" class="tab-content active">
 
-        <!-- === Расписания === -->
-        <section id="tab-schedules" class="tab-content active animate-fade">
             <h2>📂 Управление расписаниями</h2>
 
             <div class="card drop-zone">
                 <h3>Основное расписание</h3>
-                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
                 <input type="file" id="main-file" multiple>
                 <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
             </div>
 
             <div class="card drop-zone">
                 <h3>Изменённое расписание</h3>
-                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
                 <input type="file" id="changes-file" multiple>
                 <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
             </div>
 
             <div class="card drop-zone">
                 <h3>Другое расписание</h3>
-                <p class="hint">Перетащите сюда файл или выберите вручную:</p>
+                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
                 <input type="file" id="other-file" multiple>
                 <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
             </div>
 
-            <h3>📋 Список дополнительных расписаний</h3>
+            <h3>📋 Список дополнительных файлов</h3>
             <ul id="other-files"></ul>
         </section>
 
-        <!-- === Файлы === -->
-        <section id="tab-files" class="tab-content animate-fade">
-            <h2>🗂 Управление файлами</h2>
 
-            <div class="card drop-zone">
-                <h3>Медиа</h3>
-                <p class="hint">Перетащите сюда медиафайлы или выберите вручную:</p>
-                <input type="file" id="media-file" multiple>
-                <button onclick="uploadFileType('media')">⬆ Загрузить</button>
-            </div>
+
+        <!-- ТАБ: Файлы -->
+        <section id="tab-files" class="tab-content">
+
+            <h2>🗂 Управление файлами</h2>
 
             <div class="card drop-zone">
                 <h3>Документы</h3>
@@ -86,26 +93,70 @@
             <div class="file-list">
                 <h3>📁 Список файлов</h3>
                 <select id="file-category" onchange="loadFilesCategory()">
-                    <option value="media">Медиа</option>
                     <option value="docs">Документы</option>
+                    <option value="media">Медиа</option>
                 </select>
-                <button onclick="loadFilesCategory()">🔄 Обновить</button>
+                <button onclick="loadFilesCategory()">🔄</button>
                 <ul id="files-list"></ul>
             </div>
 
             <div class="file-preview card">
                 <h3>📄 Предпросмотр</h3>
-                <div id="preview-area" class="preview-area">
-                    <p>Выберите файл для просмотра</p>
-                </div>
+                <div id="preview-area" class="preview-area"></div>
             </div>
-
         </section>
 
-        <!-- === Календарь === -->
-        <section id="tab-calendar" class="tab-content animate-fade">
-            <h2>📆 Календарь событий</h2>
+
+
+        <!-- ТАБ: МЕДИА (посты) -->
+        <section id="tab-media" class="tab-content">
+
+            <h2>🖼 Медиа и посты</h2>
+
+            <!-- Создание поста -->
+            <div class="card create-post-panel">
+
+                <h3>Создать пост</h3>
+
+                <label>Категория:</label>
+                <select id="post-category"></select>
+
+                <label>Название:</label>
+                <input id="post-title" type="text">
+
+                <label>Описание:</label>
+                <textarea id="post-description"></textarea>
+
+                <label>Дата:</label>
+                <input id="post-date" type="date">
+
+                <label>Фотографии:</label>
+                <input id="post-images" type="file" accept="image/*" multiple>
+
+                <button onclick="createFullPost()">Создать пост</button>
+            </div>
+
+            <!-- Категории -->
+            <div class="card category-bar">
+                <label>Категория:</label>
+                <select id="category-select" onchange="onCategoryChange()"></select>
+
+                <input id="new-category-name" placeholder="Новая категория">
+                <button onclick="createCategory()">➕ Добавить</button>
+            </div>
+
+            <!-- Посты -->
+            <div id="media-posts-area" class="posts-grid"></div>
+        </section>
+
+
+
+        <!-- ТАБ: Календарь -->
+        <section id="tab-calendar" class="tab-content">
+
+            <h2>📅 Календарь событий</h2>
             <div class="calendar-form card">
+
                 <input id="event-title" placeholder="Название события">
 
                 <label>Начало:</label>
@@ -114,7 +165,7 @@
                 <label>Окончание:</label>
                 <input id="event-end" type="date">
 
-                <label>Тип события:</label>
+                <label>Тип:</label>
                 <select id="event-type">
                     <option value="Праздник">🎉 Праздник</option>
                     <option value="Каникулы">🏖 Каникулы</option>
@@ -122,19 +173,21 @@
                     <option value="Другое" selected>📌 Другое</option>
                 </select>
 
-                <button onclick="addEvent()">➕ Добавить</button>
+                <button onclick="addEvent()">Добавить</button>
             </div>
 
             <ul id="calendar"></ul>
         </section>
 
-        <!-- === Настройки === -->
-        <section id="tab-settings" class="tab-content animate-fade">
-            <h2>⚙ Настройки устройства</h2>
+
+
+        <!-- ТАБ: Настройки -->
+        <section id="tab-settings" class="tab-content">
+
+            <h2>⚙ Настройки</h2>
 
             <div class="card">
-                <h3>Автозапуск InfoKioskApp</h3>
-                <p class="hint">Включите, чтобы приложение автоматически запускалось при включении ПК.</p>
+                <h3>Автозапуск</h3>
                 <label class="switch">
                     <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
                     <span class="slider"></span>
@@ -143,19 +196,55 @@
 
             <div class="card">
                 <h3>Спящий режим</h3>
-                <p class="hint">Количество минут бездействия перед переходом в сон.</p>
-
-                <input id="sleep-time" type="number" min="0" max="240" placeholder="минуты (0 — выключить)">
-                <button onclick="saveSleepMode()">💾 Сохранить</button>
+                <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
+                <button onclick="saveSleepMode()">Сохранить</button>
             </div>
         </section>
 
-
     </main>
 
-    <footer>
-        <p>© InfoKioskApp Remote Interface</p>
+
+    <!-- МОДАЛЬНОЕ ОКНО ПОСТА -->
+    <div id="post-modal" class="post-modal hidden">
+        <div class="post-modal-content">
+            <span class="post-modal-close">&times;</span>
+            <h2 id="modal-post-title"></h2>
+            <p id="modal-post-date"></p>
+            <p id="modal-post-desc"></p>
+
+            <div class="modal-gallery">
+                <button id="modal-prev" class="gallery-nav">⟵</button>
+                <img id="modal-img" class="modal-img">
+                <button id="modal-next" class="gallery-nav">⟶</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <h3>InfoKioskApp Admin</h3>
+                <p>© 2025. Все права защищены.</p>
+            </div>
+
+            <div class="footer-center">
+                <a href="https://vk.com/akabudakoff" target="_blank" class="footer-link">
+                    <span class="icon">🌐</span> VK
+                </a>
+                <a href="https://t.me/krasivyy_Max" target="_blank" class="footer-link">
+                    <span class="icon">💬</span> Telegram
+                </a>
+                <a href="https://github.com/Kefir4ek46" target="_blank" class="footer-link">
+                    <span class="icon">💻</span> GitHub
+                </a>
+            </div>
+
+            <div class="footer-right">
+                <p>Разработчик: <strong>Maks aka Fizik aka Kefir4ek46 </strong></p>
+            </div>
+        </div>
     </footer>
+
 
     <script src="script.js"></script>
 </body>

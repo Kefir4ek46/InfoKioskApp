@@ -1,16 +1,15 @@
-﻿using InfoKioskApp.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace InfoKioskApp
+namespace InfoKioskApp.Models
 {
     public class AppConfig
     {
         // === Интерфейс и кастомные разделы ===
         public InterfaceSettings InterfaceSettings { get; set; } = new InterfaceSettings();
-        public List<CustomSection> CustomSections { get; set; } = new List<CustomSection>();
+        public List<CustomSection> CustomSections { get; set; } = [];
 
         // === Расписания ===
-        public List<ScheduleItem> Schedules { get; set; } = new List<ScheduleItem>();
+        public List<ScheduleItem> Schedules { get; set; } = [];
 
         public class ScheduleItem
         {
@@ -33,9 +32,7 @@ namespace InfoKioskApp
         // === PIN и безопасность ===
         public string PinCode { get; set; } = "1234";
 
-        // === Медиа ===
-        public int MediaAutoIntervalSeconds { get; set; } = 15; // интервал в секундах
-
+        
         // === Удалённое управление ===
         public bool RemoteAutoStart { get; set; } = true;
         public int RemotePort { get; set; } = 8080;

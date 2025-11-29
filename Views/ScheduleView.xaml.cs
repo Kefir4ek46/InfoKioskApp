@@ -28,14 +28,14 @@ namespace InfoKioskApp.Views
 {
     public partial class ScheduleView : UserControl
     {
-        private string SchedulesRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "schedules");
+        private readonly string SchedulesRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "schedules");
 
         // C# 7.3: явный конструктор, а не target-typed new()
-        private Dictionary<string, string> _scheduleFiles = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _scheduleFiles = [];
         private Button _activeButton; // текущая активная кнопка (для подсветки)
         private Button _activeClassButton; // активная кнопка класса (листа Excel)
 
-        private List<List<Border>> _tableRowBorders = new List<List<Border>>();
+        private readonly List<List<Border>> _tableRowBorders = [];
         
 
 
@@ -125,7 +125,7 @@ namespace InfoKioskApp.Views
             }
         }
 
-        private Button CreateButton(string text, RoutedEventHandler handler)
+        private static Button CreateButton(string text, RoutedEventHandler handler)
         {
             var btn = new Button
             {
@@ -180,13 +180,13 @@ namespace InfoKioskApp.Views
 
         private void ShowSchedule(string key)
         {
-            if (!_scheduleFiles.ContainsKey(key) || _scheduleFiles[key] == null)
+            if (!_scheduleFiles.TryGetValue(key, out string? value) || value == null)
             {
                 MessageBox.Show("Файл расписания не найден.", "Инфо", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            ShowScheduleFile(_scheduleFiles[key]);
+            ShowScheduleFile(value);
         }
 
         private void ShowScheduleFile(string path)
@@ -227,34 +227,31 @@ namespace InfoKioskApp.Views
         {
             try
             {
-                using (var wb = new XLWorkbook(path))
+                using var wb = new XLWorkbook(path);
+                var sheetNames = wb.Worksheets.Select(ws => ws.Name).ToList();
+
+                ClassButtonsPanel.Children.Clear();
+                ClassButtonsPanel.Visibility = Visibility.Visible;
+
+                foreach (var sheet in sheetNames)
                 {
-                    var sheetNames = wb.Worksheets.Select(ws => ws.Name).ToList();
-
-                    ClassButtonsPanel.Children.Clear();
-                    ClassButtonsPanel.Visibility = Visibility.Visible;
-
-                    foreach (var sheet in sheetNames)
+                    var btn = CreateButton(sheet, (s, e) =>
                     {
-                        var btn = CreateButton(sheet, (s, e) =>
-                        {
-                            HighlightActiveClassButton((Button)s);
-                            ShowExcelSheet(path, sheet);
-                        });
-                        ClassButtonsPanel.Children.Add(btn);
-                    }
+                        HighlightActiveClassButton((Button)s);
+                        ShowExcelSheet(path, sheet);
+                    });
+                    ClassButtonsPanel.Children.Add(btn);
+                }
 
 
-                    if (sheetNames.Any())
-                    {
-                        ShowExcelSheet(path, sheetNames[0]);
+                if (sheetNames.Count != 0)
+                {
+                    ShowExcelSheet(path, sheetNames[0]);
 
-                        // Подсветка первой кнопки
-                        var firstBtn = ClassButtonsPanel.Children.OfType<Button>().FirstOrDefault();
-                        if (firstBtn != null)
-                            HighlightActiveClassButton(firstBtn);
-                    }
-
+                    // Подсветка первой кнопки
+                    var firstBtn = ClassButtonsPanel.Children.OfType<Button>().FirstOrDefault();
+                    if (firstBtn != null)
+                        HighlightActiveClassButton(firstBtn);
                 }
             }
             catch (Exception ex)
@@ -265,140 +262,138 @@ namespace InfoKioskApp.Views
 
         private void ShowExcelSheet(string path, string sheetName)
         {
-            using (var wb = new XLWorkbook(path))
+            using var wb = new XLWorkbook(path);
+            var ws = wb.Worksheet(sheetName);
+
+            int lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
+            int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
+
+            if (lastRow == 0 || lastCol == 0)
             {
-                var ws = wb.Worksheet(sheetName);
-
-                int lastRow = ws.LastRowUsed()?.RowNumber() ?? 0;
-                int lastCol = ws.LastColumnUsed()?.ColumnNumber() ?? 0;
-
-                if (lastRow == 0 || lastCol == 0)
-                {
-                    ContentArea.Children.Clear();
-                    ContentArea.Children.Add(new TextBlock
-                    {
-                        Text = "Нет данных",
-                        Foreground = Brushes.Gray,
-                        FontSize = 16,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    });
-                    return;
-                }
-
-                var scroll = new ScrollViewer
-                {
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    Background = new SolidColorBrush(Color.FromRgb(30, 30, 30))
-                };
-
-                var grid = new Grid { Margin = new Thickness(3) };
-
-                // Создание столбцов
-                for (int c = 0; c < lastCol; c++)
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                // Создание строк
-                for (int r = 0; r < lastRow; r++)
-                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
-                // Объединённые ячейки
-                var merged = new List<Tuple<int, int, int, int>>();
-                foreach (var m in ws.MergedRanges)
-                {
-                    merged.Add(Tuple.Create(
-                        m.FirstRow().RowNumber(),
-                        m.FirstColumn().ColumnNumber(),
-                        m.RowCount(),
-                        m.ColumnCount()
-                    ));
-                }
-
-                bool[,] occupied = new bool[lastRow + 1, lastCol + 1];
-
-                // Рендер таблицы
-                for (int r = 1; r <= lastRow; r++)
-                {
-                    for (int c = 1; c <= lastCol; c++)
-                    {
-                        if (occupied[r, c]) continue;
-
-                        Tuple<int, int, int, int> merge = null;
-
-                        foreach (var m in merged)
-                        {
-                            if (m.Item1 == r && m.Item2 == c)
-                            {
-                                merge = m;
-                                break;
-                            }
-                        }
-
-                        int rowspan = merge != null ? merge.Item3 : 1;
-                        int colspan = merge != null ? merge.Item4 : 1;
-
-                        if (merge != null)
-                        {
-                            int maxR = lastRow;
-                            int maxC = lastCol;
-
-                            int endR = Math.Min(r + rowspan - 1, maxR);
-                            int endC = Math.Min(c + colspan - 1, maxC);
-
-                            for (int rr = r; rr <= endR; rr++)
-                            {
-                                for (int cc = c; cc <= endC; cc++)
-                                {
-                                    occupied[rr, cc] = true;
-                                }
-                            }
-
-                        }
-                        else
-                        {
-                            occupied[r, c] = true;
-                        }
-
-                        string text = ws.Cell(r, c).GetString();
-
-                        var border = new Border
-                        {
-                            BorderBrush = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
-                            BorderThickness = new Thickness(1),
-                            Background = (r == 1)
-                                ? new SolidColorBrush(Color.FromRgb(45, 45, 60))
-                                : new SolidColorBrush(Color.FromRgb(35, 35, 35)),
-                            Padding = new Thickness(8),
-                            Margin = new Thickness(1)
-                        };
-
-                        var tb = new TextBlock
-                        {
-                            Text = string.IsNullOrWhiteSpace(text) ? " " : text,
-                            Foreground = Brushes.White,
-                            FontWeight = r == 1 ? FontWeights.SemiBold : FontWeights.Normal,
-                            TextWrapping = TextWrapping.Wrap,
-                            TextAlignment = TextAlignment.Center,
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-
-                        border.Child = tb;
-
-                        Grid.SetRow(border, r - 1);
-                        Grid.SetColumn(border, c - 1);
-                        if (rowspan > 1) Grid.SetRowSpan(border, rowspan);
-                        if (colspan > 1) Grid.SetColumnSpan(border, colspan);
-
-                        grid.Children.Add(border);
-                    }
-                }
-
-                scroll.Content = grid;
-
                 ContentArea.Children.Clear();
-                ContentArea.Children.Add(scroll);
+                ContentArea.Children.Add(new TextBlock
+                {
+                    Text = "Нет данных",
+                    Foreground = Brushes.Gray,
+                    FontSize = 16,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                return;
             }
+
+            var scroll = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Background = new SolidColorBrush(Color.FromRgb(30, 30, 30))
+            };
+
+            var grid = new Grid { Margin = new Thickness(3) };
+
+            // Создание столбцов
+            for (int c = 0; c < lastCol; c++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Создание строк
+            for (int r = 0; r < lastRow; r++)
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Объединённые ячейки
+            var merged = new List<Tuple<int, int, int, int>>();
+            foreach (var m in ws.MergedRanges)
+            {
+                merged.Add(Tuple.Create(
+                    m.FirstRow().RowNumber(),
+                    m.FirstColumn().ColumnNumber(),
+                    m.RowCount(),
+                    m.ColumnCount()
+                ));
+            }
+
+            bool[,] occupied = new bool[lastRow + 1, lastCol + 1];
+
+            // Рендер таблицы
+            for (int r = 1; r <= lastRow; r++)
+            {
+                for (int c = 1; c <= lastCol; c++)
+                {
+                    if (occupied[r, c]) continue;
+
+                    Tuple<int, int, int, int> merge = null;
+
+                    foreach (var m in merged)
+                    {
+                        if (m.Item1 == r && m.Item2 == c)
+                        {
+                            merge = m;
+                            break;
+                        }
+                    }
+
+                    int rowspan = merge != null ? merge.Item3 : 1;
+                    int colspan = merge != null ? merge.Item4 : 1;
+
+                    if (merge != null)
+                    {
+                        int maxR = lastRow;
+                        int maxC = lastCol;
+
+                        int endR = Math.Min(r + rowspan - 1, maxR);
+                        int endC = Math.Min(c + colspan - 1, maxC);
+
+                        for (int rr = r; rr <= endR; rr++)
+                        {
+                            for (int cc = c; cc <= endC; cc++)
+                            {
+                                occupied[rr, cc] = true;
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        occupied[r, c] = true;
+                    }
+
+                    string text = ws.Cell(r, c).GetString();
+
+                    var border = new Border
+                    {
+                        BorderBrush = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
+                        BorderThickness = new Thickness(1),
+                        Background = (r == 1)
+                            ? new SolidColorBrush(Color.FromRgb(45, 45, 60))
+                            : new SolidColorBrush(Color.FromRgb(35, 35, 35)),
+                        Padding = new Thickness(8),
+                        Margin = new Thickness(1)
+                    };
+
+                    var tb = new TextBlock
+                    {
+                        Text = string.IsNullOrWhiteSpace(text) ? " " : text,
+                        Foreground = Brushes.White,
+                        FontWeight = r == 1 ? FontWeights.SemiBold : FontWeights.Normal,
+                        TextWrapping = TextWrapping.Wrap,
+                        TextAlignment = TextAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    border.Child = tb;
+
+                    Grid.SetRow(border, r - 1);
+                    Grid.SetColumn(border, c - 1);
+                    if (rowspan > 1) Grid.SetRowSpan(border, rowspan);
+                    if (colspan > 1) Grid.SetColumnSpan(border, colspan);
+
+                    grid.Children.Add(border);
+                }
+            }
+
+            scroll.Content = grid;
+
+            ContentArea.Children.Clear();
+            ContentArea.Children.Add(scroll);
         }
 
 

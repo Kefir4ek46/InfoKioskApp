@@ -5,9 +5,9 @@ namespace InfoKioskApp
 {
     public partial class App : Application
     {
-        public void SetTheme(string theme)
+        public static void SetTheme(string theme)
         {
-            ResourceDictionary newTheme = new ResourceDictionary();
+            ResourceDictionary newTheme = [];
 
             if (theme == "light")
             {

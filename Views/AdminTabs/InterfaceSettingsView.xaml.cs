@@ -8,7 +8,7 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class InterfaceSettingsView : UserControl
     {
-        private AppConfig _config;
+        private readonly AppConfig _config;
 
         public InterfaceSettingsView()
         {
@@ -50,8 +50,7 @@ namespace InfoKioskApp.Views.AdminTabs
 
         private void Save_Click(object sender, RoutedEventArgs e)
         {
-            if (_config.InterfaceSettings == null)
-                _config.InterfaceSettings = new InterfaceSettings();
+            _config.InterfaceSettings ??= new InterfaceSettings();
 
             _config.InterfaceSettings.BackgroundColor = BackgroundColorPicker.SelectedColor?.ToString();
             _config.InterfaceSettings.ButtonBackground = ButtonColorPicker.SelectedColor?.ToString();
@@ -61,7 +60,7 @@ namespace InfoKioskApp.Views.AdminTabs
             MessageBox.Show("Настройки сохранены и применены!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void ApplyInterfaceColors(string background, string buttonBg, string text)
+        private static void ApplyInterfaceColors(string background, string buttonBg, string text)
         {
             var app = Application.Current;
 

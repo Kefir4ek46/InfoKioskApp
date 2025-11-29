@@ -14,20 +14,18 @@ namespace InfoKioskApp.Services
         {
             try
             {
-                using (var client = new HttpClient())
-                {
-                    string url = $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={ApiKey}&units=metric&lang=ru";
-                    string json = await client.GetStringAsync(url);
+                using var client = new HttpClient();
+                string url = $"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={ApiKey}&units=metric&lang=ru";
+                string json = await client.GetStringAsync(url);
 
-                    var data = JObject.Parse(json);
-                    return new WeatherData
-                    {
-                        City = (string)data["name"],
-                        Temperature = (double)data["main"]["temp"],
-                        Description = (string)data["weather"][0]["description"],
-                        IconCode = (string)data["weather"][0]["icon"]
-                    };
-                }
+                var data = JObject.Parse(json);
+                return new WeatherData
+                {
+                    City = (string)data["name"],
+                    Temperature = (double)data["main"]["temp"],
+                    Description = (string)data["weather"][0]["description"],
+                    IconCode = (string)data["weather"][0]["icon"]
+                };
             }
             catch (Exception ex)
             {

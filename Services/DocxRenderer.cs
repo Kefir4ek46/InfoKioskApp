@@ -17,11 +17,11 @@ namespace InfoKioskApp.Services
     public class DocxRenderer
     {
         private readonly Brush _nextLessonBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#e6c229")); // жёлтый
-        private readonly Dictionary<Border, Storyboard> _pulseAnimations = new Dictionary<Border, Storyboard>();
+        private readonly Dictionary<Border, Storyboard> _pulseAnimations = [];
 
         private readonly DispatcherTimer _highlightTimer;
         private Grid _lastGrid;
-        private readonly Dictionary<Border, Brush> _baseBackground = new Dictionary<Border, Brush>();
+        private readonly Dictionary<Border, Brush> _baseBackground = [];
 
         // highlight color (green)
         private readonly Brush _highlightBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4caf50"));
@@ -35,7 +35,7 @@ namespace InfoKioskApp.Services
             _highlightTimer.Tick += (s, e) => UpdateHighlight();
         }
 
-        private Storyboard CreatePulseAnimation(Border border)
+        private static Storyboard CreatePulseAnimation(Border border)
         {
             var anim = new DoubleAnimation
             {
@@ -133,7 +133,7 @@ namespace InfoKioskApp.Services
         }
 
         // Render paragraph with style/align
-        private TextBlock RenderParagraph(Paragraph p)
+        private static TextBlock RenderParagraph(Paragraph p)
         {
             string text = string.Concat(p.Descendants<Text>().Select(t => t.Text)).Trim();
             if (string.IsNullOrEmpty(text)) return null;
@@ -154,8 +154,8 @@ namespace InfoKioskApp.Services
                 Text = text,
                 Foreground = Brushes.White,
                 TextWrapping = TextWrapping.Wrap,
-                FontSize = style.ToLower().Contains("heading") ? 20 : 16,
-                FontWeight = style.ToLower().Contains("heading") ? FontWeights.SemiBold : FontWeights.Normal,
+                FontSize = style.Contains("heading", StringComparison.CurrentCultureIgnoreCase) ? 20 : 16,
+                FontWeight = style.Contains("heading", StringComparison.CurrentCultureIgnoreCase) ? FontWeights.SemiBold : FontWeights.Normal,
                 Margin = new Thickness(0, 6, 0, 6),
                 TextAlignment = align
             };
@@ -204,7 +204,7 @@ namespace InfoKioskApp.Services
                 foreach (var cell in row.Elements<TableCell>())
                 {
                     string txt = string.Join(" ", cell.Descendants<Text>().Select(x => x.Text)).Trim();
-                    if (txt == null) txt = string.Empty;
+                    txt ??= string.Empty;
 
                     int colspan = 1;
                     VMergeKind vmerge = VMergeKind.None;
@@ -234,7 +234,11 @@ namespace InfoKioskApp.Services
             }
 
             // Determine maxCols: prefer tblGrid if present, else compute by summing colspans
-            int maxCols = gridColsFromTblGrid > 0 ? gridColsFromTblGrid : parsedRows.Max(r => r.Sum(c => Math.Max(1, c.ColSpan)));
+            int maxCols = gridColsFromTblGrid > 0 ? gridColsFromTblGrid : parsedRows.Max(r =>
+            {
+                static int selector(CellData c) => Math.Max(1, c.ColSpan);
+                return r.Sum(selector);
+            });
             int maxRows = parsedRows.Count;
 
             // APPLY gridBefore/gridAfter adjustments per row if present
@@ -285,7 +289,7 @@ namespace InfoKioskApp.Services
 
                 // pad or trim to maxCols
                 while (nr.Count < maxCols) nr.Add(new CellData(string.Empty, 1, VMergeKind.None));
-                if (nr.Count > maxCols) nr = nr.Take(maxCols).ToList();
+                if (nr.Count > maxCols) nr = [.. nr.Take(maxCols)];
 
                 normalized.Add(nr);
             }
@@ -408,7 +412,7 @@ namespace InfoKioskApp.Services
             return grid;
         }
 
-        private int GetNextLessonIndex(int current)
+        private static int GetNextLessonIndex(int current)
         {
             try
             {
@@ -428,8 +432,7 @@ namespace InfoKioskApp.Services
 
                     for (int i = 0; i < bells.Count; i++)
                     {
-                        DateTime s;
-                        if (DateTime.TryParse(bells[i].Start, out s))
+                        if (DateTime.TryParse(bells[i].Start, out DateTime s))
                         {
                             if (now < DateTime.Today.Add(s.TimeOfDay))
                                 return i;
@@ -443,7 +446,7 @@ namespace InfoKioskApp.Services
         }
 
         // Get current lesson index from BellSchedule.json; returns -1 if none
-        private int GetCurrentLessonIndex()
+        private static int GetCurrentLessonIndex()
         {
             try
             {
@@ -457,8 +460,7 @@ namespace InfoKioskApp.Services
                 DateTime now = DateTime.Now;
                 for (int i = 0; i < bells.Count; i++)
                 {
-                    DateTime s, e;
-                    if (DateTime.TryParse(bells[i].Start, out s) && DateTime.TryParse(bells[i].End, out e))
+                    if (DateTime.TryParse(bells[i].Start, out DateTime s) && DateTime.TryParse(bells[i].End, out DateTime e))
                     {
                         var start = DateTime.Today.Add(s.TimeOfDay);
                         var end = DateTime.Today.Add(e.TimeOfDay);
@@ -496,8 +498,7 @@ namespace InfoKioskApp.Services
             // Если сейчас урок — только текущий зелёный, пульсаций нет
             foreach (UIElement elem in _lastGrid.Children)
             {
-                Border b = elem as Border;
-                if (b == null) continue;
+                if (elem is not Border b) continue;
 
                 int startRow = Grid.GetRow(b);
                 int rowspan = Grid.GetRowSpan(b);
@@ -532,8 +533,7 @@ namespace InfoKioskApp.Services
                 // Иначе — вернуть базовый фон (и остановить пульсацию, если была)
                 StopPulse(b);
 
-                Brush baseBg;
-                if (_baseBackground.TryGetValue(b, out baseBg))
+                if (_baseBackground.TryGetValue(b, out Brush baseBg))
                     b.Background = baseBg;
                 else
                     b.Background = new SolidColorBrush(Color.FromRgb(45, 45, 60));
@@ -548,14 +548,11 @@ namespace InfoKioskApp.Services
 
             foreach (UIElement elem in _lastGrid.Children)
             {
-                Border b = elem as Border;
-                if (b == null) continue;
+                if (elem is not Border b) continue;
 
-                TextBlock tb = b.Child as TextBlock;
-                if (tb == null) continue;
+                if (b.Child is not TextBlock tb) continue;
 
-                int num;
-                if (int.TryParse(tb.Text?.Trim(), out num))
+                if (int.TryParse(tb.Text?.Trim(), out int num))
                 {
                     if (num == lesson)
                         return Grid.GetRow(b);

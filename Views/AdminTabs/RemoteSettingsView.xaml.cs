@@ -145,19 +145,17 @@ namespace InfoKioskApp.Views.AdminTabs
             var qrCode = new PngByteQRCode(qrData);
             byte[] qrBytes = qrCode.GetGraphic(20);
 
-            using (var ms = new MemoryStream(qrBytes))
-            {
-                var img = new BitmapImage();
-                img.BeginInit();
-                img.StreamSource = ms;
-                img.CacheOption = BitmapCacheOption.OnLoad;
-                img.EndInit();
-                img.Freeze();
-                QrImage.Source = img;
-            }
+            using var ms = new MemoryStream(qrBytes);
+            var img = new BitmapImage();
+            img.BeginInit();
+            img.StreamSource = ms;
+            img.CacheOption = BitmapCacheOption.OnLoad;
+            img.EndInit();
+            img.Freeze();
+            QrImage.Source = img;
         }
 
-        private string GetLocalIp()
+        private static string GetLocalIp()
         {
             try
             {

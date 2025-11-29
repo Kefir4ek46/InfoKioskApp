@@ -13,7 +13,7 @@ namespace InfoKioskApp.Views.AdminTabs
 {
     public partial class RemoteContentView : UserControl
     {
-        private readonly HttpClient _client = new HttpClient();
+        private readonly HttpClient _client = new();
         private readonly AppConfig _config;
 
         public RemoteContentView()

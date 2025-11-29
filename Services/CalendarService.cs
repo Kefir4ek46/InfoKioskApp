@@ -16,15 +16,15 @@ namespace InfoKioskApp.Services
             try
             {
                 if (!File.Exists(FilePath))
-                    return new List<CalendarEvent>();
+                    return [];
 
                 var json = File.ReadAllText(FilePath);
                 var list = JsonConvert.DeserializeObject<List<CalendarEvent>>(json);
-                return list ?? new List<CalendarEvent>();
+                return list ?? [];
             }
             catch
             {
-                return new List<CalendarEvent>();
+                return [];
             }
         }
 

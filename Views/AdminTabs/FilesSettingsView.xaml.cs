@@ -22,23 +22,19 @@ namespace InfoKioskApp.Views.AdminTabs
 
         private void SelectMediaFolder_Click(object sender, RoutedEventArgs e)
         {
-            using (var dlg = new FolderBrowserDialog())
+            using var dlg = new FolderBrowserDialog();
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    MediaPathBox.Text = dlg.SelectedPath;
-                }
+                MediaPathBox.Text = dlg.SelectedPath;
             }
         }
 
         private void SelectDocumentsFolder_Click(object sender, RoutedEventArgs e)
         {
-            using (var dlg = new FolderBrowserDialog())
+            using var dlg = new FolderBrowserDialog();
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    DocumentsPathBox.Text = dlg.SelectedPath;
-                }
+                DocumentsPathBox.Text = dlg.SelectedPath;
             }
         }
 
