@@ -612,18 +612,29 @@ async function addEvent() {
 async function createCategory() {
     const name = document.getElementById('new-category-name').value.trim();
     if (!name) return alert("Введите имя категории!");
+
     const id = name.toLowerCase().replace(/\s+/g, "_");
+
     const res = await fetch(`${api}/media/category/add`, { 
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, name }) 
-        });
-        if (!res.ok) { alert("Ошибка создания категории");
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name })
+    });
+
+    if (!res.ok) {
+        alert("Ошибка создания категории");
         return;
-        } 
-        alert("Категория создана"); 
-        document.getElementById('new-category-name').value = "";
-        await loadCategoriesAndBuildUI();
+    }
+
+    alert("Категория создана");
+
+    document.getElementById('new-category-name').value = "";
+
+    // 🔥 Обновляем оба селектора
+    await loadCategoriesAndBuildUI();  
+    await loadPostCategorySelector();  
 }
+
 
 async function renameCategoryPrompt() {
     const sel = document.getElementById("category-select");
