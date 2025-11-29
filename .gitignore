@@ -22,6 +22,14 @@ x86/
 out/
 artifacts/
 
+Installer/
+Output/
+*.exe
+*.msi
+*.bat
+# !InfoKioskApp.exe  # если хочешь оставить exe проекта (можно убрать)
+
+
 # WPF temporary
 *_wpftmp.csproj
 
