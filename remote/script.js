@@ -625,3 +625,52 @@ async function createCategory() {
         await loadCategoriesAndBuildUI();
 }
 
+async function renameCategoryPrompt() {
+    const sel = document.getElementById("category-select");
+    const oldId = sel.value;
+    const oldName = sel.selectedOptions[0].textContent;
+
+    const newName = prompt("Новое имя категории:", oldName);
+    if (!newName || !newName.trim()) return;
+
+    const newId = newName.trim().toLowerCase().replace(/\s+/g, "_");
+
+    const res = await fetch(`${api}/media/category/rename`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ oldId, newId, newName })
+    });
+
+    if (!res.ok) {
+        alert("Ошибка переименования категории");
+        return;
+    }
+
+    alert("Категория переименована");
+    await loadCategoriesAndBuildUI();
+    await loadPostCategorySelector();
+}
+
+
+async function deleteCategory() {
+    const sel = document.getElementById("category-select");
+    const id = sel.value;
+    const name = sel.selectedOptions[0].textContent;
+
+    if (!confirm(`Удалить категорию "${name}" вместе со всеми постами?`))
+        return;
+
+    const res = await fetch(`${api}/media/category/delete?id=${encodeURIComponent(id)}`, {
+        method: "GET"
+    });
+
+    if (!res.ok) {
+        alert("Ошибка удаления категории");
+        return;
+    }
+
+    alert("Категория удалена");
+    await loadCategoriesAndBuildUI();
+    await loadPostCategorySelector();
+}
+

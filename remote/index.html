@@ -94,7 +94,7 @@
                 <h3>📁 Список файлов</h3>
                 <select id="file-category" onchange="loadFilesCategory()">
                     <option value="docs">Документы</option>
-                    <option value="media">Медиа</option>
+                    
                 </select>
                 <button onclick="loadFilesCategory()">🔄</button>
                 <ul id="files-list"></ul>
@@ -141,9 +141,13 @@
                 <label>Категория:</label>
                 <select id="category-select" onchange="onCategoryChange()"></select>
 
+                <button class="cat-btn" onclick="renameCategoryPrompt()">✏ Переименовать</button>
+                <button class="cat-btn danger" onclick="deleteCategory()">🗑 Удалить</button>
+
                 <input id="new-category-name" placeholder="Новая категория">
                 <button onclick="createCategory()">➕ Добавить</button>
             </div>
+
 
             <!-- Посты -->
             <div id="media-posts-area" class="posts-grid"></div>

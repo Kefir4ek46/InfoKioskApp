@@ -14,7 +14,7 @@ namespace InfoKioskApp.Services
 {
     public static class RemoteServerService
     {
-        private static HttpListener _listener;
+        private static HttpListener _listener ;
         private static CancellationTokenSource _cts;
         public static bool IsRunning => _listener != null && _listener.IsListening;
         public static event Action<bool> ServerStatusChanged;
@@ -96,6 +96,8 @@ namespace InfoKioskApp.Services
                     case "/media/categories": await HandleMediaCategoriesList(ctx); break;
                     case "/media/category/add": await HandleMediaCategoryAdd(ctx); break;
                     case "/media/category/delete": await HandleMediaCategoryDelete(ctx); break;
+                    case "/media/category/rename": await HandleMediaCategoryRename(ctx); break;
+
                     // в switch(path) добавьте:
 
 
@@ -758,6 +760,66 @@ namespace InfoKioskApp.Services
                 await WriteText(ctx, $"Ошибка: {ex.Message}", 500);
             }
         }
+
+        private static async Task HandleMediaCategoryRename(HttpListenerContext ctx)
+        {
+            using var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8);
+            string body = await reader.ReadToEndAsync();
+
+            try
+            {
+                var obj = JsonConvert.DeserializeObject<dynamic>(body);
+                string oldId = (string)obj.oldId;
+                string newId = (string)obj.newId;
+                string newName = (string)obj.newName;
+
+                if (string.IsNullOrWhiteSpace(oldId) || string.IsNullOrWhiteSpace(newId) || string.IsNullOrWhiteSpace(newName))
+                {
+                    await WriteText(ctx, "Bad JSON", 400);
+                    return;
+                }
+
+                string catFile = Path.Combine(MediaRoot, "categories.json");
+                if (!File.Exists(catFile))
+                {
+                    await WriteText(ctx, "Categories not found", 404);
+                    return;
+                }
+
+                // Загружаем текущие категории
+                var cats = JsonConvert.DeserializeObject<List<dynamic>>(File.ReadAllText(catFile, Encoding.UTF8));
+
+                var item = cats.FirstOrDefault(c => (string)c.id == oldId);
+                if (item == null)
+                {
+                    await WriteText(ctx, "Category not found", 404);
+                    return;
+                }
+
+                // Обновляем данные категории
+                item.id = newId;
+                item.name = newName;
+
+                // Сохраняем обновлённый categories.json
+                File.WriteAllText(catFile, JsonConvert.SerializeObject(cats, Formatting.Indented), Encoding.UTF8);
+
+                // Переименовываем папку
+                string oldFolder = CategoryPath(oldId);
+                string newFolder = CategoryPath(newId);
+
+                if (Directory.Exists(oldFolder))
+                {
+                    Directory.Move(oldFolder, newFolder);
+                }
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "renamed", oldId, newId, newName }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "Error: " + ex.Message, 500);
+            }
+        }
+
 
 
         private static async Task HandleMediaCategoryDelete(HttpListenerContext ctx)
