@@ -192,12 +192,16 @@ function renderPostsGrid(items, page, pageSize, total, category) {
       <div class="meta">
         <div class="title">${escapeHtml(title)}</div>
         <div class="date">${escapeHtml(date)}</div>
-        <div class="count">Фото: ${imagesCount}
-            <span style="float:right" class="actions">
-                <button class="pill open">Открыть</button>
-                <button class="pill del">Удалить</button>
-            </span>
+       <div class="footer">
+            <div class="count">Фото: ${imagesCount}</div>
+            <div class="actions">
+            <button class="pill open">Открыть</button>
+            <button class="pill del">Удалить</button>
         </div>
+</div>
+
+</div>
+
       </div>
     `;
 

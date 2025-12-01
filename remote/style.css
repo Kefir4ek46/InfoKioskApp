@@ -330,6 +330,9 @@ li {
             display: block;
         }
 
+    
+
+
     .post-card .meta {
         padding: 12px;
         display: flex;
@@ -352,18 +355,15 @@ li {
         .post-card .meta .count {
             font-size: 13px;
             color: #9fb0c8;
-            margin-top: auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
+    
+
     /* small pill buttons under card (open/delete) */
-    .post-card .actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 8px;
-    }
+   
 
 .pill {
     background: rgba(255,255,255,0.03);
@@ -567,3 +567,40 @@ li {
     .footer-link .icon {
         font-size: 1.1em;
     }
+
+
+/* нижняя область карточки */
+.post-card .footer {
+    margin-top: auto; /* прижимает вниз при длинном тексте */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 8px;
+}
+
+.post-card .count {
+    font-size: 13px;
+    color: #9fb0c8;
+    margin: 0; /* убрать лишнее наследование */
+}
+
+.post-card .actions {
+    display: flex;
+    gap: 8px;
+}
+
+.post-card .pill {
+    padding: 4px 10px;
+    font-size: 12px;
+    white-space: nowrap; /* чтобы кнопки не ломались */
+}
+
+.post-card .meta .title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; /* ← сколько строк оставить */
+    overflow: hidden;
+}
