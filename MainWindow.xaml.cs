@@ -24,6 +24,13 @@ namespace InfoKioskApp
         private DispatcherTimer _lessonTimer;
         private List<LessonTime> _bellSchedule;
 
+        private SchoolWebsiteView? _schoolWebsiteView;
+        private DocumentsView? _documentsView;
+        private MediaView? _mediaView;
+        private ScheduleView? _scheduleView;
+        private CalendarView? _calendarView;
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -252,28 +259,40 @@ namespace InfoKioskApp
         #region === Навигация ===
         private void Calendar_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new CalendarView();
+            _calendarView ??= new CalendarView();
+            ContentArea.Content = _calendarView;
         }
+
 
         private void Documents_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new DocumentsView();
+            _documentsView ??= new DocumentsView();
+            ContentArea.Content = _documentsView;
         }
+
 
         private void Media_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new MediaView();
+            _mediaView ??= new MediaView();
+            ContentArea.Content = _mediaView;
         }
+
 
         private void Schedule_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new ScheduleView();
+            _scheduleView ??= new ScheduleView();
+            ContentArea.Content = _scheduleView;
         }
+
         private void SchoolSite_Click(object sender, RoutedEventArgs e)
         {
-            ContentArea.Content = new SchoolWebsiteView();
+            _schoolWebsiteView ??= new SchoolWebsiteView();
+            ContentArea.Content = _schoolWebsiteView;
+
+            _schoolWebsiteView.OpenSite(); // 🔥 теперь прогрев работает
         }
-        
+
+
 
 
         private void Admin_Click(object sender, RoutedEventArgs e)
