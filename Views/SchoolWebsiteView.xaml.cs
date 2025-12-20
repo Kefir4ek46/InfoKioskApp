@@ -19,26 +19,21 @@ namespace InfoKioskApp.Views
                 "WebView2SchoolSite"
             );
 
-        private bool _initialized;
+        private bool _isInitialized;
 
         public SchoolWebsiteView()
         {
             InitializeComponent();
-            Loaded += OnLoaded;
-            // ❌ Dispose НЕ делаем — WebView остаётся прогретым
+            InitWebViewOnce();
         }
 
-        private async void OnLoaded(object sender, RoutedEventArgs e)
+        private async void InitWebViewOnce()
         {
-            if (_initialized)
+            if (_isInitialized)
                 return;
 
-            _initialized = true;
-            await InitWebViewAsync();
-        }
+            _isInitialized = true;
 
-        private async Task InitWebViewAsync()
-        {
             try
             {
                 var env = await CoreWebView2Environment.CreateAsync(null, WebViewDataFolder);
@@ -46,38 +41,25 @@ namespace InfoKioskApp.Views
 
                 ConfigureSecurity();
 
-                // 🔥 Прогрев WebView2
+                // 🔥 прогрев
                 WebView.Source = new Uri("about:blank");
-                WebView.Visibility = Visibility.Collapsed;
             }
             catch (COMException ex) when ((uint)ex.HResult == 0x800700AA)
             {
-                // 💥 Профиль заблокирован → восстанавливаем
                 RecoverProfile();
-                _initialized = false;
-                await InitWebViewAsync();
+                _isInitialized = false;
+                InitWebViewOnce();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка инициализации WebView2: {ex.Message}");
+                MessageBox.Show($"Ошибка WebView2: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Вызывать при нажатии кнопки "Сайт"
-        /// </summary>
         public void OpenSite()
         {
-            WebView.Visibility = Visibility.Visible;
-            WebView.Source = new Uri("https://obo-afan.gosuslugi.ru");
-        }
-
-        /// <summary>
-        /// Закрыть сайт (НЕ уничтожая WebView2)
-        /// </summary>
-        public void CloseSite()
-        {
-            WebView.Visibility = Visibility.Collapsed;
+            if (WebView.CoreWebView2 != null)
+                WebView.Source = new Uri("https://obo-afan.gosuslugi.ru");
         }
 
         private void ConfigureSecurity()
@@ -87,9 +69,6 @@ namespace InfoKioskApp.Views
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.IsZoomControlEnabled = false;
-            core.Settings.AreBrowserAcceleratorKeysEnabled = false;
-            core.Settings.IsPasswordAutosaveEnabled = false;
-            core.Settings.IsGeneralAutofillEnabled = false;
 
             core.NavigationStarting += (s, e) =>
             {
@@ -105,10 +84,7 @@ namespace InfoKioskApp.Views
                 }
             };
 
-            core.NewWindowRequested += (s, e) =>
-            {
-                e.Handled = true;
-            };
+            core.NewWindowRequested += (s, e) => e.Handled = true;
         }
 
         private static void RecoverProfile()
@@ -118,10 +94,7 @@ namespace InfoKioskApp.Views
                 if (Directory.Exists(WebViewDataFolder))
                     Directory.Delete(WebViewDataFolder, true);
             }
-            catch
-            {
-                // лог при желании
-            }
+            catch { }
         }
     }
 }
