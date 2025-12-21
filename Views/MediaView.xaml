@@ -25,76 +25,86 @@
             <StackPanel Orientation="Horizontal" x:Name="CategoryPanel" VerticalAlignment="Center" />
         </ScrollViewer>
 
-        <!-- Плитки 3×3 без прокрутки -->
+        <!-- Плитки 3×2 -->
         <Grid Grid.Row="1" Margin="0,10,0,10">
 
             <ItemsControl x:Name="PostsItemsControl">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Columns="3" Rows="3"/>
+                        <UniformGrid Columns="3" Rows="2"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
 
+                <!-- Отступы между элементами -->
                 <ItemsControl.ItemContainerStyle>
                     <Style TargetType="ContentPresenter">
                         <Setter Property="Margin" Value="14"/>
                     </Style>
                 </ItemsControl.ItemContainerStyle>
 
+                <!-- Шаблон плитки -->
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#1a1a1a"
+                        <Border Background="#1A1A1A"
             CornerRadius="14"
             Cursor="Hand"
             SnapsToDevicePixels="True"
             Effect="{DynamicResource DropShadow}">
 
-                            <Grid MouseDown="PostCard_MouseDown"
-              DataContext="{Binding}">
-
+                            <Grid MouseDown="PostCard_MouseDown">
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="220"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <!-- Фото занимает всё оставшееся -->
+                                    <RowDefinition Height="90"/>
+                                    <!-- Текстовый блок фиксированной высоты -->
                                 </Grid.RowDefinitions>
 
-                                <!-- Изображение с overlay -->
-                                <Grid Grid.Row="0" Background="#111" ClipToBounds="True">
-
+                                <!-- === КАРТИНКА === -->
+                                <Grid Grid.Row="0" ClipToBounds="True">
                                     <Image Source="{Binding CoverBitmap}"
                        Stretch="UniformToFill"
-                       StretchDirection="Both"/>
-
-                                    <!-- Нижняя тёмная подложка под названием -->
-                                    <Border Background="#AA000000"
-                        VerticalAlignment="Bottom"
-                        Padding="8,6">
-                                        <TextBlock Text="{Binding Title}"
-                               Foreground="White"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               TextWrapping="Wrap"/>
-                                    </Border>
-
+                       VerticalAlignment="Center"
+                       HorizontalAlignment="Center"/>
                                 </Grid>
 
-                                <!-- Ниже: дата и количество фото -->
-                                <StackPanel Grid.Row="1" Margin="14,10,14,14">
-                                    <TextBlock Text="{Binding Date}"
-                           FontSize="12"
-                           Foreground="#b0b0b0"/>
+                                <!-- === НИЖНИЙ ТЕКСТОВЫЙ БЛОК === -->
+                                <Border Grid.Row="1" Background="#333"  Padding="14,10,14,12"   >
 
-                                    <TextBlock Text="{Binding ImagesCount, StringFormat='Фото: {0}'}"
-                           FontSize="12"
-                           Foreground="#9aa"
-                           Margin="0,4,0,0"/>
-                                </StackPanel>
+                                    <StackPanel VerticalAlignment="Bottom" >
+
+                                        <!-- Заголовок -->
+                                        <TextBlock Text="{Binding Title}"
+                                            FontFamily="Segoe UI Emoji"
+                                            Foreground="White"
+                                            FontSize="16"
+                                            FontWeight="Bold"
+                                            TextWrapping="Wrap"
+                                            TextTrimming="CharacterEllipsis"
+                                             MaxHeight="38"/>
+                                        <!-- ровно 2 строки -->
+
+                                        <!-- Дата + Фото -->
+                                        <StackPanel Orientation="Horizontal" Margin="16">
+                                            <TextBlock Text="{Binding Date}" FontSize="12" Foreground="#b0b0b0"/>
+                                            <TextBlock  Text="{Binding ImagesCount, StringFormat='       Фото: {0}'}" FontSize="12" Foreground="#9aa"/>
+                                        </StackPanel>
+
+                                    </StackPanel>
+
+                                </Border>
+
                             </Grid>
                         </Border>
                     </DataTemplate>
 
+
+
+
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
         </Grid>
+
 
 
 
@@ -104,7 +114,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
             <Button x:Name="PrevPageBtn" Content="◀" Click="PrevPageBtn_Click" Margin="4"/>
             <TextBlock x:Name="PageInfo" VerticalAlignment="Center" Margin="8,0" Foreground="White"/>
-            <Button x:Name="NextPageBtn" Content="▶" Click="NextPageBtn_Click" Margin="4"/>
+            <Button x:Name="NextPageBtn" Content="▶" Click="NextPageBtn_Click" Margin="4" Cursor="Hand"/>
         </StackPanel>
     </Grid>
 </UserControl>

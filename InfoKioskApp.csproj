@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk.">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -33,20 +33,20 @@
   <!-- NuGet пакеты -->
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.1.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
     <PackageReference Include="MaterialDesignThemes" Version="5.3.0" />
     <PackageReference Include="MaterialDesignColors" Version="5.3.0" />
     <PackageReference Include="Microsoft-WindowsAPICodePack-Shell" Version="1.1.5" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3595.46" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.77" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="OpenXmlPowerTools" Version="4.5.3.2" />
     <PackageReference Include="QRCoder" Version="1.7.0" />
-    <PackageReference Include="SixLabors.Fonts" Version="1.0.0" />
+    <PackageReference Include="SixLabors.Fonts" Version="2.1.3" />
     <PackageReference Include="RBush" Version="4.0.0" />
-    <PackageReference Include="System.Windows.Extensions" Version="10.0.0" />
-    <PackageReference Include="WindowsAPICodePack" Version="8.0.12" />
+    <PackageReference Include="System.Windows.Extensions" Version="10.0.1" />
+    <PackageReference Include="WindowsAPICodePack" Version="8.0.14" />
     <PackageReference Include="WindowsAPICodePack-Core" Version="1.1.2" />
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
