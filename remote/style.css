@@ -567,3 +567,19 @@ li {
     .footer-link .icon {
         font-size: 1.1em;
     }
+
+
+.storage-card {
+    margin-top: 20px;
+}
+
+.storage-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 6px 0;
+    font-size: 15px;
+}
+
+.storage-row span:last-child {
+    font-weight: bold;
+}
