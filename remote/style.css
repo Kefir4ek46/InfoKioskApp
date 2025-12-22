@@ -604,3 +604,19 @@ li {
     -webkit-line-clamp: 2; /* ← сколько строк оставить */
     overflow: hidden;
 }
+
+
+.storage-card {
+    margin-top: 20px;
+}
+
+.storage-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 6px 0;
+    font-size: 15px;
+}
+
+.storage-row span:last-child {
+    font-weight: bold;
+}

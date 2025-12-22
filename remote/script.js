@@ -93,6 +93,7 @@ async function loadSettings() {
   } catch (err) {
     console.warn("loadSettings:", err);
   }
+  loadStorageInfo();
 }
 
 // ---- Categories + Posts UI ----
@@ -688,4 +689,25 @@ async function deleteCategory() {
     await loadCategoriesAndBuildUI();
     await loadPostCategorySelector();
 }
+
+
+async function loadStorageInfo() {
+    try {
+        const res = await fetch("/api/storage");
+        if (!res.ok) throw new Error("storage api error");
+
+        const data = await res.json();
+
+        document.getElementById("disk-total").textContent =
+            `${data.disk.name} — ${data.disk.total}`;
+
+        document.getElementById("disk-used").textContent = data.disk.used;
+        document.getElementById("disk-free").textContent = data.disk.free;
+        document.getElementById("data-size").textContent = data.dataFolder.size;
+
+    } catch (e) {
+        console.warn("Storage info unavailable", e);
+    }
+}
+
 

@@ -9,6 +9,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using InfoKioskApp.Models;
+using System.Runtime.InteropServices;
+
 
 namespace InfoKioskApp.Services
 {
@@ -111,6 +113,12 @@ namespace InfoKioskApp.Services
 
 
                     case "/settings/get": await HandleGetConfig(ctx); break;
+
+                    case "/api/storage":
+                        await HandleStorageInfo(ctx);
+                        break;
+
+
                     case "/download": await HandleDownload(ctx); break;
 
                     case "/list": await HandleList(ctx); break;
@@ -983,6 +991,42 @@ namespace InfoKioskApp.Services
 
 
 
+        private static async Task HandleStorageInfo(HttpListenerContext ctx)
+        {
+            try
+            {
+                var drive = SystemInfoService.GetSystemDrive();
+                long dataSize = SystemInfoService.GetDirectorySize(DataRoot);
+
+                var result = new
+                {
+                    disk = new
+                    {
+                        name = drive.Name,
+                        totalBytes = drive.TotalSize,
+                        usedBytes = drive.TotalSize - drive.AvailableFreeSpace,
+                        freeBytes = drive.AvailableFreeSpace,
+
+                        total = SystemInfoService.FormatBytes(drive.TotalSize),
+                        used = SystemInfoService.FormatBytes(drive.TotalSize - drive.AvailableFreeSpace),
+                        free = SystemInfoService.FormatBytes(drive.AvailableFreeSpace)
+                    },
+                    dataFolder = new
+                    {
+                        path = DataRoot,
+                        sizeBytes = dataSize,
+                        size = SystemInfoService.FormatBytes(dataSize)
+                    },
+                    timestamp = DateTime.Now
+                };
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(result, Formatting.Indented));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, $"Storage error: {ex.Message}", 500);
+            }
+        }
 
 
 

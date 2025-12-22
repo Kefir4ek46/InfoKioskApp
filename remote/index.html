@@ -39,11 +39,11 @@
                 <span class="icon">🗓️</span>
                 <span class="title">Календарь</span>
             </div>
-            <!-- Навигация
+            <!-- Навигация-->
             <div class="menu-item" data-tab="settings">
                   <span class="icon">⚙️</span>
                  <span class="title">Настройки</span>
-            </div> -->
+            </div> 
         </nav>
 
         <!-- ТАБ: Расписания -->
@@ -203,6 +203,33 @@
                 <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
                 <button onclick="saveSleepMode()">Сохранить</button>
             </div>
+
+            <div class="card storage-card">
+    <h3>💾 Память устройства</h3>
+
+    <div class="storage-row">
+        <span>📀 Диск:</span>
+        <span id="disk-total">—</span>
+    </div>
+
+    <div class="storage-row">
+        <span>📉 Использовано:</span>
+        <span id="disk-used">—</span>
+    </div>
+
+    <div class="storage-row">
+        <span>📈 Свободно:</span>
+        <span id="disk-free">—</span>
+    </div>
+
+    <hr>
+
+    <div class="storage-row">
+        <span>📂 Папка data:</span>
+        <span id="data-size">—</span>
+    </div>
+</div>
+
         </section>
 
     </main>
