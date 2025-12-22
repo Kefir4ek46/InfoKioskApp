@@ -1,7 +1,7 @@
 ﻿<Window x:Class="InfoKioskApp.Views.PostViewer"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:emoji="clr-namespace:Emoji.Wpf;assembly=Emoji.Wpf"
+
 
         WindowStyle="None"
         AllowsTransparency="True"
