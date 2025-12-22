@@ -25,7 +25,7 @@ namespace InfoKioskApp.Views
 
         private ObservableCollection<PostViewModel> _posts = new ObservableCollection<PostViewModel>();
         private int _page = 1;
-        private int _pageSize = 9;
+        private int _pageSize = 6;
         private int _total = 0;
         private string _currentCategory = "";
 
