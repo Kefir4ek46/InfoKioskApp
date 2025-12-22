@@ -620,3 +620,47 @@ li {
 .storage-row span:last-child {
     font-weight: bold;
 }
+
+.update-card {
+    border-left: 4px solid #3b82f6;
+}
+
+.update-versions {
+    margin-bottom: 10px;
+}
+
+.update-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: #ddd;
+}
+
+.update-actions {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+}
+
+.update-log-wrapper {
+    margin-top: 10px;
+}
+
+.update-log-title {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 4px;
+}
+
+.update-log {
+    background: #111;
+    border-radius: 6px;
+    padding: 8px;
+    height: 110px;
+    overflow-y: auto;
+    font-size: 12px;
+    font-family: monospace;
+    color: #e5e7eb;
+}
+

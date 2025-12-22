@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "InfoKioskUpdater": {
+      "commandName": "Project",
+      "commandLineArgs": "check"
+    }
+  }
+}

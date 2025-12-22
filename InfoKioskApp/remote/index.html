@@ -205,30 +205,66 @@
             </div>
 
             <div class="card storage-card">
-    <h3>💾 Память устройства</h3>
+                <h3>💾 Память устройства</h3>
 
-    <div class="storage-row">
-        <span>📀 Диск:</span>
-        <span id="disk-total">—</span>
-    </div>
+                <div class="storage-row">
+                    <span>📀 Диск:</span>
+                    <span id="disk-total">—</span>
+                </div>
 
-    <div class="storage-row">
-        <span>📉 Использовано:</span>
-        <span id="disk-used">—</span>
-    </div>
+                <div class="storage-row">
+                    <span>📉 Использовано:</span>
+                    <span id="disk-used">—</span>
+                </div>
 
-    <div class="storage-row">
-        <span>📈 Свободно:</span>
-        <span id="disk-free">—</span>
-    </div>
+                <div class="storage-row">
+                    <span>📈 Свободно:</span>
+                    <span id="disk-free">—</span>
+                </div>
 
-    <hr>
+                <hr>
 
-    <div class="storage-row">
-        <span>📂 Папка data:</span>
-        <span id="data-size">—</span>
-    </div>
-</div>
+                <div class="storage-row">
+                    <span>📂 Папка data:</span>
+                    <span id="data-size">—</span>
+                </div>
+            </div>
+
+            <div class="card update-card">
+                <h3>🔄 Обновление системы</h3>
+
+                <div class="update-versions">
+                    <div class="update-row">
+                        <span>Текущая версия:</span>
+                        <strong id="currentVersion">—</strong>
+                    </div>
+                    <div class="update-row">
+                        <span>Доступная версия:</span>
+                        <strong id="latestVersion">—</strong>
+                    </div>
+                </div>
+
+                <div class="update-actions">
+                    <button class="btn secondary" onclick="checkUpdate()">
+                        Проверить обновления
+                    </button>
+
+                    <button class="btn primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>
+                        Обновить
+                    </button>
+
+                    <button class="btn danger" onclick="rollbackUpdate()">
+                        Откат версии
+                    </button>
+                </div>
+
+                <div class="update-log-wrapper">
+                    <div class="update-log-title">Статус обновления</div>
+                    <pre id="updateLog" class="update-log">
+Ожидание действий...
+        </pre>
+                </div>
+            </div>
 
         </section>
 

@@ -1,15 +1,16 @@
-﻿using Newtonsoft.Json;
+﻿using InfoKioskApp.Models;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using InfoKioskApp.Models;
-using System.Runtime.InteropServices;
 
 
 namespace InfoKioskApp.Services
@@ -109,6 +110,12 @@ namespace InfoKioskApp.Services
                     case "/media/post/create": await HandleMediaPostCreate(ctx); break;
                     case "/media/post/delete": await HandleMediaPostDelete(ctx); break;
                     case "/media/post/updateimages": await HandleMediaPostUpdateImages(ctx); break;
+
+                    // updater
+                    case "/api/update/check": await HandleUpdateCheck(ctx); break;
+                    case "/api/update/install": await HandleUpdateInstall(ctx); break;
+                    case "/api/update/log": await HandleUpdateLog(ctx); break;
+                    case "/api/update/rollback": await HandleUpdateRollback(ctx); break;
 
 
 
@@ -970,6 +977,97 @@ namespace InfoKioskApp.Services
             await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "deleted", id }));
         }
 
+        // -------------UPDATER--------------
+        private static async Task HandleUpdateCheck(HttpListenerContext ctx)
+        {
+            string result = await RunUpdater("check");
+            await WriteJson(ctx, result);
+        }
+
+        private static async Task HandleUpdateInstall(HttpListenerContext ctx)
+        {
+            string result = await RunUpdater("update");
+            await WriteJson(ctx, result);
+        }
+
+        private static async Task HandleUpdateLog(HttpListenerContext ctx)
+        {
+            string logPath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "updater.log"
+            );
+
+            if (!File.Exists(logPath))
+            {
+                await WriteText(ctx, "Log not found", 404);
+                return;
+            }
+
+            string log = File.ReadAllText(logPath, Encoding.UTF8);
+            await WriteText(ctx, log);
+        }
+
+
+        private static async Task<string> RunUpdater(string args)
+        {
+            var exePath = Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory,
+                "InfoKioskUpdater.exe"
+            );
+
+            if (!File.Exists(exePath))
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    status = "error",
+                    message = "Updater not found"
+                });
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+            };
+
+            var process = Process.Start(psi);
+            if (process == null)
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    status = "error",
+                    message = "Failed to start updater"
+                });
+            }
+
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
+
+            process.WaitForExit();
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    status = "error",
+                    message = error
+                });
+            }
+
+            return output;
+        }
+
+
+        private static async Task HandleUpdateRollback(HttpListenerContext ctx)
+        {
+            string result = await RunUpdater("rollback");
+            await WriteJson(ctx, result);
+        }
 
 
 

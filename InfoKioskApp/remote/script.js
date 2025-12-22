@@ -711,3 +711,151 @@ async function loadStorageInfo() {
 }
 
 
+// ===============================
+// UPDATE UI
+// ===============================
+
+const updateLogEl = document.getElementById("updateLog");
+const btnInstall = document.getElementById("btnInstallUpdate");
+const currentVersionEl = document.getElementById("currentVersion");
+const latestVersionEl = document.getElementById("latestVersion");
+
+let logTimer = null;
+
+// -------------------------------
+// helpers
+// -------------------------------
+function appendUpdateLog(text) {
+    updateLogEl.textContent += "\n" + text;
+    updateLogEl.scrollTop = updateLogEl.scrollHeight;
+}
+
+function clearUpdateLog() {
+    updateLogEl.textContent = "";
+}
+
+function setInstallEnabled(enabled) {
+    btnInstall.disabled = !enabled;
+}
+
+// -------------------------------
+// LOAD STATUS (при открытии)
+// -------------------------------
+async function loadUpdateStatus() {
+    try {
+        const res = await fetch("/api/update/status");
+        const data = await res.json();
+
+        currentVersionEl.textContent = data.currentVersion || "—";
+        latestVersionEl.textContent = data.latestVersion || "—";
+
+        setInstallEnabled(data.updateAvailable === true);
+    } catch (e) {
+        appendUpdateLog("❌ Не удалось получить статус обновления");
+    }
+}
+
+// -------------------------------
+// CHECK
+// -------------------------------
+async function checkUpdate() {
+    clearUpdateLog();
+    appendUpdateLog("🔍 Проверка обновлений...");
+
+    try {
+        const res = await fetch("/api/update/check", {
+            method: "POST"
+        });
+
+        const data = await res.json();
+
+        currentVersionEl.textContent = data.currentVersion;
+        latestVersionEl.textContent = data.latestVersion;
+
+        if (data.updateAvailable) {
+            appendUpdateLog("🆕 Доступно обновление");
+            setInstallEnabled(true);
+        } else {
+            appendUpdateLog("✅ Установлена последняя версия");
+            setInstallEnabled(false);
+        }
+    } catch (e) {
+        appendUpdateLog("❌ Ошибка проверки обновлений");
+    }
+}
+
+// -------------------------------
+// INSTALL
+// -------------------------------
+async function installUpdate() {
+    clearUpdateLog();
+    appendUpdateLog("⬇ Запуск обновления...");
+
+    setInstallEnabled(false);
+    startLogPolling();
+
+    try {
+        await fetch("/api/update/install", {
+            method: "POST"
+        });
+    } catch (e) {
+        appendUpdateLog("❌ Не удалось запустить обновление");
+        stopLogPolling();
+    }
+}
+
+// -------------------------------
+// ROLLBACK
+// -------------------------------
+async function rollbackUpdate() {
+    if (!confirm("Откатить приложение к предыдущей версии?")) return;
+
+    clearUpdateLog();
+    appendUpdateLog("↩ Запуск отката версии...");
+
+    startLogPolling();
+
+    try {
+        await fetch("/api/update/rollback", {
+            method: "POST"
+        });
+    } catch (e) {
+        appendUpdateLog("❌ Не удалось запустить rollback");
+        stopLogPolling();
+    }
+}
+
+// -------------------------------
+// LOG POLLING
+// -------------------------------
+function startLogPolling() {
+    if (logTimer) return;
+
+    logTimer = setInterval(async () => {
+        try {
+            const res = await fetch("/api/update/log");
+            const text = await res.text();
+
+            updateLogEl.textContent = text;
+            updateLogEl.scrollTop = updateLogEl.scrollHeight;
+        } catch {
+            // сервер может временно упасть — молчим
+        }
+    }, 1500);
+}
+
+function stopLogPolling() {
+    if (logTimer) {
+        clearInterval(logTimer);
+        logTimer = null;
+    }
+}
+
+// -------------------------------
+// INIT
+// -------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+    loadUpdateStatus();
+});
+
+

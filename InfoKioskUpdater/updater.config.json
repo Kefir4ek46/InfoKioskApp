@@ -1,0 +1,6 @@
+﻿{
+  "RepoApiUrl": "https://api.github.com/repos/Kefir4ek46/InfoKioskApp/releases/latest",
+  "GitHubToken": "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",
+  "AppExeName": "InfoKioskApp.exe",
+  "InstallDir": "C:\\InfoKiosk"
+}
