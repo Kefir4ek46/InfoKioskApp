@@ -18,6 +18,7 @@
     <!-- !!! Оставляем включённым: WPF сам управляет XAML -->
     <EnableDefaultItems>true</EnableDefaultItems>
     <ApplicationIcon>Logo.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <!-- Ресурсы, которые нужно копировать -->

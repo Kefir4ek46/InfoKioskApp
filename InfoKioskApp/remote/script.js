@@ -744,12 +744,14 @@ function setInstallEnabled(enabled) {
 async function loadUpdateStatus() {
     try {
         const res = await fetch("/api/update/status");
-        const data = await res.json();
+        const json = await res.json();
+const data = json.data;
 
-        currentVersionEl.textContent = data.currentVersion || "—";
-        latestVersionEl.textContent = data.latestVersion || "—";
+currentVersionEl.textContent = data.currentVersion || "—";
+latestVersionEl.textContent = data.latestVersion || "—";
 
-        setInstallEnabled(data.updateAvailable === true);
+setInstallEnabled(data.updateAvailable === true);
+
     } catch (e) {
         appendUpdateLog("❌ Не удалось получить статус обновления");
     }
@@ -767,10 +769,11 @@ async function checkUpdate() {
             method: "POST"
         });
 
-        const data = await res.json();
+        const json = await res.json();
+        const data = json.data;
 
-        currentVersionEl.textContent = data.currentVersion;
-        latestVersionEl.textContent = data.latestVersion;
+        currentVersionEl.textContent = data.currentVersion || "—";
+        latestVersionEl.textContent = data.latestVersion || "—";
 
         if (data.updateAvailable) {
             appendUpdateLog("🆕 Доступно обновление");
@@ -784,6 +787,9 @@ async function checkUpdate() {
     }
 }
 
+
+
+
 // -------------------------------
 // INSTALL
 // -------------------------------
@@ -795,14 +801,22 @@ async function installUpdate() {
     startLogPolling();
 
     try {
-        await fetch("/api/update/install", {
-            method: "POST"
-        });
+        const res = await fetch("/api/update/install", { method: "POST" });
+        const json = await res.json();
+
+        if (json.ok) {
+            appendUpdateLog("✅ Обновление завершено");
+            await loadUpdateStatus(); // обновим версии
+        } else {
+            appendUpdateLog("❌ Ошибка обновления: " + json.msg);
+        }
     } catch (e) {
         appendUpdateLog("❌ Не удалось запустить обновление");
-        stopLogPolling();
+    } finally {
+        stopLogPolling(); // 🔥 ВАЖНО
     }
 }
+
 
 // -------------------------------
 // ROLLBACK
@@ -816,14 +830,87 @@ async function rollbackUpdate() {
     startLogPolling();
 
     try {
-        await fetch("/api/update/rollback", {
-            method: "POST"
-        });
+        const res = await fetch("/api/update/rollback", { method: "POST" });
+        const json = await res.json();
+
+        if (json.ok) {
+            appendUpdateLog("✅ Откат завершён");
+            await loadUpdateStatus();
+        } else {
+            appendUpdateLog("❌ Ошибка отката: " + json.msg);
+        }
     } catch (e) {
         appendUpdateLog("❌ Не удалось запустить rollback");
-        stopLogPolling();
+    } finally {
+        stopLogPolling(); // 🔥
     }
 }
+
+
+// -------------------------------
+// LOG POLLING
+// -------------------------------
+function startLogPolling() {
+    if (logTimer) return;
+
+    logTimer = setInterval(async () => {
+        try {
+            const res = await fetch("/api/update/log");
+            const text = await res.text();
+
+            updateLogEl.textContent = text;
+            updateLogEl.scrollTop = updateLogEl.scrollHeight;
+        } catch {
+            // сервер может временно упасть — молчим
+        }
+    }, 1500);
+}
+
+function stopLogPolling() {
+    if (logTimer) {
+        clearInterval(logTimer);
+        logTimer = null;
+    }
+}
+
+// -------------------------------
+// INIT
+// -------------------------------
+document.addEventListener("DOMContentLoaded", () => {
+    loadUpdateStatus();
+});
+
+
+
+
+// -------------------------------
+// ROLLBACK
+// -------------------------------
+async function rollbackUpdate() {
+    if (!confirm("Откатить приложение к предыдущей версии?")) return;
+
+    clearUpdateLog();
+    appendUpdateLog("↩ Запуск отката версии...");
+
+    startLogPolling();
+
+    try {
+        const res = await fetch("/api/update/rollback", { method: "POST" });
+        const json = await res.json();
+
+        if (json.ok) {
+            appendUpdateLog("✅ Откат завершён");
+            await loadUpdateStatus();
+        } else {
+            appendUpdateLog("❌ Ошибка отката: " + json.msg);
+        }
+    } catch (e) {
+        appendUpdateLog("❌ Не удалось запустить rollback");
+    } finally {
+        stopLogPolling(); // 🔥
+    }
+}
+
 
 // -------------------------------
 // LOG POLLING

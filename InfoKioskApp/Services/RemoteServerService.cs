@@ -116,6 +116,10 @@ namespace InfoKioskApp.Services
                     case "/api/update/install": await HandleUpdateInstall(ctx); break;
                     case "/api/update/log": await HandleUpdateLog(ctx); break;
                     case "/api/update/rollback": await HandleUpdateRollback(ctx); break;
+                    case "/api/update/status": await HandleUpdateStatus(ctx); break;
+
+                    
+
 
 
 
@@ -1067,6 +1071,49 @@ namespace InfoKioskApp.Services
         {
             string result = await RunUpdater("rollback");
             await WriteJson(ctx, result);
+        }
+
+        private static async Task HandleUpdateStatus(HttpListenerContext ctx)
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+
+                string currentVersionPath = Path.Combine(baseDir, "version.txt");
+                string latestVersionPath = Path.Combine(baseDir, "latest_version.txt");
+
+                string currentVersion = File.Exists(currentVersionPath)
+                    ? File.ReadAllText(currentVersionPath).Trim()
+                    : "0.0.0";
+
+                string latestVersion = File.Exists(latestVersionPath)
+                    ? File.ReadAllText(latestVersionPath).Trim()
+                    : "";
+
+                bool updateAvailable =
+                    !string.IsNullOrEmpty(latestVersion) &&
+                    latestVersion != currentVersion;
+
+                var payload = new
+                {
+                    currentVersion,
+                    latestVersion,
+                    updateAvailable
+                };
+
+                string json = JsonConvert.SerializeObject(payload);
+
+                await WriteJson(ctx, json);
+            }
+            catch (Exception ex)
+            {
+                string errorJson = JsonConvert.SerializeObject(new
+                {
+                    error = ex.Message
+                });
+
+                await WriteJson(ctx, errorJson, 500);
+            }
         }
 
 
