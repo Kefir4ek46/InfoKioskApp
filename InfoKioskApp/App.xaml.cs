@@ -1,10 +1,18 @@
-﻿using System.Windows;
+﻿using InfoKioskApp.Services;
+using System.Windows;
 using System.Windows.Media;
 
 namespace InfoKioskApp
 {
     public partial class App : Application
     {
+
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+            ConfigService.LoadConfig();
+        }
+
         public static void SetTheme(string theme)
         {
             ResourceDictionary newTheme = [];

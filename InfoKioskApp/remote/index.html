@@ -41,9 +41,9 @@
             </div>
             <!-- Навигация-->
             <div class="menu-item" data-tab="settings">
-                  <span class="icon">⚙️</span>
-                 <span class="title">Настройки</span>
-            </div> 
+                <span class="icon">⚙️</span>
+                <span class="title">Настройки</span>
+            </div>
         </nav>
 
         <!-- ТАБ: Расписания -->
@@ -94,7 +94,7 @@
                 <h3>📁 Список файлов</h3>
                 <select id="file-category" onchange="loadFilesCategory()">
                     <option value="docs">Документы</option>
-                    
+
                 </select>
                 <button onclick="loadFilesCategory()">🔄</button>
                 <ul id="files-list"></ul>
@@ -187,86 +187,225 @@
 
         <!-- ТАБ: Настройки -->
         <section id="tab-settings" class="tab-content">
-
             <h2>⚙ Настройки</h2>
 
-            <div class="card">
-                <h3>Автозапуск</h3>
-                <label class="switch">
-                    <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="card">
-                <h3>Спящий режим</h3>
-                <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
-                <button onclick="saveSleepMode()">Сохранить</button>
-            </div>
 
             <div class="card storage-card">
-                <h3>💾 Память устройства</h3>
+                <details class="settings-group" open>
+                    <summary>💾 Память устройства</summary>
 
-                <div class="storage-row">
-                    <span>📀 Диск:</span>
-                    <span id="disk-total">—</span>
+                    <div class="storage-row">
+                        <span>📀 Диск:</span>
+                        <strong id="disk-total">—</strong>
+                    </div>
+
+                    <div class="storage-row">
+                        <span>📉 Использовано:</span>
+                        <strong id="disk-used">—</strong>
+                    </div>
+
+                    <div class="storage-row">
+                        <span>📈 Свободно:</span>
+                        <strong id="disk-free">—</strong>
+                    </div>
+
+                    <hr>
+
+                    <div class="storage-row">
+                        <span>📂 Папка data:</span>
+                        <strong id="data-size">—</strong>
+                    </div>
+                </details>
+            </div>
+
+            <div class="settings-grid">
+                <div class="card">
+
+
+                    <details open class="settings-group">
+
+
+
+
+                        <summary>🖥 Интерфейс киоска</summary>
+
+                        <!-- ОСНОВНОЕ -->
+                        <div class="settings-section">
+                            <h4>🌐 Основное</h4>
+
+                            <label>Сайт школы</label>
+                            <input id="cfg-website-url" type="text" placeholder="https://school.ru">
+                        </div>
+
+                        <!-- ТЕМА -->
+                        <div class="settings-section">
+                            <h4>🎨 Тема</h4>
+
+                            <div class="grid-2">
+                                <div>
+                                    <label>Режим</label>
+                                    <select id="cfg-theme">
+                                        <option value="dark">Тёмная</option>
+                                        <option value="light">Светлая</option>
+                                        <option value="auto">Авто</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label>Шрифт</label>
+                                    <select id="cfg-font-family">
+                                        <option value="Inter">Inter</option>
+                                        <option value="Segoe UI">Segoe UI</option>
+                                        <option value="Roboto">Roboto</option>
+                                        <option value="Arial">Arial</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label>Размер шрифта</label>
+                                    <select id="cfg-font-size">
+                                        <option value="small">Маленький</option>
+                                        <option value="normal">Обычный</option>
+                                        <option value="large">Крупный</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ЦВЕТА -->
+                        <div class="settings-section">
+                            <h4>🎨 Цвета</h4>
+
+                            <div class="grid-2">
+                                <div class="color-row">
+                                    <label>Фон</label>
+                                    <input type="color" id="cfg-color-bg" value="#0f172a">
+                                </div>
+
+                                <div class="color-row">
+                                    <label>Текст</label>
+                                    <input type="color" id="cfg-color-text" value="#e5e7eb">
+                                </div>
+
+                                <div class="color-row">
+                                    <label>Кнопки </label>
+                                    <input type="color" id="cfg-color-primary" value="#2563eb">
+                                </div>
+
+
+
+                                <div class="color-row">
+                                    <label>Карточки</label>
+                                    <input type="color" id="cfg-color-card" value="#020617">
+                                </div>
+                            </div>
+                        </div>
+
+                    </details>
                 </div>
 
-                <div class="storage-row">
-                    <span>📉 Использовано:</span>
-                    <span id="disk-used">—</span>
+
+                <div class="card">
+                    <details open>
+                        <summary>☁ Погода</summary>
+
+                        <label>API-ключ</label>
+                        <input id="cfg-weather-api" type="password">
+
+                        <small class="hint">
+                            openweathermap.org → API keys
+                        </small>
+
+                        <div class="grid-2">
+                            <div>
+                                <label>Город</label>
+                                <input id="cfg-weather-city" type="text">
+                            </div>
+
+                            <div>
+                                <label>Широта</label>
+                                <input id="cfg-weather-lat" type="number" step="0.000001">
+                            </div>
+
+                            <div>
+                                <label>Долгота</label>
+                                <input id="cfg-weather-lon" type="number" step="0.000001">
+                            </div>
+                        </div>
+                    </details>
                 </div>
 
-                <div class="storage-row">
-                    <span>📈 Свободно:</span>
-                    <span id="disk-free">—</span>
+                <div class="card">
+                    <details>
+                        <summary>💤 Спящий режим</summary>
+
+                        <label class="switch">
+                            <input type="checkbox" id="cfg-sleep-enabled">
+                            <span class="slider"></span>
+                            Включить
+                        </label>
+
+                        <label>Время перехода</label>
+                        <input id="cfg-sleep-time" type="time">
+                    </details>
                 </div>
 
-                <hr>
+                <div class="card update-card">
+                    <details class="settings-group" open>
+                        <summary>🔄 Обновление системы</summary>
 
-                <div class="storage-row">
-                    <span>📂 Папка data:</span>
-                    <span id="data-size">—</span>
+                        <div class="update-versions">
+                            <div class="update-row">
+                                <span>Текущая версия:</span>
+                                <strong id="currentVersion">—</strong>
+                            </div>
+                            <div class="update-row">
+                                <span>Доступная версия:</span>
+                                <strong id="latestVersion">—</strong>
+                            </div>
+                        </div>
+
+                        <div class="update-actions">
+                            <button class="btn secondary" onclick="checkUpdate()">Проверить</button>
+                            <button class="btn primary" id="btnInstallUpdate" disabled onclick="installUpdate()">Обновить</button>
+                            <button class="btn danger" onclick="rollbackUpdate()">Откат</button>
+                        </div>
+
+                        <div class="update-log-wrapper">
+                            <div class="update-log-title">Статус обновления</div>
+                            <pre id="updateLog">Ожидание действий…</pre>
+                        </div>
+                    </details>
+                </div>
+
+
+                <div class="card danger">
+                    <h3>🔐 PIN администратора</h3>
+
+                    <div class="grid-2">
+                        <div>
+                            <label>Старый</label>
+                            <input id="old-pin" type="password">
+                        </div>
+
+                        <div>
+                            <label>Новый</label>
+                            <input id="new-pin" type="password">
+                        </div>
+
+                        <div>
+                            <label>Подтверждение</label>
+                            <input id="new-pin-confirm" type="password">
+                        </div>
+                    </div>
+
+                    <button class="btn danger" onclick="changePin()">Сменить PIN</button>
                 </div>
             </div>
 
-            <div class="card update-card">
-                <h3>🔄 Обновление системы</h3>
-
-                <div class="update-versions">
-                    <div class="update-row">
-                        <span>Текущая версия:</span>
-                        <strong id="currentVersion">—</strong>
-                    </div>
-                    <div class="update-row">
-                        <span>Доступная версия:</span>
-                        <strong id="latestVersion">—</strong>
-                    </div>
-                </div>
-
-                <div class="update-actions">
-                    <button class="btn secondary" onclick="checkUpdate()">
-                        Проверить обновления
-                    </button>
-
-                    <button class="btn primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>
-                        Обновить
-                    </button>
-
-                    <button class="btn danger" onclick="rollbackUpdate()">
-                        Откат версии
-                    </button>
-                </div>
-
-                <div class="update-log-wrapper">
-                    <div class="update-log-title">Статус обновления</div>
-                    <pre id="updateLog" class="update-log">
-Ожидание действий...
-        </pre>
-                </div>
-            </div>
-
+            <button class="btn primary" onclick="saveConfig()">💾 Сохранить настройки</button>
         </section>
+
 
     </main>
 

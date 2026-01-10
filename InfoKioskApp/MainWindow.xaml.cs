@@ -23,7 +23,7 @@ namespace InfoKioskApp
         private DispatcherTimer _clockTimer;
         private DispatcherTimer _lessonTimer;
         private List<LessonTime> _bellSchedule;
-
+         
         private SchoolWebsiteView? _schoolWebsiteView;
         private DocumentsView? _documentsView;
         private MediaView? _mediaView;
@@ -40,7 +40,9 @@ namespace InfoKioskApp
             ApplyInterfaceSettings();
             _ = UpdateWeatherAsync();
             StartWeatherTimer();
-            
+            ConfigService.LoadConfig();
+
+
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -287,10 +289,13 @@ namespace InfoKioskApp
         private void SchoolSite_Click(object sender, RoutedEventArgs e)
         {
             _schoolWebsiteView ??= new SchoolWebsiteView();
-            ContentArea.Content = _schoolWebsiteView;
 
-            _schoolWebsiteView.OpenSite(); // 🔥 теперь прогрев работает
+            // 🔄 сброс на главную страницу сайта
+            _schoolWebsiteView.OpenHome();
+
+            ContentArea.Content = _schoolWebsiteView;
         }
+
 
 
 

@@ -9,8 +9,6 @@
         <TabItem Header="⚙ Настройки сервера" Background="Gray" Foreground="Black">
             <local:RemoteSettingsView/>
         </TabItem>
-        <TabItem Header="🗂 Контент и календарь" Background="Gray" Foreground="Black">
-            <local:RemoteContentView/>
-        </TabItem>
+        
     </TabControl>
 </UserControl>

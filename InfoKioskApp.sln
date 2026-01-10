@@ -4,6 +4,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 18.1.11312.151
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfoKioskApp", "InfoKioskApp\InfoKioskApp.csproj", "{5E1C8FCC-04AB-AC8A-1FCB-E96AB6A1AE20}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E04573F8-DEF3-A766-73DD-2CEA76ED736B} = {E04573F8-DEF3-A766-73DD-2CEA76ED736B}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfoKioskUpdater", "InfoKioskUpdater\InfoKioskUpdater.csproj", "{E04573F8-DEF3-A766-73DD-2CEA76ED736B}"
 EndProject
