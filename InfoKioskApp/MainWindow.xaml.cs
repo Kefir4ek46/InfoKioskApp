@@ -262,6 +262,11 @@ namespace InfoKioskApp
             _calendarView ??= new CalendarView();
             ContentArea.Content = _calendarView;
         }
+        private void Canteen_Click(object sender, RoutedEventArgs e)
+        {
+            ContentArea.Content = new CanteenMenuView();
+        }
+
 
 
         private void Documents_Click(object sender, RoutedEventArgs e)
