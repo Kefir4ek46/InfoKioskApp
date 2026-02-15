@@ -147,7 +147,12 @@ namespace InfoKioskApp.Views
         private async Task LoadMenuForDate(DateTime date)
         {
             StatusText.Text = "Загрузка...";
-            MenuGrid.ItemsSource = null;
+
+            BreakfastPanel.Children.Clear();
+            Breakfast2Panel.Children.Clear();
+            LunchPanel.Children.Clear();
+
+            DateText.Text = $"Меню на {date:dd.MM.yyyy}";
 
             var filePath = await EnsureMenuFileExists(date);
 
@@ -157,50 +162,187 @@ namespace InfoKioskApp.Views
                 return;
             }
 
-            var table = LoadExcel(filePath);
-            MenuGrid.ItemsSource = table.DefaultView;
+            
+            ParseAndRenderExcel(filePath);
+
             StatusText.Text = "";
+
         }
+
 
         #endregion
 
         #region Парсинг Excel
 
-        private DataTable LoadExcel(string path)
+        private void ParseAndRenderExcel(string path)
         {
-            var table = new DataTable();
-
             using var workbook = new XLWorkbook(path);
-            var worksheet = workbook.Worksheet(1);
+            var sheet = workbook.Worksheet(1);
+            bool breakfastHeaderAdded = false;
+            bool breakfast2HeaderAdded = false;
+            bool lunchHeaderAdded = false;
 
-            bool firstRow = true;
 
-            foreach (var row in worksheet.RowsUsed())
+            string currentMeal = "";
+
+            foreach (var row in sheet.RowsUsed().Skip(1))
             {
-                if (firstRow)
+                var mealCell = row.Cell(1).GetString().Trim();
+
+                if (!string.IsNullOrWhiteSpace(mealCell))
+                    currentMeal = mealCell;
+
+                var section = row.Cell(2).GetString();
+                var recipe = row.Cell(3).GetString();
+                var dish = row.Cell(4).GetString();
+                var output = row.Cell(5).GetString();
+                var price = row.Cell(6).GetString();
+                var calories = row.Cell(7).GetString();
+                var proteins = row.Cell(8).GetString();
+                var fats = row.Cell(9).GetString();
+                var carbs = row.Cell(10).GetString();
+
+                if (string.IsNullOrWhiteSpace(dish))
+                    continue;
+
+                var rowGrid = CreateMenuRow(section, recipe, dish, output, price, calories, proteins, fats, carbs);
+
+                switch (currentMeal.ToLower())
                 {
-                    foreach (var cell in row.Cells())
-                        table.Columns.Add(cell.Value.ToString());
+                    case "завтрак":
+                        if (!breakfastHeaderAdded)
+                        {
+                            BreakfastPanel.Children.Add(CreateHeaderRow());
+                            breakfastHeaderAdded = true;
+                        }
+                        BreakfastPanel.Children.Add(rowGrid);
+                        break;
 
-                    firstRow = false;
+                    case "завтрак 2":
+                        if (!breakfast2HeaderAdded)
+                        {
+                            Breakfast2Panel.Children.Add(CreateHeaderRow());
+                            breakfast2HeaderAdded = true;
+                        }
+                        Breakfast2Panel.Children.Add(rowGrid);
+                        break;
+
+                    case "обед":
+                        if (!lunchHeaderAdded)
+                        {
+                            LunchPanel.Children.Add(CreateHeaderRow());
+                            lunchHeaderAdded = true;
+                        }
+                        LunchPanel.Children.Add(rowGrid);
+                        break;
                 }
-                else
-                {
-                    var dataRow = table.NewRow();
-                    int i = 0;
 
-                    foreach (var cell in row.Cells(1, table.Columns.Count))
-                    {
-                        dataRow[i++] = cell.Value.ToString();
-                    }
-
-                    table.Rows.Add(dataRow);
-                }
             }
-
-            return table;
         }
 
         #endregion
+
+
+        private Grid CreateHeaderRow()
+        {
+            var grid = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromRgb(58, 58, 58)),
+                Height = 40,
+                Margin = new Thickness(0, 10, 0, 5)
+            };
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+
+            AddHeaderCell(grid, "Раздел", 0);
+            AddHeaderCell(grid, "№рец.", 1);
+            AddHeaderCell(grid, "Блюдо", 2);
+            AddHeaderCell(grid, "Выход,г", 3);
+            AddHeaderCell(grid, "Цена", 4);
+            AddHeaderCell(grid, "Ккал", 5);
+            AddHeaderCell(grid, "Белки", 6);
+            AddHeaderCell(grid, "Жиры", 7);
+            AddHeaderCell(grid, "Углеводы", 8);
+
+            return grid;
+        }
+
+        private void AddHeaderCell(Grid grid, string text, int column)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.Bold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 5, 0),
+                FontSize = 14
+            };
+
+            Grid.SetColumn(tb, column);
+            grid.Children.Add(tb);
+        }
+
+
+
+        private Grid CreateMenuRow(string section, string recipe, string dish,
+                           string output, string price,
+                           string calories, string proteins,
+                           string fats, string carbs)
+        {
+            var grid = new Grid
+            {
+                Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
+                Margin = new Thickness(0, 2, 0, 2),
+                Height = 40
+            };
+
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+
+            AddCell(grid, section, 0);
+            AddCell(grid, recipe, 1);
+            AddCell(grid, dish, 2);
+            AddCell(grid, output, 3);
+            AddCell(grid, price, 4);
+            AddCell(grid, calories, 5);
+            AddCell(grid, proteins, 6);
+            AddCell(grid, fats, 7);
+            AddCell(grid, carbs, 8);
+
+            return grid;
+        }
+
+        private void AddCell(Grid grid, string text, int column)
+        {
+            var tb = new TextBlock
+            {
+                Text = text,
+                Foreground = Brushes.White,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(5, 0, 5, 0),
+                FontSize = 14
+            };
+
+            Grid.SetColumn(tb, column);
+            grid.Children.Add(tb);
+        }
+
+
     }
 }

@@ -51,6 +51,14 @@
         </Style>
 
 
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="0,30,0,10"/>
+        </Style>
+
+
         <!-- Темный DataGrid -->
         <Style TargetType="DataGrid">
             <Setter Property="Background" Value="#2A2A2A"/>
@@ -126,19 +134,52 @@
 
         <!-- Таблица -->
         <Border Grid.Row="2"
-                Background="#2A2A2A"
-                CornerRadius="12"
-                BorderBrush="#3A3A3A"
-                BorderThickness="1"
-                Padding="10">
+        Background="#2A2A2A"
+        CornerRadius="12"
+        BorderBrush="#3A3A3A"
+        BorderThickness="1"
+        Padding="10">
 
-            <DataGrid x:Name="MenuGrid"
-                      AutoGenerateColumns="True"
-                      IsReadOnly="True"
-                      CanUserAddRows="False"
-                      VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Auto"/>
+            <Grid>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Дата -->
+                <TextBlock x:Name="DateText"
+                   Grid.Row="0"
+                   FontSize="18"
+                   Foreground="Gray"
+                   Margin="0,0,0,15"/>
+
+                <!-- Скролл -->
+                <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto">
+
+                    <StackPanel Margin="20">
+
+                        <TextBlock Text="Завтрак"
+                           Style="{StaticResource SectionHeaderStyle}"/>
+                        <StackPanel x:Name="BreakfastPanel"/>
+
+                        <TextBlock Text="Завтрак 2"
+                           Style="{StaticResource SectionHeaderStyle}"/>
+                        <StackPanel x:Name="Breakfast2Panel"/>
+
+                        <TextBlock Text="Обед"
+                           Style="{StaticResource SectionHeaderStyle}"/>
+                        <StackPanel x:Name="LunchPanel"/>
+
+                    </StackPanel>
+
+                </ScrollViewer>
+
+            </Grid>
+
         </Border>
+
 
     </Grid>
 </UserControl>
