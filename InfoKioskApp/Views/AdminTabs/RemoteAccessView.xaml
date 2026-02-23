@@ -2,15 +2,16 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:InfoKioskApp.Views.AdminTabs"
+             Background="#20222A">
 
-             Background="#1E1E1E">
-
-    <TabControl Background="#1E1E1E" Foreground="White">
-        <TabItem Header="⚙ Настройки сервера" Background="Gray" Foreground="Black">
-            <local:RemoteSettingsView/>
-        </TabItem>
-        <TabItem Header="🗂 Контент и календарь" Background="Gray" Foreground="Black">
-            <local:RemoteContentView/>
-        </TabItem>
-    </TabControl>
+    <Border Background="#262933" CornerRadius="12" Padding="12" Margin="16" BorderBrush="#343848" BorderThickness="1">
+        <TabControl Background="#262933" Foreground="White" BorderThickness="0">
+            <TabItem Header="⚙ Настройки сервера">
+                <local:RemoteSettingsView/>
+            </TabItem>
+            <TabItem Header="🗂 Контент и календарь">
+                <local:RemoteContentView/>
+            </TabItem>
+        </TabControl>
+    </Border>
 </UserControl>

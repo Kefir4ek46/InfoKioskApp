@@ -5,9 +5,9 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="900"
-             Background="#1C1C1C">
+             Background="#20222A">
 
-    <Border CornerRadius="12" Background="#262626" Padding="20" Margin="20" BorderBrush="#333" BorderThickness="1">
+    <Border CornerRadius="12" Background="#262933" Padding="20" Margin="16" BorderBrush="#343848" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -15,32 +15,27 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Заголовок -->
-            <TextBlock Text="Настройки расписания звонков"
-                       FontSize="22"
-                       Foreground="White"
-                       FontWeight="Bold"
-                       Margin="0,0,0,15"/>
+            <TextBlock Text="Настройки расписания звонков" FontSize="22" Foreground="White" FontWeight="Bold" Margin="0,0,0,14"/>
 
-            <!-- Таблица звонков -->
             <DataGrid x:Name="BellsGrid"
                       Grid.Row="1"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"
                       HeadersVisibility="Column"
-                      Background="#2E2E2E"
+                      Background="#1F2129"
                       Foreground="White"
-                      RowBackground="#3A3A3A"
-                      AlternatingRowBackground="#353535"
-                      BorderThickness="0"
+                      RowBackground="#1C1F28"
+                      AlternatingRowBackground="#171A23"
+                      BorderBrush="#343848"
+                      BorderThickness="1"
                       RowHeight="32"
-                      GridLinesVisibility="None"
-                      SelectionMode="Single"
-                      HorizontalGridLinesBrush="#444"
-                      VerticalGridLinesBrush="#444">
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#343848"
+                      VerticalGridLinesBrush="#343848"
+                      SelectionMode="Single">
                 <DataGrid.Resources>
                     <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3E7DD1"/>
-                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#2E2E2E"/>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#1F2129"/>
                 </DataGrid.Resources>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="№" Binding="{Binding Number}" Width="50" IsReadOnly="True"/>
@@ -50,30 +45,27 @@
                 </DataGrid.Columns>
             </DataGrid>
 
-            <!-- Нижняя панель -->
-            <DockPanel Grid.Row="2" Margin="0,15,0,0">
-                <!-- Левая часть: выбор параметров -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center" Margin="10">
-                    <TextBlock Text="Начало:" Foreground="White" VerticalAlignment="Center"/>
-                    <TextBox x:Name="StartTimeBox" Text="08:00" FontSize="16" VerticalAlignment="Center" Background="#ff3a3a3a" Foreground="White" Width="60" Margin="0,0,10,0"/>
+            <DockPanel Grid.Row="2" Margin="0,14,0,0" LastChildFill="False">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="Начало:" Foreground="#DDE3F1" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBox x:Name="StartTimeBox" Text="08:00" FontSize="14" VerticalAlignment="Center" Background="#1F2129" Foreground="White" BorderBrush="#343848" BorderThickness="1" Width="70" Height="32" Padding="8,4" Margin="0,0,14,0"/>
 
-                    <TextBlock Text="Длительность урока:" Foreground="White" VerticalAlignment="Center"/>
-                    <ComboBox x:Name="LessonDurationCombo" Width="70" Foreground="Black" SelectedIndex="3">
-                        <ComboBoxItem Content="30" />
-                        <ComboBoxItem Content="35" />
-                        <ComboBoxItem Content="40" />
+                    <TextBlock Text="Длительность урока:" Foreground="#DDE3F1" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="LessonDurationCombo" Width="74" Height="32" SelectedIndex="3">
+                        <ComboBoxItem Content="30"/>
+                        <ComboBoxItem Content="35"/>
+                        <ComboBoxItem Content="40"/>
                         <ComboBoxItem Content="45"/>
                         <ComboBoxItem Content="50"/>
                     </ComboBox>
 
-                    <Button Content="Пересчитать" Click="Recalculate_Click" Background="#444" Foreground="White" Margin="10,0,0,0"/>
+                    <Button Content="Пересчитать" Click="Recalculate_Click" Height="32" Background="#4A4F5F" Foreground="White" BorderThickness="0" Margin="12,0,0,0" Padding="12,0"/>
                 </StackPanel>
 
-                <!-- Правая часть: действия -->
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="10">
-                    <Button Content="Добавить" Click="AddBell_Click" Width="100" Height="32" Background="Green" Foreground="White"/>
-                    <Button Content="Удалить" Click="RemoveBell_Click" Width="100" Height="32" Background="Red" Foreground="White"/>
-                    <Button Content="💾 Сохранить" Click="SaveBells_Click" Width="120" Height="32" Background="#2A82DA" Foreground="White"/>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <Button Content="Добавить" Click="AddBell_Click" Width="100" Height="32" Background="#2D9A56" Foreground="White" BorderThickness="0" Margin="0,0,8,0"/>
+                    <Button Content="Удалить" Click="RemoveBell_Click" Width="100" Height="32" Background="#C44747" Foreground="White" BorderThickness="0" Margin="0,0,8,0"/>
+                    <Button Content="💾 Сохранить" Click="SaveBells_Click" Width="120" Height="32" Background="#3A6DF0" Foreground="White" BorderThickness="0"/>
                 </StackPanel>
             </DockPanel>
         </Grid>
