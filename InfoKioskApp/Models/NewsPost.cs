@@ -13,6 +13,8 @@ namespace InfoKioskApp.Models
         public string Status { get; set; } = "pending"; // pending/published/rejected
         public string? VideoUrl { get; set; }
         public string? VideoFile { get; set; }
+        public int? VideoWidth { get; set; }
+        public int? VideoHeight { get; set; }
         public List<string> PhotoFiles { get; set; } = new();
         public DateTime? ModeratedAt { get; set; }
         public string? RejectReason { get; set; }

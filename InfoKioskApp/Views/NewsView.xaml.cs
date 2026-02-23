@@ -180,7 +180,11 @@ namespace InfoKioskApp.Views
             if (!string.IsNullOrWhiteSpace(post.VideoFile))
             {
                 var v = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", Path.GetFileName(post.VideoFile));
-                if (File.Exists(v)) _overlayMedia.Add(new NewsMediaItem { Type = "video", Path = v });
+                if (File.Exists(v))
+                {
+                    bool expectedPortrait = (post.VideoHeight ?? 0) > (post.VideoWidth ?? 0);
+                    _overlayMedia.Add(new NewsMediaItem { Type = "video", Path = v, ExpectedPortrait = expectedPortrait });
+                }
             }
 
             foreach (var photo in (post.PhotoFiles ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(Path.GetFileName).Distinct())
@@ -204,6 +208,20 @@ namespace InfoKioskApp.Views
             catch { }
 
             _activeOverlayMediaElement = null;
+        }
+
+        private static int CalculateAutoRotation(NewsMediaItem item, MediaElement media)
+        {
+            if (!item.IsVideo || !item.ExpectedPortrait)
+                return 0;
+
+            // Если редактор отправил видео как "вертикальное", а MediaElement отдает
+            // горизонтальные NaturalVideoWidth/Height (типично при игнорировании rotation metadata),
+            // поворачиваем автоматически на 90 градусов.
+            if (media.NaturalVideoWidth > media.NaturalVideoHeight)
+                return 90;
+
+            return 0;
         }
 
         private void RenderOverlayMedia()
@@ -246,10 +264,17 @@ namespace InfoKioskApp.Views
                     UnloadedBehavior = MediaState.Stop,
                     Stretch = Stretch.Uniform,
                     Height = 480,
-                    RenderTransformOrigin = new Point(0.5, 0.5),
-                    RenderTransform = new RotateTransform(_overlayRotation)
+                    RenderTransformOrigin = new Point(0.5, 0.5)
                 };
 
+                int autoRotation = 0;
+                media.MediaOpened += (_, __) =>
+                {
+                    autoRotation = CalculateAutoRotation(item, media);
+                    media.RenderTransform = new RotateTransform((_overlayRotation + autoRotation) % 360);
+                };
+
+                media.RenderTransform = new RotateTransform((_overlayRotation + autoRotation) % 360);
                 _activeOverlayMediaElement = media;
                 wrap.Children.Add(media);
                 var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
@@ -292,6 +317,8 @@ namespace InfoKioskApp.Views
         {
             public string Type { get; set; } = "photo";
             public string Path { get; set; } = "";
+            public bool ExpectedPortrait { get; set; }
+            public bool IsVideo => Type == "video";
         }
     }
 }

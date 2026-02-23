@@ -75,6 +75,36 @@ async function uploadOneFile(file) {
   return file.name;
 }
 
+
+async function readVideoSize(file) {
+  return await new Promise((resolve) => {
+    try {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.playsInline = true;
+
+      video.onloadedmetadata = () => {
+        const result = {
+          videoWidth: Number(video.videoWidth || 0),
+          videoHeight: Number(video.videoHeight || 0)
+        };
+        URL.revokeObjectURL(video.src);
+        resolve(result);
+      };
+
+      video.onerror = () => {
+        if (video.src) URL.revokeObjectURL(video.src);
+        resolve({ videoWidth: 0, videoHeight: 0 });
+      };
+
+      video.src = URL.createObjectURL(file);
+    } catch {
+      resolve({ videoWidth: 0, videoHeight: 0 });
+    }
+  });
+}
+
 async function submitNews() {
   if (!editorToken) return alert("Сначала войдите");
 
@@ -88,8 +118,16 @@ async function submitNews() {
 
   try {
     let videoFile = "";
+    let videoWidth = 0;
+    let videoHeight = 0;
     const video = videoInput.files?.[0];
-    if (video) videoFile = await uploadOneFile(video);
+    if (video)
+    {
+      const dims = await readVideoSize(video);
+      videoWidth = dims.videoWidth || 0;
+      videoHeight = dims.videoHeight || 0;
+      videoFile = await uploadOneFile(video);
+    }
 
     const photoFiles = [];
     for (const image of Array.from(photosInput.files || [])) {
@@ -97,7 +135,7 @@ async function submitNews() {
       photoFiles.push(uploaded);
     }
 
-    const payload = { title, content, authorLogin: editorLogin, videoUrl, videoFile, photoFiles };
+    const payload = { title, content, authorLogin: editorLogin, videoUrl, videoFile, photoFiles, videoWidth, videoHeight };
     const res = await fetch(`${api}/news/editor/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
