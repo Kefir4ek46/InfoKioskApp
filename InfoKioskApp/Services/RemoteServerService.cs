@@ -1,5 +1,6 @@
 ﻿using InfoKioskApp.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -1375,19 +1376,21 @@ namespace InfoKioskApp.Services
 
         private static async Task<string> RunUpdater(string args)
         {
-            var exePath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "InfoKioskUpdater.exe"
-            );
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var exePath = Path.Combine(baseDir, "InfoKioskUpdater.exe");
 
             if (!File.Exists(exePath))
             {
                 return JsonConvert.SerializeObject(new
                 {
-                    status = "error",
-                    message = "Updater not found"
+                    ok = false,
+                    action = args,
+                    message = "Updater not found",
+                    data = new { baseDir, exePath }
                 });
             }
+
+            NormalizeUpdaterConfig(baseDir);
 
             var psi = new ProcessStartInfo
             {
@@ -1397,7 +1400,7 @@ namespace InfoKioskApp.Services
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+                WorkingDirectory = baseDir
             };
 
             var process = Process.Start(psi);
@@ -1405,8 +1408,10 @@ namespace InfoKioskApp.Services
             {
                 return JsonConvert.SerializeObject(new
                 {
-                    status = "error",
-                    message = "Failed to start updater"
+                    ok = false,
+                    action = args,
+                    message = "Failed to start updater",
+                    data = new { baseDir, exePath }
                 });
             }
 
@@ -1419,16 +1424,51 @@ namespace InfoKioskApp.Services
             {
                 return JsonConvert.SerializeObject(new
                 {
-                    status = "error",
-                    message = error
+                    ok = false,
+                    action = args,
+                    message = error,
+                    data = new { baseDir, exePath }
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                return JsonConvert.SerializeObject(new
+                {
+                    ok = true,
+                    action = args,
+                    message = "Updater finished",
+                    data = new { baseDir, exePath }
                 });
             }
 
             return output;
         }
 
+        private static void NormalizeUpdaterConfig(string baseDir)
+        {
+            try
+            {
+                string cfgPath = Path.Combine(baseDir, "updater.config.json");
+                if (!File.Exists(cfgPath)) return;
 
-        private static async Task HandleUpdateRollback(HttpListenerContext ctx)
+                var obj = JObject.Parse(File.ReadAllText(cfgPath, Encoding.UTF8));
+                string expectedInstallDir = Path.GetFullPath(baseDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                string currentInstallDir = (obj["InstallDir"]?.ToString() ?? "").TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                if (!string.Equals(expectedInstallDir, currentInstallDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    obj["InstallDir"] = expectedInstallDir;
+                    File.WriteAllText(cfgPath, obj.ToString(Formatting.Indented), Encoding.UTF8);
+                }
+            }
+            catch
+            {
+                // ignore config normalization errors, updater can still attempt with current values
+            }
+        }
+
+private static async Task HandleUpdateRollback(HttpListenerContext ctx)
         {
             string result = await RunUpdater("rollback");
             await WriteJson(ctx, result);
@@ -1442,6 +1482,9 @@ namespace InfoKioskApp.Services
 
                 string currentVersionPath = Path.Combine(baseDir, "version.txt");
                 string latestVersionPath = Path.Combine(baseDir, "latest_version.txt");
+                string updaterExePath = Path.Combine(baseDir, "InfoKioskUpdater.exe");
+                string updaterConfigPath = Path.Combine(baseDir, "updater.config.json");
+                string updaterLogPath = Path.Combine(baseDir, "updater.log");
 
                 string currentVersion = File.Exists(currentVersionPath)
                     ? File.ReadAllText(currentVersionPath).Trim()
@@ -1455,11 +1498,32 @@ namespace InfoKioskApp.Services
                     !string.IsNullOrEmpty(latestVersion) &&
                     latestVersion != currentVersion;
 
+                string installDirFromConfig = "";
+                if (File.Exists(updaterConfigPath))
+                {
+                    try
+                    {
+                        var cfg = JObject.Parse(File.ReadAllText(updaterConfigPath, Encoding.UTF8));
+                        installDirFromConfig = cfg["InstallDir"]?.ToString() ?? "";
+                    }
+                    catch { }
+                }
+
                 var payload = new
                 {
                     currentVersion,
                     latestVersion,
-                    updateAvailable
+                    updateAvailable,
+                    paths = new
+                    {
+                        appBaseDir = baseDir,
+                        updaterExePath,
+                        updaterConfigPath,
+                        updaterLogPath,
+                        currentVersionPath,
+                        latestVersionPath,
+                        installDirFromConfig
+                    }
                 };
 
                 string json = JsonConvert.SerializeObject(payload);
@@ -1522,6 +1586,12 @@ namespace InfoKioskApp.Services
                         path = DataRoot,
                         sizeBytes = dataSize,
                         size = SystemInfoService.FormatBytes(dataSize)
+                    },
+                    app = new
+                    {
+                        baseDir = AppDomain.CurrentDomain.BaseDirectory,
+                        process = Process.GetCurrentProcess().ProcessName,
+                        pid = Process.GetCurrentProcess().Id
                     },
                     timestamp = DateTime.Now
                 };

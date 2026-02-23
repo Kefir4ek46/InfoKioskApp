@@ -1080,9 +1080,21 @@ async function loadStorageInfo() {
         document.getElementById("disk-total").textContent =
             `${data.disk.name} — ${data.disk.total}`;
 
-        document.getElementById("disk-used").textContent = data.disk.used;
+        document.getElementById("disk-used").textContent = `${data.disk.used} (${Math.round((data.disk.usedBytes / data.disk.totalBytes) * 100)}%)`;
         document.getElementById("disk-free").textContent = data.disk.free;
         document.getElementById("data-size").textContent = data.dataFolder.size;
+
+        const dataPathEl = document.getElementById("data-path");
+        if (dataPathEl) dataPathEl.textContent = data.dataFolder.path || "—";
+
+        const appProcessEl = document.getElementById("app-process");
+        if (appProcessEl) appProcessEl.textContent = data.app?.process || "—";
+
+        const appPidEl = document.getElementById("app-pid");
+        if (appPidEl) appPidEl.textContent = data.app?.pid ?? "—";
+
+        const appBaseDirEl = document.getElementById("app-base-dir");
+        if (appBaseDirEl) appBaseDirEl.textContent = data.app?.baseDir || "—";
 
     } catch (e) {
         console.warn("Storage info unavailable", e);
@@ -1124,13 +1136,24 @@ async function loadUpdateStatus() {
     try {
         const res = await fetch("/api/update/status");
         const json = await res.json();
-const data = json.data;
+        const data = json?.data || json;
 
-currentVersionEl.textContent = data.currentVersion || "—";
-latestVersionEl.textContent = data.latestVersion || "—";
+        currentVersionEl.textContent = data.currentVersion || "—";
+        latestVersionEl.textContent = data.latestVersion || "—";
+        setInstallEnabled(data.updateAvailable === true);
 
-setInstallEnabled(data.updateAvailable === true);
+        const appBaseEl = document.getElementById("update-app-base-dir");
+        const installDirEl = document.getElementById("update-install-dir");
+        if (appBaseEl) appBaseEl.textContent = data.paths?.appBaseDir || "—";
+        if (installDirEl) installDirEl.textContent = data.paths?.installDirFromConfig || "—";
 
+        if (data.paths?.appBaseDir && data.paths?.installDirFromConfig) {
+            const normA = String(data.paths.appBaseDir).replace(/[\/]+$/, "").toLowerCase();
+            const normB = String(data.paths.installDirFromConfig).replace(/[\/]+$/, "").toLowerCase();
+            if (normA !== normB) {
+                appendUpdateLog("⚠ Внимание: путь приложения и InstallDir updater различаются. Перед запуском обновления конфиг updater синхронизируется автоматически.");
+            }
+        }
     } catch (e) {
         appendUpdateLog("❌ Не удалось получить статус обновления");
     }
@@ -1149,7 +1172,7 @@ async function checkUpdate() {
         });
 
         const json = await res.json();
-        const data = json.data;
+        const data = json?.data || json;
 
         currentVersionEl.textContent = data.currentVersion || "—";
         latestVersionEl.textContent = data.latestVersion || "—";
@@ -1183,11 +1206,11 @@ async function installUpdate() {
         const res = await fetch("/api/update/install", { method: "POST" });
         const json = await res.json();
 
-        if (json.ok) {
+        if (json.ok === true || json.status === "ok") {
             appendUpdateLog("✅ Обновление завершено");
             await loadUpdateStatus(); // обновим версии
         } else {
-            appendUpdateLog("❌ Ошибка обновления: " + json.msg);
+            appendUpdateLog("❌ Ошибка обновления: " + (json.msg || json.message || "неизвестно"));
         }
     } catch (e) {
         appendUpdateLog("❌ Не удалось запустить обновление");
@@ -1212,11 +1235,11 @@ async function rollbackUpdate() {
         const res = await fetch("/api/update/rollback", { method: "POST" });
         const json = await res.json();
 
-        if (json.ok) {
+        if (json.ok === true || json.status === "ok") {
             appendUpdateLog("✅ Откат завершён");
             await loadUpdateStatus();
         } else {
-            appendUpdateLog("❌ Ошибка отката: " + json.msg);
+            appendUpdateLog("❌ Ошибка отката: " + (json.msg || json.message || "неизвестно"));
         }
     } catch (e) {
         appendUpdateLog("❌ Не удалось запустить rollback");
