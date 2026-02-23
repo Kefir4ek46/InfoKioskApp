@@ -152,8 +152,8 @@ function openNewsModal(item) {
   newsState.rotation = 0;
   newsState.mediaIndex = 0;
   const all = [];
-  (item.photos || []).forEach(f => all.push({ type: "photo", file: f }));
   if (item.videoFile) all.push({ type: "video", file: item.videoFile });
+  (item.photos || []).forEach(f => all.push({ type: "photo", file: f }));
   if (!all.length && item.videoUrl) all.push({ type: "link", url: item.videoUrl });
   newsState.items = all;
   newsState.index = 0;
@@ -410,8 +410,11 @@ async function loadSettings() {
     const autoStartValue = data.remoteAutoStart ?? data.RemoteAutoStart ?? data.autostart ?? false;
     document.getElementById("autostart-toggle").checked = !!autoStartValue;
 
-    const sleepValue = localStorage.getItem("remoteSleepMinutes") || data.sleepMinutes || "";
-    document.getElementById("sleep-time").value = sleepValue;
+    const cfgRes = await fetch(`${api}/config`);
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json();
+      document.getElementById("sleep-time").value = cfg.sleepAt || cfg.SleepAt || "";
+    }
   } catch (err) {
     console.warn("loadSettings:", err);
   }
@@ -440,10 +443,26 @@ async function toggleAutostart() {
   }
 }
 
-function saveSleepMode() {
+async function saveSleepMode() {
   const value = (document.getElementById("sleep-time").value || "").trim();
-  localStorage.setItem("remoteSleepMinutes", value);
-  alert("Параметр спящего режима сохранён локально в браузере");
+  if (value && !/^\d{2}:\d{2}$/.test(value)) {
+    return alert("Используйте формат HH:mm");
+  }
+
+  const getRes = await fetch(`${api}/config`);
+  if (!getRes.ok) return alert("Не удалось загрузить config");
+  const cfg = await getRes.json();
+  cfg.sleepAt = value;
+  cfg.SleepAt = value;
+
+  const saveRes = await fetch(`${api}/config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg)
+  });
+
+  if (!saveRes.ok) return alert("Не удалось сохранить время сна");
+  alert("Время сна сохранено");
 }
 
 async function loadConfigSettings() {
@@ -1211,6 +1230,10 @@ async function loadStorageInfo() {
         document.getElementById("disk-used").textContent = `${data.disk.used} (${Math.round((data.disk.usedBytes / data.disk.totalBytes) * 100)}%)`;
         document.getElementById("disk-free").textContent = data.disk.free;
         document.getElementById("data-size").textContent = data.dataFolder.size;
+        const mediaSizeEl = document.getElementById("media-size");
+        if (mediaSizeEl) mediaSizeEl.textContent = data.mediaFolder?.size || "—";
+        const newsSizeEl = document.getElementById("news-size");
+        if (newsSizeEl) newsSizeEl.textContent = data.newsFolder?.size || "—";
 
         const dataPathEl = document.getElementById("data-path");
         if (dataPathEl) dataPathEl.textContent = data.dataFolder.path || "—";

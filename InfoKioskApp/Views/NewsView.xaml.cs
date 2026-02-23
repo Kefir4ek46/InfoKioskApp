@@ -14,6 +14,11 @@ namespace InfoKioskApp.Views
 {
     public partial class NewsView : UserControl
     {
+        private readonly List<NewsPost> _posts = new();
+        private readonly List<NewsMediaItem> _overlayMedia = new();
+        private int _overlayMediaIndex;
+        private int _overlayRotation;
+
         public NewsView()
         {
             InitializeComponent();
@@ -22,12 +27,13 @@ namespace InfoKioskApp.Views
 
         private void LoadNews()
         {
-            NewsPanel.Children.Clear();
+            _posts.Clear();
+            NewsListPanel.Children.Clear();
 
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "published.json");
             if (!File.Exists(path))
             {
-                NewsPanel.Children.Add(new TextBlock
+                NewsListPanel.Children.Add(new TextBlock
                 {
                     Text = "Пока нет опубликованных новостей.",
                     Foreground = Brushes.Gray,
@@ -37,13 +43,13 @@ namespace InfoKioskApp.Views
             }
 
             var posts = JsonConvert.DeserializeObject<List<NewsPost>>(File.ReadAllText(path)) ?? [];
-            foreach (var post in posts.OrderByDescending(p => p.CreatedAt))
-            {
-                NewsPanel.Children.Add(BuildNewsCard(post));
-            }
+            _posts.AddRange(posts.OrderByDescending(p => p.CreatedAt));
+
+            foreach (var post in _posts)
+                NewsListPanel.Children.Add(BuildPreviewCard(post));
         }
 
-        private static Border BuildNewsCard(NewsPost post)
+        private UIElement BuildPreviewCard(NewsPost post)
         {
             var card = new Border
             {
@@ -51,16 +57,21 @@ namespace InfoKioskApp.Views
                 CornerRadius = new CornerRadius(10),
                 BorderBrush = new SolidColorBrush(Color.FromRgb(62, 62, 70)),
                 BorderThickness = new Thickness(1),
-                Margin = new Thickness(0, 0, 0, 12),
-                Padding = new Thickness(14)
+                Margin = new Thickness(0, 0, 0, 10),
+                Padding = new Thickness(12),
+                Cursor = System.Windows.Input.Cursors.Hand
             };
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.4, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            var left = new StackPanel { Margin = new Thickness(0, 0, 16, 0) };
-            left.Children.Add(new TextBlock
+            var preview = BuildPreviewMedia(post);
+            Grid.SetColumn(preview, 0);
+            grid.Children.Add(preview);
+
+            var text = new StackPanel { Margin = new Thickness(12, 0, 0, 0) };
+            text.Children.Add(new TextBlock
             {
                 Text = string.IsNullOrWhiteSpace(post.Title) ? "Без названия" : post.Title,
                 Foreground = Brushes.White,
@@ -68,152 +79,200 @@ namespace InfoKioskApp.Views
                 FontWeight = FontWeights.Bold,
                 TextWrapping = TextWrapping.Wrap
             });
-            left.Children.Add(new TextBlock
+            text.Children.Add(new TextBlock
             {
                 Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {post.AuthorLogin}",
                 Foreground = Brushes.Gray,
-                Margin = new Thickness(0, 4, 0, 10)
+                Margin = new Thickness(0, 4, 0, 8)
             });
-            left.Children.Add(new TextBlock
+            text.Children.Add(new TextBlock
             {
                 Text = post.Content,
                 Foreground = Brushes.White,
                 FontSize = 18,
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                MaxHeight = 68
             });
 
-            Grid.SetColumn(left, 0);
-            grid.Children.Add(left);
-
-            var right = BuildMediaPanel(post);
-            Grid.SetColumn(right, 1);
-            grid.Children.Add(right);
-
+            Grid.SetColumn(text, 1);
+            grid.Children.Add(text);
             card.Child = grid;
+
+            card.MouseLeftButtonUp += (_, __) => OpenOverlay(post);
             return card;
         }
 
-        private static UIElement BuildMediaPanel(NewsPost post)
+        private UIElement BuildPreviewMedia(NewsPost post)
         {
-            var panel = new StackPanel();
-
-            var photos = (post.PhotoFiles ?? [])
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(Path.GetFileName)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
-            string? localVideoPath = null;
             if (!string.IsNullOrWhiteSpace(post.VideoFile))
             {
-                var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", Path.GetFileName(post.VideoFile));
-                if (File.Exists(fullPath))
-                    localVideoPath = fullPath;
+                var v = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", Path.GetFileName(post.VideoFile));
+                if (File.Exists(v))
+                {
+                    return new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromRgb(10, 10, 12)),
+                        CornerRadius = new CornerRadius(8),
+                        Height = 92,
+                        Child = new TextBlock
+                        {
+                            Text = "🎬 Видео",
+                            Foreground = Brushes.LightGray,
+                            HorizontalAlignment = HorizontalAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            FontSize = 18
+                        }
+                    };
+                }
             }
 
-            if (!string.IsNullOrWhiteSpace(localVideoPath))
+            var photo = (post.PhotoFiles ?? [])
+                .Select(Path.GetFileName)
+                .FirstOrDefault(f => !string.IsNullOrWhiteSpace(f));
+            if (!string.IsNullOrWhiteSpace(photo))
             {
-                panel.Children.Add(new TextBlock { Text = "Видео", Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 6) });
-
-                var mediaHost = new Border
+                var p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", photo);
+                if (File.Exists(p))
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(18, 18, 24)),
-                    BorderBrush = new SolidColorBrush(Color.FromRgb(56, 56, 66)),
-                    BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(6)
-                };
+                    return new Image
+                    {
+                        Source = new BitmapImage(new Uri(p, UriKind.Absolute)),
+                        Height = 92,
+                        Stretch = Stretch.UniformToFill
+                    };
+                }
+            }
 
+            return new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(10, 10, 12)),
+                CornerRadius = new CornerRadius(8),
+                Height = 92,
+                Child = new TextBlock
+                {
+                    Text = "Нет медиа",
+                    Foreground = Brushes.Gray,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+        }
+
+        private void OpenOverlay(NewsPost post)
+        {
+            OverlayTitleText.Text = string.IsNullOrWhiteSpace(post.Title) ? "Без названия" : post.Title;
+            OverlayMetaText.Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {post.AuthorLogin}";
+            OverlayContentText.Text = post.Content ?? "";
+
+            BuildOverlayMedia(post);
+            _overlayMediaIndex = 0;
+            _overlayRotation = 0;
+            RenderOverlayMedia();
+            NewsOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void BuildOverlayMedia(NewsPost post)
+        {
+            _overlayMedia.Clear();
+
+            // Видео всегда первым
+            if (!string.IsNullOrWhiteSpace(post.VideoFile))
+            {
+                var v = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", Path.GetFileName(post.VideoFile));
+                if (File.Exists(v)) _overlayMedia.Add(new NewsMediaItem { Type = "video", Path = v });
+            }
+
+            foreach (var photo in (post.PhotoFiles ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(Path.GetFileName).Distinct())
+            {
+                var p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", photo);
+                if (File.Exists(p)) _overlayMedia.Add(new NewsMediaItem { Type = "photo", Path = p });
+            }
+
+            if (_overlayMedia.Count == 0 && !string.IsNullOrWhiteSpace(post.VideoUrl))
+            {
+                _overlayMedia.Add(new NewsMediaItem { Type = "link", Path = post.VideoUrl! });
+            }
+        }
+
+        private void RenderOverlayMedia()
+        {
+            if (_overlayMedia.Count == 0)
+            {
+                OverlayMediaHost.Content = new TextBlock { Text = "Нет медиа", Foreground = Brushes.Gray };
+                OverlayMediaIndexText.Text = "0/0";
+                return;
+            }
+
+            if (_overlayMediaIndex < 0) _overlayMediaIndex = _overlayMedia.Count - 1;
+            if (_overlayMediaIndex >= _overlayMedia.Count) _overlayMediaIndex = 0;
+
+            var item = _overlayMedia[_overlayMediaIndex];
+            OverlayMediaIndexText.Text = $"{_overlayMediaIndex + 1}/{_overlayMedia.Count}";
+
+            if (item.Type == "photo")
+            {
+                var img = new Image
+                {
+                    Source = new BitmapImage(new Uri(item.Path, UriKind.Absolute)),
+                    Stretch = Stretch.Uniform,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    RenderTransform = new RotateTransform(_overlayRotation)
+                };
+                OverlayMediaHost.Content = img;
+                return;
+            }
+
+            if (item.Type == "video")
+            {
+                var wrap = new StackPanel();
                 var media = new MediaElement
                 {
-                    Source = new Uri(localVideoPath, UriKind.Absolute),
+                    Source = new Uri(item.Path, UriKind.Absolute),
                     LoadedBehavior = MediaState.Manual,
                     UnloadedBehavior = MediaState.Stop,
                     Stretch = Stretch.Uniform,
-                    Height = 320,
-                    HorizontalAlignment = HorizontalAlignment.Stretch
+                    Height = 480,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                    RenderTransform = new RotateTransform(_overlayRotation)
                 };
 
-                mediaHost.Child = media;
-                panel.Children.Add(mediaHost);
+                wrap.Children.Add(media);
+                var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
+                controls.Children.Add(CreateControlButton("▶", (_, __) => media.Play()));
+                controls.Children.Add(CreateControlButton("⏸", (_, __) => media.Pause()));
+                controls.Children.Add(CreateControlButton("⏹", (_, __) => media.Stop()));
+                wrap.Children.Add(controls);
 
-                var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-                controls.Children.Add(CreateControlButton("▶ Воспроизвести", (_, __) => media.Play()));
-                controls.Children.Add(CreateControlButton("⏸ Пауза", (_, __) => media.Pause()));
-                controls.Children.Add(CreateControlButton("⏹ Стоп", (_, __) => media.Stop()));
-                panel.Children.Add(controls);
-                return panel;
+                OverlayMediaHost.Content = wrap;
+                return;
             }
 
-            if (photos.Count > 0)
-            {
-                panel.Children.Add(new TextBlock { Text = photos.Count > 1 ? "Фото" : "Изображение", Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 6) });
-
-                var firstPhoto = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", photos[0]);
-                if (File.Exists(firstPhoto))
-                {
-                    panel.Children.Add(new Border
-                    {
-                        Background = new SolidColorBrush(Color.FromRgb(18, 18, 24)),
-                        BorderBrush = new SolidColorBrush(Color.FromRgb(56, 56, 66)),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(8),
-                        Padding = new Thickness(6),
-                        Child = new Image
-                        {
-                            Source = new BitmapImage(new Uri(firstPhoto, UriKind.Absolute)),
-                            Height = 260,
-                            Stretch = Stretch.Uniform
-                        }
-                    });
-                }
-
-                if (photos.Count > 1)
-                {
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = $"+ ещё {photos.Count - 1} фото",
-                        Foreground = Brushes.Gray,
-                        Margin = new Thickness(0, 8, 0, 0)
-                    });
-                }
-
-                return panel;
-            }
-
-            if (!string.IsNullOrWhiteSpace(post.VideoUrl))
-            {
-                panel.Children.Add(new TextBlock { Text = "Видео по ссылке", Foreground = Brushes.LightGray, Margin = new Thickness(0, 0, 0, 6) });
-                panel.Children.Add(CreateControlButton("🎬 Открыть видео", (_, __) => OpenExternal(post.VideoUrl!)));
-                return panel;
-            }
-
-            panel.Children.Add(new TextBlock { Text = "Медиа не прикреплено", Foreground = Brushes.Gray });
-            return panel;
+            var btn = CreateControlButton("🎬 Открыть видео по ссылке", (_, __) => OpenExternal(item.Path));
+            btn.HorizontalAlignment = HorizontalAlignment.Center;
+            OverlayMediaHost.Content = btn;
         }
 
-        private static Button CreateControlButton(string text, RoutedEventHandler onClick)
+        private static Button CreateControlButton(string text, RoutedEventHandler handler)
         {
-            var b = new Button
-            {
-                Content = text,
-                Margin = new Thickness(0, 0, 8, 0),
-                Padding = new Thickness(10, 4, 10, 4),
-                HorizontalAlignment = HorizontalAlignment.Left
-            };
-            b.Click += onClick;
+            var b = new Button { Content = text, Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(10, 4, 10, 4) };
+            b.Click += handler;
             return b;
         }
 
         private static void OpenExternal(string pathOrUrl)
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(pathOrUrl) { UseShellExecute = true });
-            }
-            catch
-            {
-            }
+            try { Process.Start(new ProcessStartInfo(pathOrUrl) { UseShellExecute = true }); } catch { }
+        }
+
+        private void CloseOverlay_Click(object sender, RoutedEventArgs e) => NewsOverlay.Visibility = Visibility.Collapsed;
+        private void PrevMedia_Click(object sender, RoutedEventArgs e) { _overlayMediaIndex--; RenderOverlayMedia(); }
+        private void NextMedia_Click(object sender, RoutedEventArgs e) { _overlayMediaIndex++; RenderOverlayMedia(); }
+        private void RotateMedia_Click(object sender, RoutedEventArgs e) { _overlayRotation = (_overlayRotation + 90) % 360; RenderOverlayMedia(); }
+
+        private sealed class NewsMediaItem
+        {
+            public string Type { get; set; } = "photo";
+            public string Path { get; set; } = "";
         }
     }
 }

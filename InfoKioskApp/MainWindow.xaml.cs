@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -47,6 +48,9 @@ namespace InfoKioskApp
         private List<string> _idleImages = new();
         private int _idleImageIndex;
 
+        private DispatcherTimer? _sleepScheduleTimer;
+        private string _lastSleepTriggerKey = string.Empty;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -83,6 +87,7 @@ namespace InfoKioskApp
             ApplyInterfaceSettings();
             InitializeTicker();
             InitializeIdleScreen();
+            InitializeSleepSchedule();
         }
 
         private void SetupConfigWatcher()
@@ -624,6 +629,63 @@ namespace InfoKioskApp
             _idleTimer?.Stop();
             _idleTimer?.Start();
         }
+
+
+        private void InitializeSleepSchedule()
+        {
+            _sleepScheduleTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+            _sleepScheduleTimer.Tick -= SleepScheduleTick;
+
+            var sleepAt = (ConfigService.LoadConfig().SleepAt ?? string.Empty).Trim();
+            if (!TimeSpan.TryParseExact(sleepAt, "hh\\:mm", CultureInfo.InvariantCulture, out _))
+            {
+                _sleepScheduleTimer.Stop();
+                return;
+            }
+
+            _sleepScheduleTimer.Tick += SleepScheduleTick;
+            _sleepScheduleTimer.Start();
+        }
+
+        private void SleepScheduleTick(object? sender, EventArgs e)
+        {
+            var sleepAt = (ConfigService.LoadConfig().SleepAt ?? string.Empty).Trim();
+            if (!TimeSpan.TryParseExact(sleepAt, "hh\\:mm", CultureInfo.InvariantCulture, out var t))
+                return;
+
+            var now = DateTime.Now;
+            if (now.Hour != t.Hours || now.Minute != t.Minutes)
+                return;
+
+            string key = now.ToString("yyyyMMddHHmm", CultureInfo.InvariantCulture);
+            if (_lastSleepTriggerKey == key)
+                return;
+
+            _lastSleepTriggerKey = key;
+            TrySleepDevice();
+        }
+
+        private static void TrySleepDevice()
+        {
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    if (SetSuspendState(false, true, true))
+                        return;
+
+                    Process.Start(new ProcessStartInfo("shutdown", "/h") { UseShellExecute = false, CreateNoWindow = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Sleep schedule error: {ex.Message}");
+            }
+        }
+
+        [DllImport("powrprof.dll", SetLastError = true)]
+        private static extern bool SetSuspendState(bool hibernate, bool forceCritical, bool disableWakeEvent);
+
         #endregion
 
 

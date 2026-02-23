@@ -1658,6 +1658,10 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
             {
                 var drive = SystemInfoService.GetSystemDrive();
                 long dataSize = SystemInfoService.GetDirectorySize(DataRoot);
+                string mediaPath = Path.Combine(DataRoot, "media");
+                string newsPath = Path.Combine(DataRoot, "news");
+                long mediaSize = Directory.Exists(mediaPath) ? SystemInfoService.GetDirectorySize(mediaPath) : 0;
+                long newsSize = Directory.Exists(newsPath) ? SystemInfoService.GetDirectorySize(newsPath) : 0;
 
                 var result = new
                 {
@@ -1677,6 +1681,18 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
                         path = DataRoot,
                         sizeBytes = dataSize,
                         size = SystemInfoService.FormatBytes(dataSize)
+                    },
+                    mediaFolder = new
+                    {
+                        path = mediaPath,
+                        sizeBytes = mediaSize,
+                        size = SystemInfoService.FormatBytes(mediaSize)
+                    },
+                    newsFolder = new
+                    {
+                        path = newsPath,
+                        sizeBytes = newsSize,
+                        size = SystemInfoService.FormatBytes(newsSize)
                     },
                     app = new
                     {

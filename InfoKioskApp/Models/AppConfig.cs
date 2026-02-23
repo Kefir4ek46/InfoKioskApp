@@ -52,6 +52,9 @@ namespace InfoKioskApp.Models
         // === Экран неактивности ===
         public IdleScreenSettings IdleScreen { get; set; } = new IdleScreenSettings();
 
+        // === Запланированный сон устройства (HH:mm) ===
+        public string SleepAt { get; set; } = "";
+
         public class TickerSettings
         {
             public bool Enabled { get; set; } = false;

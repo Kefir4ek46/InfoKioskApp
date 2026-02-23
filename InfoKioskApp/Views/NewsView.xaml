@@ -11,7 +11,52 @@
         <TextBlock Text="📰 Новости" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,12"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel x:Name="NewsPanel"/>
+            <StackPanel x:Name="NewsListPanel"/>
         </ScrollViewer>
+
+        <Grid x:Name="NewsOverlay" Grid.RowSpan="2" Background="#C8000000" Visibility="Collapsed" Panel.ZIndex="1000">
+            <Border Margin="20" Background="#1A1C22" CornerRadius="12" BorderBrush="#2F3340" BorderThickness="1" Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Row="0" Grid.Column="1" Content="✕" Width="38" Height="38" HorizontalAlignment="Right" Click="CloseOverlay_Click"/>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock x:Name="OverlayTitleText" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="OverlayMetaText" Foreground="#B3BAC9" Margin="0,8,0,14"/>
+                        <Border Background="#11131A" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8" Padding="12" Height="500">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <TextBlock x:Name="OverlayContentText" Foreground="White" FontSize="22" TextWrapping="Wrap"/>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <Border Background="#0E1016" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8" Padding="8" Height="560">
+                            <Grid>
+                                <ContentControl x:Name="OverlayMediaHost"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                            <Button Content="⟵" Width="56" Height="36" Margin="0,0,8,0" Click="PrevMedia_Click"/>
+                            <TextBlock x:Name="OverlayMediaIndexText" VerticalAlignment="Center" Foreground="White" FontSize="18" Margin="0,0,8,0"/>
+                            <Button Content="⟶" Width="56" Height="36" Margin="0,0,8,0" Click="NextMedia_Click"/>
+                            <Button Content="⟳ Повернуть" Height="36" Padding="10,0" Click="RotateMedia_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Foreground="#8A93A8" Margin="0,10,0,0"
+                               Text="Нажмите на новость в списке, чтобы открыть карточку с медиа."/>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

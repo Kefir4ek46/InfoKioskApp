@@ -245,8 +245,9 @@
                     </div>
 
                     <div class="card">
-                        <h3>Спящий режим панели (локально в браузере)</h3>
-                        <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
+                        <h3>Время перехода устройства в сон</h3>
+                        <p class="hint">Формат HH:mm (например, 22:30). В это время приложение отправляет устройство в сон.</p>
+                        <input id="sleep-time" type="time" step="60">
                         <button onclick="saveSleepMode()">Сохранить</button>
                     </div>
 
@@ -318,6 +319,8 @@
                         <div class="storage-row"><span>📈 Свободно:</span><span id="disk-free">—</span></div>
                         <hr>
                         <div class="storage-row"><span>📂 Папка data:</span><span id="data-size">—</span></div>
+                        <div class="storage-row"><span>🖼 Папка media:</span><span id="media-size">—</span></div>
+                        <div class="storage-row"><span>📰 Папка news:</span><span id="news-size">—</span></div>
                         <div class="storage-row"><span>📂 Путь data:</span><span id="data-path">—</span></div>
                         <div class="storage-row"><span>🧩 Процесс:</span><span id="app-process">—</span></div>
                         <div class="storage-row"><span>🆔 PID:</span><span id="app-pid">—</span></div>
