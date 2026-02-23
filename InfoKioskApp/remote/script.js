@@ -21,6 +21,7 @@ window.addEventListener("load", async () => {
     await loadCalendar();
     await loadSettings();
     await loadConfigSettings();
+    await loadThemeAndExtraSettings();
   } catch (err) {
     console.error("Init error:", err);
   }
@@ -152,6 +153,7 @@ async function saveFoodBlockId() {
 
     const cfg = await getRes.json();
     cfg.foodBlockId = value;
+    cfg.FoodBlockId = value;
 
     const saveRes = await fetch(`${api}/config`, {
       method: "POST",
@@ -168,6 +170,101 @@ async function saveFoodBlockId() {
   } catch (err) {
     console.error("saveFoodBlockId", err);
     alert("Ошибка сохранения FoodBlockId");
+  }
+}
+
+
+async function loadThemeAndExtraSettings() {
+  try {
+    const res = await fetch(`${api}/config`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    const ui = cfg.interfaceSettings || cfg.InterfaceSettings || {};
+    const ticker = cfg.ticker || cfg.Ticker || {};
+    const idle = cfg.idleScreen || cfg.IdleScreen || {};
+
+    document.getElementById("theme-mode").value = (ui.theme || ui.Theme || "dark").toLowerCase();
+    document.getElementById("theme-font-family").value = ui.fontFamily || ui.FontFamily || "Segoe UI";
+    document.getElementById("theme-font-size").value = ui.fontSize || ui.FontSize || 14;
+    document.getElementById("theme-nav-font-size").value = ui.navigationButtonFontSize || ui.NavigationButtonFontSize || 15;
+    document.getElementById("theme-nav-bg").value = ui.navigationButtonBackground || ui.NavigationButtonBackground || "#3A3A3A";
+    document.getElementById("theme-nav-fg").value = ui.navigationButtonForeground || ui.NavigationButtonForeground || "#FFFFFF";
+
+    document.getElementById("ticker-enabled").checked = !!(ticker.enabled ?? ticker.Enabled ?? false);
+    document.getElementById("ticker-text").value = ticker.text || ticker.Text || "";
+    document.getElementById("ticker-speed").value = ticker.speed || ticker.Speed || 1.5;
+
+    document.getElementById("idle-enabled").checked = !!(idle.enabled ?? idle.Enabled ?? true);
+    document.getElementById("idle-logo-only").checked = !!(idle.showLogoOnly ?? idle.ShowLogoOnly ?? false);
+    document.getElementById("idle-timeout").value = idle.timeoutSeconds || idle.TimeoutSeconds || 90;
+    document.getElementById("idle-slide-duration").value = idle.slideDurationSeconds || idle.SlideDurationSeconds || 8;
+  } catch (err) {
+    console.warn("loadThemeAndExtraSettings", err);
+  }
+}
+
+async function saveThemeSettings() {
+  try {
+    const res = await fetch(`${api}/config`);
+    if (!res.ok) return alert("Ошибка чтения config");
+    const cfg = await res.json();
+    cfg.interfaceSettings = cfg.interfaceSettings || cfg.InterfaceSettings || {};
+    cfg.InterfaceSettings = cfg.interfaceSettings;
+
+    cfg.interfaceSettings.theme = document.getElementById("theme-mode").value;
+    cfg.interfaceSettings.fontFamily = document.getElementById("theme-font-family").value || "Segoe UI";
+    cfg.interfaceSettings.fontSize = Number(document.getElementById("theme-font-size").value || 14);
+    cfg.interfaceSettings.navigationButtonFontSize = Number(document.getElementById("theme-nav-font-size").value || 15);
+    cfg.interfaceSettings.navigationButtonBackground = document.getElementById("theme-nav-bg").value || "#3A3A3A";
+    cfg.interfaceSettings.navigationButtonForeground = document.getElementById("theme-nav-fg").value || "#FFFFFF";
+
+    const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
+    if (!save.ok) return alert("Ошибка сохранения темы");
+    alert("Тема сохранена");
+  } catch (err) {
+    console.error("saveThemeSettings", err);
+    alert("Ошибка сохранения темы");
+  }
+}
+
+async function saveTickerSettings() {
+  try {
+    const res = await fetch(`${api}/config`);
+    if (!res.ok) return alert("Ошибка чтения config");
+    const cfg = await res.json();
+    cfg.ticker = cfg.ticker || cfg.Ticker || {};
+    cfg.Ticker = cfg.ticker;
+    cfg.ticker.enabled = document.getElementById("ticker-enabled").checked;
+    cfg.ticker.text = document.getElementById("ticker-text").value || "";
+    cfg.ticker.speed = Number(document.getElementById("ticker-speed").value || 1.5);
+
+    const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
+    if (!save.ok) return alert("Ошибка сохранения бегущей строки");
+    alert("Настройки бегущей строки сохранены");
+  } catch (err) {
+    console.error("saveTickerSettings", err);
+    alert("Ошибка сохранения бегущей строки");
+  }
+}
+
+async function saveIdleSettings() {
+  try {
+    const res = await fetch(`${api}/config`);
+    if (!res.ok) return alert("Ошибка чтения config");
+    const cfg = await res.json();
+    cfg.idleScreen = cfg.idleScreen || cfg.IdleScreen || {};
+    cfg.IdleScreen = cfg.idleScreen;
+    cfg.idleScreen.enabled = document.getElementById("idle-enabled").checked;
+    cfg.idleScreen.showLogoOnly = document.getElementById("idle-logo-only").checked;
+    cfg.idleScreen.timeoutSeconds = Number(document.getElementById("idle-timeout").value || 90);
+    cfg.idleScreen.slideDurationSeconds = Number(document.getElementById("idle-slide-duration").value || 8);
+
+    const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
+    if (!save.ok) return alert("Ошибка сохранения экрана ожидания");
+    alert("Настройки экрана ожидания сохранены");
+  } catch (err) {
+    console.error("saveIdleSettings", err);
+    alert("Ошибка сохранения экрана ожидания");
   }
 }
 

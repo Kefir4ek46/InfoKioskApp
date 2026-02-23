@@ -265,6 +265,8 @@ namespace InfoKioskApp.Services
                 "schedules" or "other" => Path.Combine(schedulesRoot, "other"),
                 "media" => Path.Combine(DataRoot, "media"),
                 "docs" or "documents" => Path.Combine(DataRoot, "documents"),
+                "schoollogo" => Path.Combine(DataRoot, "schoolLogo"),
+                "schoolphotos" => Path.Combine(DataRoot, "schoolPhotos"),
                 _ => DataRoot,
             };
         }

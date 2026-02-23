@@ -1,7 +1,6 @@
 ﻿using ClosedXML.Excel;
 using InfoKioskApp.Services;
 using System;
-using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -10,14 +9,12 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace InfoKioskApp.Views
 {
     public partial class CanteenMenuView : UserControl
     {
         private readonly string BaseUrl = "https://foodmonitoring.ru";
-        private readonly Dictionary<string, ImageSource> DishImageCache = new();
 
         public CanteenMenuView()
         {
@@ -200,68 +197,6 @@ namespace InfoKioskApp.Views
             LunchPanel.Visibility = lunchVisible ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private ImageSource CreateDishPlaceholderImage(string dishName, int width = 120, int height = 72)
-        {
-            var drawingVisual = new DrawingVisual();
-            using (var context = drawingVisual.RenderOpen())
-            {
-                context.DrawRectangle(new SolidColorBrush(Color.FromRgb(66, 66, 66)), null, new Rect(0, 0, width, height));
-
-                var text = new FormattedText(
-                    string.IsNullOrWhiteSpace(dishName) ? "🍽" : dishName,
-                    System.Globalization.CultureInfo.GetCultureInfo("ru-RU"),
-                    FlowDirection.LeftToRight,
-                    new Typeface("Segoe UI"),
-                    12,
-                    Brushes.White,
-                    1.0)
-                {
-                    MaxTextWidth = width - 10,
-                    MaxTextHeight = height - 10,
-                    Trimming = TextTrimming.CharacterEllipsis,
-                    TextAlignment = TextAlignment.Center
-                };
-
-                context.DrawText(text, new Point(5, (height - text.Height) / 2));
-            }
-
-            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(drawingVisual);
-            bitmap.Freeze();
-            return bitmap;
-        }
-
-        private ImageSource GetDishImageSource(string dishName)
-        {
-            var key = (dishName ?? string.Empty).Trim().ToLowerInvariant();
-            if (DishImageCache.TryGetValue(key, out var cachedSource))
-                return cachedSource;
-
-            var fallback = CreateDishPlaceholderImage(dishName);
-
-            try
-            {
-                var query = Uri.EscapeDataString($"{dishName} food");
-                var imageUrl = $"https://loremflickr.com/120/72/{query}";
-
-                var image = new BitmapImage();
-                image.BeginInit();
-                image.UriSource = new Uri(imageUrl, UriKind.Absolute);
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                image.EndInit();
-                image.Freeze();
-
-                DishImageCache[key] = image;
-                return image;
-            }
-            catch
-            {
-                DishImageCache[key] = fallback;
-                return fallback;
-            }
-        }
-
         #region Парсинг Excel
 
         private void ParseAndRenderExcel(string path)
@@ -346,7 +281,6 @@ namespace InfoKioskApp.Views
 
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
@@ -357,14 +291,13 @@ namespace InfoKioskApp.Views
 
             AddHeaderCell(grid, "Раздел", 0);
             AddHeaderCell(grid, "№рец.", 1);
-            AddHeaderCell(grid, "Фото", 2);
-            AddHeaderCell(grid, "Блюдо", 3);
-            AddHeaderCell(grid, "Выход,г", 4);
-            AddHeaderCell(grid, "Цена", 5);
-            AddHeaderCell(grid, "Ккал", 6);
-            AddHeaderCell(grid, "Белки", 7);
-            AddHeaderCell(grid, "Жиры", 8);
-            AddHeaderCell(grid, "Углеводы", 9);
+            AddHeaderCell(grid, "Блюдо", 2);
+            AddHeaderCell(grid, "Выход,г", 3);
+            AddHeaderCell(grid, "Цена", 4);
+            AddHeaderCell(grid, "Ккал", 5);
+            AddHeaderCell(grid, "Белки", 6);
+            AddHeaderCell(grid, "Жиры", 7);
+            AddHeaderCell(grid, "Углеводы", 8);
 
             return grid;
         }
@@ -401,7 +334,6 @@ namespace InfoKioskApp.Views
 
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
@@ -412,39 +344,15 @@ namespace InfoKioskApp.Views
 
             AddCell(grid, section, 0);
             AddCell(grid, recipe, 1);
-            AddDishImageCell(grid, dish, 2);
-            AddCell(grid, dish, 3);
-            AddCell(grid, output, 4);
-            AddCell(grid, price, 5);
-            AddCell(grid, calories, 6);
-            AddCell(grid, proteins, 7);
-            AddCell(grid, fats, 8);
-            AddCell(grid, carbs, 9);
+            AddCell(grid, dish, 2);
+            AddCell(grid, output, 3);
+            AddCell(grid, price, 4);
+            AddCell(grid, calories, 5);
+            AddCell(grid, proteins, 6);
+            AddCell(grid, fats, 7);
+            AddCell(grid, carbs, 8);
 
             return grid;
-        }
-
-        private void AddDishImageCell(Grid grid, string dish, int column)
-        {
-            var border = new Border
-            {
-                Width = 120,
-                Height = 32,
-                CornerRadius = new CornerRadius(4),
-                ClipToBounds = true,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 5, 0)
-            };
-
-            var image = new Image
-            {
-                Stretch = Stretch.UniformToFill,
-                Source = GetDishImageSource(dish)
-            };
-
-            border.Child = image;
-            Grid.SetColumn(border, column);
-            grid.Children.Add(border);
         }
 
         private void AddCell(Grid grid, string text, int column)

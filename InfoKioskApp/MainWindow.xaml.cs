@@ -11,6 +11,9 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using static InfoKioskApp.Models.AppConfig;
@@ -31,6 +34,14 @@ namespace InfoKioskApp
         private CalendarView? _calendarView;
 
 
+        private DispatcherTimer _tickerTimer;
+        private double _tickerX;
+
+        private DispatcherTimer _idleTimer;
+        private DispatcherTimer _idleSlideTimer;
+        private List<string> _idleImages = new();
+        private int _idleImageIndex;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -40,7 +51,9 @@ namespace InfoKioskApp
             ApplyInterfaceSettings();
             _ = UpdateWeatherAsync();
             StartWeatherTimer();
-            
+            InitializeTicker();
+            InitializeIdleScreen();
+            BindActivityEvents();
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -310,6 +323,9 @@ namespace InfoKioskApp
 
                 // 🔄 После выхода из админ-панели обновляем меню (вдруг добавились новые разделы)
                 AddCustomSections(true);
+                ApplyInterfaceSettings();
+                InitializeTicker();
+                InitializeIdleScreen();
             }
         }
         #endregion
@@ -354,21 +370,204 @@ namespace InfoKioskApp
         private void ApplyInterfaceSettings()
         {
             var config = ConfigService.LoadConfig();
+            var ui = config.InterfaceSettings ?? new InterfaceSettings();
 
-            if (config.InterfaceSettings != null)
+            string theme = (ui.Theme ?? "dark").ToLowerInvariant();
+            if (theme == "light")
             {
-                var bg = (SolidColorBrush)new BrushConverter().ConvertFromString(config.InterfaceSettings.BackgroundColor ?? "#1E1E1E");
-                var btnBg = (SolidColorBrush)new BrushConverter().ConvertFromString(config.InterfaceSettings.ButtonBackground ?? "#3A3A3A");
-                var btnFg = (SolidColorBrush)new BrushConverter().ConvertFromString(config.InterfaceSettings.ButtonForeground ?? "White");
-
-                Resources["AppBackgroundBrush"] = bg;
-                Resources["PanelBackgroundBrush"] = bg;
-                Resources["ButtonBackgroundBrush"] = btnBg;
-                Resources["ButtonForegroundBrush"] = btnFg;
-                Resources["TextForegroundBrush"] = btnFg;
+                ui.BackgroundColor ??= "#F5F5F5";
+                ui.ButtonBackground ??= "#E0E0E0";
+                ui.ButtonForeground ??= "#222222";
+                ui.NavigationButtonBackground ??= "#E0E0E0";
+                ui.NavigationButtonForeground ??= "#222222";
             }
+            else
+            {
+                ui.BackgroundColor ??= "#1E1E1E";
+                ui.ButtonBackground ??= "#3A3A3A";
+                ui.ButtonForeground ??= "White";
+                ui.NavigationButtonBackground ??= "#3A3A3A";
+                ui.NavigationButtonForeground ??= "White";
+            }
+
+            var bg = (SolidColorBrush)new BrushConverter().ConvertFromString(ui.BackgroundColor);
+            var btnBg = (SolidColorBrush)new BrushConverter().ConvertFromString(ui.ButtonBackground);
+            var btnFg = (SolidColorBrush)new BrushConverter().ConvertFromString(ui.ButtonForeground);
+            var navBg = (SolidColorBrush)new BrushConverter().ConvertFromString(ui.NavigationButtonBackground);
+            var navFg = (SolidColorBrush)new BrushConverter().ConvertFromString(ui.NavigationButtonForeground);
+
+            Resources["AppBackgroundBrush"] = bg;
+            Resources["PanelBackgroundBrush"] = bg;
+            Resources["ButtonBackgroundBrush"] = btnBg;
+            Resources["ButtonForegroundBrush"] = btnFg;
+            Resources["TextForegroundBrush"] = btnFg;
+
+            Application.Current.Resources["AppFontFamily"] = new FontFamily(ui.FontFamily ?? "Segoe UI");
+            Application.Current.Resources["AppFontSize"] = ui.FontSize <= 0 ? 14 : ui.FontSize;
+
+            if (FindName("LeftMenuPanel") is StackPanel leftMenu)
+            {
+                foreach (var button in leftMenu.Children.OfType<Button>())
+                {
+                    button.Background = navBg;
+                    button.Foreground = navFg;
+                    button.FontFamily = new FontFamily(ui.FontFamily ?? "Segoe UI");
+                    button.FontSize = ui.NavigationButtonFontSize > 0 ? ui.NavigationButtonFontSize : 15;
+                }
+            }
+
+            TickerTextBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(config.Ticker?.Foreground ?? "#FFFFFF"));
+        }
+
+        private void InitializeTicker()
+        {
+            var config = ConfigService.LoadConfig();
+            var ticker = config.Ticker ?? new AppConfig.TickerSettings();
+
+            TickerTextBlock.Text = ticker.Text ?? string.Empty;
+            TickerTextBlock.FontSize = ticker.FontSize > 0 ? ticker.FontSize : 20;
+            TickerTextBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(ticker.Foreground ?? "#FFFFFF"));
+
+            if (!ticker.Enabled || string.IsNullOrWhiteSpace(TickerTextBlock.Text))
+            {
+                TickerCanvas.Visibility = Visibility.Collapsed;
+                _tickerTimer?.Stop();
+                return;
+            }
+
+            TickerCanvas.Visibility = Visibility.Visible;
+            TickerCanvas.UpdateLayout();
+            _tickerX = TickerCanvas.ActualWidth;
+            Canvas.SetLeft(TickerTextBlock, _tickerX);
+            Canvas.SetTop(TickerTextBlock, 6);
+
+            _tickerTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+            _tickerTimer.Tick -= TickerTick;
+            _tickerTimer.Tick += TickerTick;
+            _tickerTimer.Start();
+        }
+
+        private void TickerTick(object sender, EventArgs e)
+        {
+            var speed = ConfigService.LoadConfig().Ticker?.Speed ?? 1.5;
+            _tickerX -= Math.Max(0.5, speed);
+
+            if (_tickerX < -TickerTextBlock.ActualWidth)
+                _tickerX = TickerCanvas.ActualWidth;
+
+            Canvas.SetLeft(TickerTextBlock, _tickerX);
+        }
+
+        private void BindActivityEvents()
+        {
+            PreviewMouseDown += (_, __) => OnUserActivity();
+            PreviewMouseMove += (_, __) => OnUserActivity();
+            PreviewKeyDown += (_, __) => OnUserActivity();
+            TouchDown += (_, __) => OnUserActivity();
+        }
+
+        private void InitializeIdleScreen()
+        {
+            var cfg = ConfigService.LoadConfig().IdleScreen ?? new AppConfig.IdleScreenSettings();
+            _idleTimer ??= new DispatcherTimer();
+            _idleTimer.Stop();
+
+            if (!cfg.Enabled)
+            {
+                IdleOverlay.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _idleTimer.Interval = TimeSpan.FromSeconds(Math.Max(10, cfg.TimeoutSeconds));
+            _idleTimer.Tick -= IdleTimerTick;
+            _idleTimer.Tick += IdleTimerTick;
+            _idleTimer.Start();
+
+            LoadIdleImages();
+
+            _idleSlideTimer ??= new DispatcherTimer();
+            _idleSlideTimer.Interval = TimeSpan.FromSeconds(Math.Max(3, cfg.SlideDurationSeconds));
+            _idleSlideTimer.Tick -= IdleSlideTimerTick;
+            _idleSlideTimer.Tick += IdleSlideTimerTick;
+
+            IdleOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void LoadIdleImages()
+        {
+            string root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+            string logoFolder = Path.Combine(root, "schoolLogo");
+            string photosFolder = Path.Combine(root, "schoolPhotos");
+            Directory.CreateDirectory(logoFolder);
+            Directory.CreateDirectory(photosFolder);
+
+            var allowed = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".webp" };
+            _idleImages = new List<string>();
+
+            var logo = Directory.GetFiles(logoFolder).FirstOrDefault(f => allowed.Contains(Path.GetExtension(f).ToLowerInvariant()));
+            if (!string.IsNullOrEmpty(logo))
+                _idleImages.Add(logo);
+
+            _idleImages.AddRange(Directory.GetFiles(photosFolder).Where(f => allowed.Contains(Path.GetExtension(f).ToLowerInvariant())));
+            _idleImageIndex = 0;
+        }
+
+        private void IdleTimerTick(object sender, EventArgs e)
+        {
+            ShowIdleOverlay();
+        }
+
+        private void IdleSlideTimerTick(object sender, EventArgs e)
+        {
+            if (_idleImages.Count == 0) return;
+            _idleImageIndex = (_idleImageIndex + 1) % _idleImages.Count;
+            ShowIdleImage(_idleImages[_idleImageIndex]);
+        }
+
+        private void ShowIdleOverlay()
+        {
+            LoadIdleImages();
+            IdleOverlay.Visibility = Visibility.Visible;
+
+            if (_idleImages.Count > 0)
+                ShowIdleImage(_idleImages[0]);
+
+            var cfg = ConfigService.LoadConfig().IdleScreen ?? new AppConfig.IdleScreenSettings();
+            if (!cfg.ShowLogoOnly && _idleImages.Count > 1)
+                _idleSlideTimer?.Start();
+            else
+                _idleSlideTimer?.Stop();
+        }
+
+        private void ShowIdleImage(string path)
+        {
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(path, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                IdleImage.Source = bitmap;
+                var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(700));
+                IdleImage.BeginAnimation(OpacityProperty, anim);
+            }
+            catch { }
+        }
+
+        private void OnUserActivity()
+        {
+            if (IdleOverlay.Visibility == Visibility.Visible)
+                IdleOverlay.Visibility = Visibility.Collapsed;
+
+            _idleSlideTimer?.Stop();
+            _idleTimer?.Stop();
+            _idleTimer?.Start();
         }
         #endregion
+
 
         public class LessonTime
         {

@@ -45,5 +45,28 @@ namespace InfoKioskApp.Models
         public double CachedLatitude { get; set; }
         public double CachedLongitude { get; set; }
         public string OpenWeatherApiKey { get; set; } = "4fca50ecc7eb8fa8d8ae1021853e0e7c";
+
+        // === Бегущая строка ===
+        public TickerSettings Ticker { get; set; } = new TickerSettings();
+
+        // === Экран неактивности ===
+        public IdleScreenSettings IdleScreen { get; set; } = new IdleScreenSettings();
+
+        public class TickerSettings
+        {
+            public bool Enabled { get; set; } = false;
+            public string Text { get; set; } = "Добро пожаловать в школу!";
+            public double Speed { get; set; } = 1.5;
+            public string Foreground { get; set; } = "#FFFFFF";
+            public double FontSize { get; set; } = 20;
+        }
+
+        public class IdleScreenSettings
+        {
+            public bool Enabled { get; set; } = true;
+            public int TimeoutSeconds { get; set; } = 90;
+            public int SlideDurationSeconds { get; set; } = 8;
+            public bool ShowLogoOnly { get; set; } = false;
+        }
     }
 }

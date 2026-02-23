@@ -71,6 +71,7 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="110"/>
+			<RowDefinition Height="38"/>
 			<RowDefinition Height="*"/>
 		</Grid.RowDefinitions>
 
@@ -111,9 +112,20 @@
             </Grid>
 		</Border>
 
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource PanelBackgroundBrush}" Margin="10,0,10,0" CornerRadius="8">
+            <Canvas x:Name="TickerCanvas" ClipToBounds="True">
+                <TextBlock x:Name="TickerTextBlock"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource TextForegroundBrush}"
+                           Text="" />
+            </Canvas>
+        </Border>
+
 		<!-- Боковое меню -->
-		<DockPanel Grid.Row="1"  Background="{DynamicResource PanelBackgroundBrush}" Margin="10" LastChildFill="False">
-            <StackPanel DockPanel.Dock="Top"  Margin="0,0,0,10">
+		<DockPanel Grid.Row="2"  Background="{DynamicResource PanelBackgroundBrush}" Margin="10" LastChildFill="False">
+            <StackPanel x:Name="LeftMenuPanel" DockPanel.Dock="Top"  Margin="0,0,0,10">
                 <Button Content="📅 Расписание" Click="Schedule_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
                 <Button Content="🍽 Столовая" Click="Canteen_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
                 <Button Content="🖼️ Медиа" Click="Media_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
@@ -132,8 +144,24 @@
 		</DockPanel>
 
 		<!-- Контент -->
-		<Border Grid.Row="1" Grid.Column="1" Margin="15" Background="{DynamicResource AppBackgroundBrush}" CornerRadius="12">
+		<Border Grid.Row="2" Grid.Column="1" Margin="15" Background="{DynamicResource AppBackgroundBrush}" CornerRadius="12">
 			<ContentControl x:Name="ContentArea" Margin="10"/>
 		</Border>
+
+        <Grid x:Name="IdleOverlay" Visibility="Collapsed" Background="#E6000000" Panel.ZIndex="999">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Image x:Name="IdleImage" Stretch="UniformToFill" Opacity="0"/>
+
+            <Border Grid.Row="1" Background="#88000000" Padding="12">
+                <TextBlock Text="Экран ожидания — коснитесь экрана для продолжения"
+                           HorizontalAlignment="Center"
+                           Foreground="White"
+                           FontSize="18"/>
+            </Border>
+        </Grid>
 	</Grid>
 </Window>
