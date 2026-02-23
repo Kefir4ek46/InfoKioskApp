@@ -194,7 +194,7 @@
             <div class="grid-2">
                 <div>
                     <div class="card">
-                        <h3>Редакторы</h3>
+                        <h3>Редакторы (логин / пароль)</h3>
                         <label>Логин:</label>
                         <input id="editor-login" type="text">
                         <label>Пароль:</label>
@@ -206,20 +206,24 @@
                     <div class="card">
                         <h3>Ссылка для редакторов</h3>
                         <p>Передайте редактору страницу <code>/editor.html</code></p>
-                        <a href="editor.html" target="_blank">Открыть editor.html</a>
+                        <input id="editor-link" type="text" readonly>
+                        <div style="display:flex; gap:8px; margin-top:8px;">
+                            <button onclick="copyEditorLink()">📋 Копировать ссылку</button>
+                            <a href="editor.html" target="_blank">Открыть editor.html</a>
+                        </div>
                     </div>
                 </div>
 
                 <div class="card">
                     <h3>Новости на модерации</h3>
                     <button onclick="loadPendingNews()">🔄 Обновить</button>
-                    <ul id="pending-news-list"></ul>
+                    <div id="pending-news-list" class="news-list"></div>
                 </div>
 
                 <div class="card">
                     <h3>Уже опубликованные новости</h3>
                     <button onclick="loadPublishedNewsAdmin()">🔄 Обновить</button>
-                    <ul id="published-news-list"></ul>
+                    <div id="published-news-list" class="news-list"></div>
                 </div>
             </div>
         </section>
@@ -344,6 +348,35 @@
             </div>
         </section>
     </main>
+
+    
+    <div id="news-modal" class="post-modal hidden">
+        <div class="post-modal-content" style="width:min(1300px,96vw);">
+            <span id="news-modal-close" class="post-modal-close">&times;</span>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;">
+                <div>
+                    <label>Заголовок</label><input id="news-modal-title" type="text">
+                    <p id="news-modal-meta" style="color:var(--muted);"></p>
+                    <textarea id="news-modal-content" style="min-height:360px;width:100%;"></textarea>
+                    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <button id="news-save-btn">💾 Сохранить текст</button>
+                        <button id="news-publish-btn">✅ Опубликовать</button>
+                        <button id="news-reject-btn">❌ Отклонить</button>
+                        <button id="news-delete-btn" style="background:#8b2a2a;">🗑 Удалить</button>
+                    </div>
+                </div>
+                <div>
+                    <div id="news-media-host" style="background:#101014;border:1px solid rgba(255,255,255,.12);border-radius:10px;min-height:520px;display:flex;align-items:center;justify-content:center;padding:8px;"></div>
+                    <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:10px;">
+                        <button id="news-prev">⟵</button>
+                        <span id="news-index">0/0</span>
+                        <button id="news-next">⟶</button>
+                        <button id="news-rotate">⟳ Повернуть</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="post-modal" class="post-modal hidden">
         <div class="post-modal-content">

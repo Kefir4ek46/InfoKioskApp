@@ -142,6 +142,8 @@ namespace InfoKioskApp.Services
                     case "/news/admin/pending": await HandleAdminPendingNews(ctx); break;
                     case "/news/admin/publish": await HandleAdminPublishNews(ctx); break;
                     case "/news/admin/reject": await HandleAdminRejectNews(ctx); break;
+                    case "/news/admin/update": await HandleAdminUpdateNews(ctx); break;
+                    case "/news/admin/delete": await HandleAdminDeleteNews(ctx); break;
                     case "/news/admin/editors": await HandleAdminEditors(ctx); break;
 
                     case "/settings/get": await HandleGetConfig(ctx); break;
@@ -868,6 +870,95 @@ namespace InfoKioskApp.Services
             item.ModeratedAt = DateTime.Now;
             rejected.Add(item);
             WriteNewsList(NewsRejectedPath, rejected);
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        private static async Task HandleAdminUpdateNews(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            string title = ((string?)data?.title ?? "").Trim();
+            string content = ((string?)data?.content ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            foreach (var path in new[] { NewsPendingPath, NewsPublishedPath, NewsRejectedPath })
+            {
+                var list = ReadNewsList(path);
+                var item = list.FirstOrDefault(x => x.Id == id);
+                if (item == null) continue;
+
+                if (!string.IsNullOrWhiteSpace(title)) item.Title = title;
+                if (!string.IsNullOrWhiteSpace(content)) item.Content = content;
+                WriteNewsList(path, list);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+                return;
+            }
+
+            await WriteText(ctx, "Not found", 404);
+        }
+
+        private static async Task HandleAdminDeleteNews(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            bool removed = false;
+            foreach (var path in new[] { NewsPendingPath, NewsPublishedPath, NewsRejectedPath })
+            {
+                var list = ReadNewsList(path);
+                int before = list.Count;
+                list.RemoveAll(x => x.Id == id);
+                if (list.Count != before)
+                {
+                    WriteNewsList(path, list);
+                    removed = true;
+                    break;
+                }
+            }
+
+            if (!removed)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
 
             await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
         }

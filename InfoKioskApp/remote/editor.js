@@ -3,24 +3,56 @@ let editorToken = sessionStorage.getItem("editorToken") || "";
 let editorLogin = sessionStorage.getItem("editorLogin") || "";
 
 window.addEventListener("load", async () => {
+  const modal = document.getElementById("editor-auth-modal");
   if (editorToken) {
+    if (modal) modal.classList.add("hidden");
     document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorLogin}`;
     await loadMyPending();
+  } else {
+    if (modal) modal.classList.remove("hidden");
   }
 });
+
+async function loginEditorFromModal() {
+  const loginEl = document.getElementById("editor-login-modal");
+  const passEl = document.getElementById("editor-password-modal");
+  const statusEl = document.getElementById("editor-auth-modal-status");
+  if (!loginEl || !passEl) return;
+
+  const login = (loginEl.value || "").trim();
+  const password = (passEl.value || "").trim();
+  if (!login || !password) {
+    if (statusEl) statusEl.textContent = "Введите логин и пароль";
+    return;
+  }
+
+  const ok = await doEditorLogin(login, password);
+  if (!ok) {
+    if (statusEl) statusEl.textContent = "Неверный логин/пароль";
+    return;
+  }
+
+  document.getElementById("editor-auth-modal")?.classList.add("hidden");
+}
 
 async function loginEditor() {
   const login = (document.getElementById("editor-login").value || "").trim();
   const password = (document.getElementById("editor-password").value || "").trim();
   if (!login || !password) return alert("Введите логин и пароль");
 
+  const ok = await doEditorLogin(login, password);
+  if (!ok) return alert("Неверный логин/пароль");
+
+}
+
+async function doEditorLogin(login, password) {
   const res = await fetch(`${api}/auth/editor/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ login, password })
   });
 
-  if (!res.ok) return alert("Неверный логин/пароль");
+  if (!res.ok) return false;
   const data = await res.json();
   editorToken = data.token;
   editorLogin = data.login || login;
@@ -28,6 +60,7 @@ async function loginEditor() {
   sessionStorage.setItem("editorLogin", editorLogin);
   document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorLogin}`;
   await loadMyPending();
+  return true;
 }
 
 async function uploadOneFile(file) {

@@ -14,6 +14,20 @@
     </div>
   </header>
 
+  <div id="editor-auth-modal" class="post-modal hidden">
+    <div class="post-modal-content" style="max-width:520px;">
+      <h2>Вход редактора</h2>
+      <label>Логин</label>
+      <input id="editor-login-modal" type="text">
+      <label>Пароль</label>
+      <input id="editor-password-modal" type="password">
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button onclick="loginEditorFromModal()">Войти</button>
+      </div>
+      <p id="editor-auth-modal-status" class="hint"></p>
+    </div>
+  </div>
+
   <main>
     <section class="tab-content active">
       <div class="grid-2">

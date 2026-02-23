@@ -14,6 +14,7 @@ window.addEventListener("load", async () => {
     setupTabs();
     setupDragAndDrop();
     setupModalControls();
+    setupNewsModalControls();
 
     await loadPostCategorySelector();
     await loadCategoriesAndBuildUI();
@@ -67,10 +68,14 @@ async function loadEditors() {
     if (!ul) return;
     ul.innerHTML = "";
     editors.forEach(ed => {
+      const login = ed.login || ed.Login || "";
+      const password = ed.password || ed.Password || "";
       const li = document.createElement("li");
-      li.innerHTML = `<span>${escapeHtml(ed.login || ed.Login)}</span><div><button onclick="deleteEditor('${escapeHtml(ed.login || ed.Login)}')">🗑</button></div>`;
+      li.innerHTML = `<div><strong>${escapeHtml(login)}</strong><div style='color:var(--muted)'>Пароль: ${escapeHtml(password)}</div></div><div><button onclick="deleteEditor('${escapeHtml(login)}')">🗑</button></div>`;
       ul.appendChild(li);
     });
+    const linkInput = document.getElementById("editor-link");
+    if (linkInput) linkInput.value = `${location.origin}/editor.html`;
   } catch (err) {
     console.error("loadEditors", err);
   }
@@ -104,53 +109,159 @@ async function deleteEditor(login) {
   await loadEditors();
 }
 
+function copyEditorLink() {
+  const input = document.getElementById("editor-link");
+  if (!input) return;
+  input.select();
+  document.execCommand("copy");
+  alert("Ссылка скопирована");
+}
+
+const newsState = { items: [], source: "pending", index: 0, mediaIndex: 0, rotation: 0 };
+
+function normalizeNews(n, source) {
+  return {
+    id: n.id || n.Id,
+    title: n.title || n.Title || "Без названия",
+    author: n.authorLogin || n.AuthorLogin || "редактор",
+    content: n.content || n.Content || "",
+    createdAt: n.createdAt || n.CreatedAt || "",
+    videoUrl: n.videoUrl || n.VideoUrl || "",
+    videoFile: n.videoFile || n.VideoFile || "",
+    photos: n.photoFiles || n.PhotoFiles || [],
+    source
+  };
+}
+
+function buildNewsPreviewCard(item) {
+  const mediaBase = `${api}/download?target=newsmedia&name=`;
+  const firstPhoto = item.photos && item.photos.length ? item.photos[0] : "";
+  const thumb = firstPhoto
+    ? `<img src="${mediaBase}${encodeURIComponent(firstPhoto)}" style="width:120px;height:80px;object-fit:cover;border-radius:8px;">`
+    : (item.videoFile ? `<video src="${mediaBase}${encodeURIComponent(item.videoFile)}" style="width:120px;height:80px;object-fit:contain;background:#000;border-radius:8px;"></video>` : "<div style='width:120px;height:80px;background:#111;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#777;'>нет медиа</div>");
+
+  const el = document.createElement("div");
+  el.className = "card";
+  el.style.marginBottom = "10px";
+  el.style.cursor = "pointer";
+  el.innerHTML = `<div style='display:flex;gap:12px;align-items:flex-start;'>${thumb}<div style='flex:1;'><strong>${escapeHtml(item.title)}</strong><div style='color:var(--muted);font-size:12px;margin:4px 0;'>${escapeHtml(item.author)} · ${escapeHtml(String(item.createdAt))}</div><div style='white-space:pre-wrap;'>${escapeHtml(item.content.slice(0,180))}</div></div></div>`;
+  return el;
+}
+
+function openNewsModal(item) {
+  newsState.rotation = 0;
+  newsState.mediaIndex = 0;
+  const all = [];
+  (item.photos || []).forEach(f => all.push({ type: "photo", file: f }));
+  if (item.videoFile) all.push({ type: "video", file: item.videoFile });
+  if (!all.length && item.videoUrl) all.push({ type: "link", url: item.videoUrl });
+  newsState.items = all;
+  newsState.index = 0;
+  newsState.current = item;
+
+  document.getElementById("news-modal-title").value = item.title;
+  document.getElementById("news-modal-meta").textContent = `${item.author} • ${item.createdAt || ""}`;
+  document.getElementById("news-modal-content").value = item.content || "";
+  document.getElementById("news-modal").classList.remove("hidden");
+
+  document.getElementById("news-publish-btn").style.display = item.source === "pending" ? "inline-block" : "none";
+  document.getElementById("news-reject-btn").style.display = item.source === "pending" ? "inline-block" : "none";
+
+  renderNewsMedia();
+}
+
+function renderNewsMedia() {
+  const host = document.getElementById("news-media-host");
+  const idx = document.getElementById("news-index");
+  host.innerHTML = "";
+
+  if (!newsState.items.length) {
+    host.innerHTML = "<div style='color:#777'>Нет медиа</div>";
+    idx.textContent = "0/0";
+    return;
+  }
+
+  if (newsState.mediaIndex < 0) newsState.mediaIndex = newsState.items.length - 1;
+  if (newsState.mediaIndex >= newsState.items.length) newsState.mediaIndex = 0;
+
+  const m = newsState.items[newsState.mediaIndex];
+  const mediaBase = `${api}/download?target=newsmedia&name=`;
+
+  if (m.type === "photo") {
+    const img = document.createElement("img");
+    img.src = `${mediaBase}${encodeURIComponent(m.file)}`;
+    img.style.maxWidth = "100%";
+    img.style.maxHeight = "500px";
+    img.style.objectFit = "contain";
+    img.style.transform = `rotate(${newsState.rotation}deg)`;
+    host.appendChild(img);
+  } else if (m.type === "video") {
+    const v = document.createElement("video");
+    v.src = `${mediaBase}${encodeURIComponent(m.file)}`;
+    v.controls = true;
+    v.style.maxWidth = "100%";
+    v.style.maxHeight = "500px";
+    v.style.objectFit = "contain";
+    v.style.transform = `rotate(${newsState.rotation}deg)`;
+    host.appendChild(v);
+  } else {
+    const a = document.createElement("a");
+    a.href = m.url;
+    a.target = "_blank";
+    a.textContent = "Открыть видео по ссылке";
+    host.appendChild(a);
+  }
+
+  idx.textContent = `${newsState.mediaIndex + 1}/${newsState.items.length}`;
+}
+
+async function saveNewsText() {
+  const item = newsState.current;
+  if (!item) return;
+  const title = (document.getElementById("news-modal-title").value || "").trim();
+  const content = (document.getElementById("news-modal-content").value || "").trim();
+  const res = await fetch(`${api}/news/admin/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id: item.id, title, content })
+  });
+  if (!res.ok) return alert("Ошибка сохранения новости");
+  alert("Текст сохранён");
+  await loadPendingNews();
+  await loadPublishedNewsAdmin();
+}
+
+async function deleteNews(id) {
+  if (!confirm("Удалить новость?")) return;
+  const res = await fetch(`${api}/news/admin/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id })
+  });
+  if (!res.ok) return alert("Ошибка удаления");
+  document.getElementById("news-modal").classList.add("hidden");
+  await loadPendingNews();
+  await loadPublishedNewsAdmin();
+}
+
 async function loadPendingNews() {
   try {
     const res = await fetch(`${api}/news/admin/pending`, { headers: { "X-Admin-Token": adminToken } });
     if (!res.ok) return;
     const items = await res.json();
-    const ul = document.getElementById("pending-news-list");
-    if (!ul) return;
-    ul.innerHTML = "";
+    const area = document.getElementById("pending-news-list");
+    if (!area) return;
+    area.innerHTML = "";
 
     if (!items.length) {
-      ul.innerHTML = "<li>Нет новостей на модерации</li>";
+      area.innerHTML = "<div class='card'>Нет новостей на модерации</div>";
       return;
     }
 
-    const mediaBase = `${api}/download?target=newsmedia&name=`;
-
-    items.forEach(n => {
-      const id = n.id || n.Id;
-      const title = n.title || n.Title;
-      const author = n.authorLogin || n.AuthorLogin || "редактор";
-      const text = n.content || n.Content || "";
-      const videoUrl = n.videoUrl || n.VideoUrl || "";
-      const videoFile = n.videoFile || n.VideoFile || "";
-      const photos = n.photoFiles || n.PhotoFiles || [];
-
-      const photoHtml = photos.slice(0, 4).map(file =>
-        `<img src="${mediaBase}${encodeURIComponent(file)}" alt="photo" style="width:120px;height:72px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;">`
-      ).join("");
-
-      const videoHtml = videoFile
-        ? `<video controls preload="metadata" style="width:100%;max-width:380px;margin-top:8px;border-radius:8px;" src="${mediaBase}${encodeURIComponent(videoFile)}"></video>`
-        : (videoUrl ? `<div style="margin-top:8px"><a href="${escapeHtml(videoUrl)}" target="_blank">🎬 Открыть видео по ссылке</a></div>` : "");
-
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <div>
-          <strong>${escapeHtml(title)}</strong>
-          <div style='color:var(--muted); margin:4px 0;'>${escapeHtml(author)}</div>
-          <div style='margin-top:6px; white-space:pre-wrap;'>${escapeHtml(text)}</div>
-          ${photoHtml ? `<div style='margin-top:8px'>${photoHtml}</div>` : ""}
-          ${videoHtml}
-        </div>
-        <div style='display:flex;gap:8px;align-items:flex-start;'>
-          <button onclick="publishNews('${id}')">✅</button>
-          <button onclick="rejectNews('${id}')">❌</button>
-        </div>`;
-      ul.appendChild(li);
+    items.map(n => normalizeNews(n, "pending")).forEach(item => {
+      const card = buildNewsPreviewCard(item);
+      card.addEventListener("click", () => openNewsModal(item));
+      area.appendChild(card);
     });
   } catch (err) {
     console.error("loadPendingNews", err);
@@ -162,29 +273,19 @@ async function loadPublishedNewsAdmin() {
     const res = await fetch(`${api}/news/published`);
     if (!res.ok) return;
     const items = await res.json();
-    const ul = document.getElementById("published-news-list");
-    if (!ul) return;
-    ul.innerHTML = "";
+    const area = document.getElementById("published-news-list");
+    if (!area) return;
+    area.innerHTML = "";
 
     if (!items.length) {
-      ul.innerHTML = "<li>Пока нет опубликованных новостей</li>";
+      area.innerHTML = "<div class='card'>Пока нет опубликованных новостей</div>";
       return;
     }
 
-    const mediaBase = `${api}/download?target=newsmedia&name=`;
-    items.slice(0, 20).forEach(n => {
-      const title = n.title || n.Title || "Без названия";
-      const author = n.authorLogin || n.AuthorLogin || "редактор";
-      const text = (n.content || n.Content || "").slice(0, 200);
-      const videoFile = n.videoFile || n.VideoFile || "";
-      const photos = n.photoFiles || n.PhotoFiles || [];
-
-      const photoHtml = photos.length ? `<div style='color:var(--muted); margin-top:4px;'>📷 Фото: ${photos.length}</div>` : "";
-      const videoHtml = videoFile ? `<div style='color:var(--muted); margin-top:4px;'>🎬 Видео: прикреплено</div>` : "";
-
-      const li = document.createElement("li");
-      li.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div style='color:var(--muted)'>${escapeHtml(author)}</div><div>${escapeHtml(text)}</div>${photoHtml}${videoHtml}</div>`;
-      ul.appendChild(li);
+    items.map(n => normalizeNews(n, "published")).slice(0, 30).forEach(item => {
+      const card = buildNewsPreviewCard(item);
+      card.addEventListener("click", () => openNewsModal(item));
+      area.appendChild(card);
     });
   } catch (err) {
     console.error("loadPublishedNewsAdmin", err);
@@ -213,6 +314,33 @@ async function rejectNews(id) {
   if (!res.ok) return alert("Ошибка отклонения");
   await loadPendingNews();
     await loadPublishedNewsAdmin();
+}
+
+function setupNewsModalControls() {
+  const modal = document.getElementById("news-modal");
+  const close = document.getElementById("news-modal-close");
+  if (!modal || !close) return;
+
+  close.addEventListener("click", () => modal.classList.add("hidden"));
+  document.getElementById("news-prev")?.addEventListener("click", () => { newsState.mediaIndex--; renderNewsMedia(); });
+  document.getElementById("news-next")?.addEventListener("click", () => { newsState.mediaIndex++; renderNewsMedia(); });
+  document.getElementById("news-rotate")?.addEventListener("click", () => { newsState.rotation = (newsState.rotation + 90) % 360; renderNewsMedia(); });
+
+  document.getElementById("news-save-btn")?.addEventListener("click", saveNewsText);
+  document.getElementById("news-publish-btn")?.addEventListener("click", async () => {
+    if (!newsState.current) return;
+    await publishNews(newsState.current.id);
+    modal.classList.add("hidden");
+  });
+  document.getElementById("news-reject-btn")?.addEventListener("click", async () => {
+    if (!newsState.current) return;
+    await rejectNews(newsState.current.id);
+    modal.classList.add("hidden");
+  });
+  document.getElementById("news-delete-btn")?.addEventListener("click", async () => {
+    if (!newsState.current) return;
+    await deleteNews(newsState.current.id);
+  });
 }
 
 // ---- UI: Tabs ----
