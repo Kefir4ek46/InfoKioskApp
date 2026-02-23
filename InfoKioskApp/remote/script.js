@@ -26,6 +26,7 @@ window.addEventListener("load", async () => {
     await loadThemeAndExtraSettings();
     await loadEditors();
     await loadPendingNews();
+    await loadPublishedNewsAdmin();
   } catch (err) {
     console.error("Init error:", err);
   }
@@ -156,6 +157,40 @@ async function loadPendingNews() {
   }
 }
 
+async function loadPublishedNewsAdmin() {
+  try {
+    const res = await fetch(`${api}/news/published`);
+    if (!res.ok) return;
+    const items = await res.json();
+    const ul = document.getElementById("published-news-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!items.length) {
+      ul.innerHTML = "<li>Пока нет опубликованных новостей</li>";
+      return;
+    }
+
+    const mediaBase = `${api}/download?target=newsmedia&name=`;
+    items.slice(0, 20).forEach(n => {
+      const title = n.title || n.Title || "Без названия";
+      const author = n.authorLogin || n.AuthorLogin || "редактор";
+      const text = (n.content || n.Content || "").slice(0, 200);
+      const videoFile = n.videoFile || n.VideoFile || "";
+      const photos = n.photoFiles || n.PhotoFiles || [];
+
+      const photoHtml = photos.length ? `<div style='color:var(--muted); margin-top:4px;'>📷 Фото: ${photos.length}</div>` : "";
+      const videoHtml = videoFile ? `<div style='color:var(--muted); margin-top:4px;'>🎬 Видео: прикреплено</div>` : "";
+
+      const li = document.createElement("li");
+      li.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div style='color:var(--muted)'>${escapeHtml(author)}</div><div>${escapeHtml(text)}</div>${photoHtml}${videoHtml}</div>`;
+      ul.appendChild(li);
+    });
+  } catch (err) {
+    console.error("loadPublishedNewsAdmin", err);
+  }
+}
+
 async function publishNews(id) {
   const res = await fetch(`${api}/news/admin/publish`, {
     method: "POST",
@@ -164,6 +199,7 @@ async function publishNews(id) {
   });
   if (!res.ok) return alert("Ошибка публикации");
   await loadPendingNews();
+    await loadPublishedNewsAdmin();
 }
 
 async function rejectNews(id) {
@@ -176,6 +212,7 @@ async function rejectNews(id) {
   });
   if (!res.ok) return alert("Ошибка отклонения");
   await loadPendingNews();
+    await loadPublishedNewsAdmin();
 }
 
 // ---- UI: Tabs ----

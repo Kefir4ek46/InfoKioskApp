@@ -8,59 +8,77 @@
         Background="#17181D">
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-        <!-- Sidebar -->
-        <Border Grid.Column="0" Margin="12" CornerRadius="14" Background="#23252D" BorderBrush="#323543" BorderThickness="1">
-            <DockPanel LastChildFill="True">
-                <StackPanel DockPanel.Dock="Top" Margin="14,16,14,10">
-                    <TextBlock Text="Панель администратора" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="Управление киоском и сервисами" Margin="0,6,0,0" Foreground="#A9ADBA" FontSize="13"/>
-                </StackPanel>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="8,0">
-                    <StackPanel>
-                        <Button Content="🎨 Интерфейс и темы" Style="{StaticResource MenuButtonStyle}" Click="InterfaceSettings_Click"/>
-                        <Button Content="🔔 Расписание звонков" Style="{StaticResource MenuButtonStyle}" Click="BellSettings_Click"/>
-                        <Button Content="🌤 Погода" Style="{StaticResource MenuButtonStyle}" Click="WeatherSettings_Click"/>
-                        <Button Content="📆 Календарь" Style="{StaticResource MenuButtonStyle}" Click="CalendarSettings_Click"/>
-                        <Button Content="🌐 Remote и доступ" Style="{StaticResource MenuButtonStyle}" Click="RemoteSettings_Click"/>
-                        <Button Content="🔐 Сменить PIN" Style="{StaticResource MenuButtonStyle}" Click="ChangePin_Click"/>
-                        <Button Content="👨‍💻 О разработчике" Style="{StaticResource MenuButtonStyle}" Click="AboutDeveloper_Click"/>
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Margin="12" CornerRadius="14" Background="#23252D" BorderBrush="#323543" BorderThickness="1">
+                <DockPanel LastChildFill="True">
+                    <StackPanel DockPanel.Dock="Top" Margin="14,16,14,10">
+                        <TextBlock Text="Панель администратора" FontSize="22" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock Text="Управление киоском и сервисами" Margin="0,6,0,0" Foreground="#A9ADBA" FontSize="13" TextWrapping="Wrap"/>
                     </StackPanel>
-                </ScrollViewer>
 
-                <StackPanel DockPanel.Dock="Bottom" Margin="8,8,8,14">
-                    <Separator Margin="0,8,0,10" Background="#3A3D4A" Height="1"/>
-                    <Button Content="🔒 Выйти из админки" Style="{StaticResource MenuButtonStyle}" Click="Logout_Click"/>
-                    <Button Content="🗕 Свернуть" Style="{StaticResource MenuButtonStyle}" Click="Minimize_Click"/>
-                    <Button Content="❌ Закрыть приложение" Style="{StaticResource MenuButtonStyle}" Click="Exit_Click"/>
-                </StackPanel>
-            </DockPanel>
-        </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="8,0,8,8">
+                        <StackPanel>
+                            <Button Content="🎨 Интерфейс и темы" Style="{StaticResource MenuButtonStyle}" Click="InterfaceSettings_Click"/>
+                            <Button Content="🔔 Расписание звонков" Style="{StaticResource MenuButtonStyle}" Click="BellSettings_Click"/>
+                            <Button Content="🌤 Погода" Style="{StaticResource MenuButtonStyle}" Click="WeatherSettings_Click"/>
+                            <Button Content="📆 Календарь" Style="{StaticResource MenuButtonStyle}" Click="CalendarSettings_Click"/>
+                            <Button Content="🌐 Remote и доступ" Style="{StaticResource MenuButtonStyle}" Click="RemoteSettings_Click"/>
+                            <Button Content="🔐 Сменить PIN" Style="{StaticResource MenuButtonStyle}" Click="ChangePin_Click"/>
+                            <Button Content="👨‍💻 О разработчике" Style="{StaticResource MenuButtonStyle}" Click="AboutDeveloper_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
 
-        <!-- Content -->
-        <Border Grid.Column="1" Margin="12,12,12,12" CornerRadius="14" Background="#20222A" BorderBrush="#323543" BorderThickness="1" Padding="10">
+            <!-- Content -->
+            <Border Grid.Column="1" Margin="12,12,12,12" CornerRadius="14" Background="#20222A" BorderBrush="#323543" BorderThickness="1" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="#2B2E38" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <TextBlock x:Name="SectionTitleText"
+                                   Text="Интерфейс и темы"
+                                   FontSize="18"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"/>
+                    </Border>
+
+                    <Border Grid.Row="1" Background="#262933" CornerRadius="10" Padding="8">
+                        <ContentControl x:Name="ContentArea"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Bottom action buttons -->
+        <Border Grid.Row="1" Margin="12,0,12,12" CornerRadius="12" Background="#23252D" BorderBrush="#323543" BorderThickness="1" Padding="10">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <Border Grid.Row="0" Background="#2B2E38" CornerRadius="10" Padding="12" Margin="0,0,0,10">
-                    <TextBlock x:Name="SectionTitleText"
-                               Text="Интерфейс и темы"
-                               FontSize="18"
-                               FontWeight="SemiBold"
-                               Foreground="White"/>
-                </Border>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Системные действия" Foreground="#A9ADBA" FontSize="13" Margin="4,0,0,0"/>
 
-                <Border Grid.Row="1" Background="#262933" CornerRadius="10" Padding="8">
-                    <ContentControl x:Name="ContentArea"/>
-                </Border>
+                <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                    <Button Content="🔒 Выйти из админки" MinWidth="190" Height="44" Margin="4" Padding="12,0" Style="{StaticResource MenuButtonStyle}" Click="Logout_Click"/>
+                    <Button Content="🗕 Свернуть" MinWidth="140" Height="44" Margin="4" Padding="12,0" Style="{StaticResource MenuButtonStyle}" Click="Minimize_Click"/>
+                    <Button Content="❌ Закрыть приложение" MinWidth="200" Height="44" Margin="4" Padding="12,0" Style="{StaticResource MenuButtonStyle}" Click="Exit_Click"/>
+                </WrapPanel>
             </Grid>
         </Border>
     </Grid>

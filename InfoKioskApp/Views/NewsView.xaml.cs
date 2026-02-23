@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Media;
 
 namespace InfoKioskApp.Views
@@ -88,40 +87,92 @@ namespace InfoKioskApp.Views
 
         private static void AddVideo(NewsPost post, Panel stack)
         {
+            string? localVideoPath = null;
             if (!string.IsNullOrWhiteSpace(post.VideoFile))
             {
                 var fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", post.VideoFile);
                 if (File.Exists(fullPath))
+                    localVideoPath = fullPath;
+            }
+
+            if (localVideoPath == null && string.IsNullOrWhiteSpace(post.VideoUrl))
+                return;
+
+            stack.Children.Add(new TextBlock { Text = "Видео:", Foreground = Brushes.LightGray, Margin = new Thickness(0, 10, 0, 6) });
+
+            if (localVideoPath != null)
+            {
+                var media = new MediaElement
                 {
-                    stack.Children.Add(new TextBlock { Text = "Видео:", Foreground = Brushes.LightGray, Margin = new Thickness(0, 10, 0, 6) });
-                    stack.Children.Add(new MediaElement
-                    {
-                        Source = new Uri(fullPath, UriKind.Absolute),
-                        LoadedBehavior = MediaState.Play,
-                        UnloadedBehavior = MediaState.Stop,
-                        Stretch = Stretch.Uniform,
-                        Height = 280,
-                        Margin = new Thickness(0, 0, 0, 4)
-                    });
-                    return;
-                }
+                    Source = new Uri(localVideoPath, UriKind.Absolute),
+                    LoadedBehavior = MediaState.Manual,
+                    UnloadedBehavior = MediaState.Stop,
+                    Stretch = Stretch.Uniform,
+                    Height = 280,
+                    Margin = new Thickness(0, 0, 0, 8)
+                };
+
+                var controls = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+                controls.Children.Add(new Button
+                {
+                    Content = "▶ Воспроизвести",
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Padding = new Thickness(10, 4, 10, 4)
+                });
+                controls.Children.Add(new Button
+                {
+                    Content = "⏸ Пауза",
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Padding = new Thickness(10, 4, 10, 4)
+                });
+                controls.Children.Add(new Button
+                {
+                    Content = "⏹ Стоп",
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Padding = new Thickness(10, 4, 10, 4)
+                });
+                controls.Children.Add(new Button
+                {
+                    Content = "↗ Открыть во внешнем плеере",
+                    Padding = new Thickness(10, 4, 10, 4)
+                });
+
+                var playBtn = (Button)controls.Children[0];
+                var pauseBtn = (Button)controls.Children[1];
+                var stopBtn = (Button)controls.Children[2];
+                var openBtn = (Button)controls.Children[3];
+
+                playBtn.Click += (_, __) => media.Play();
+                pauseBtn.Click += (_, __) => media.Pause();
+                stopBtn.Click += (_, __) => media.Stop();
+                openBtn.Click += (_, __) => OpenExternal(localVideoPath);
+
+                stack.Children.Add(media);
+                stack.Children.Add(controls);
+                return;
             }
 
             if (!string.IsNullOrWhiteSpace(post.VideoUrl))
             {
-                var text = new TextBlock { Margin = new Thickness(0, 10, 0, 0), Foreground = Brushes.LightBlue };
-                text.Inlines.Add("Видео: ");
-                var link = new Hyperlink(new Run(post.VideoUrl));
-                link.Click += (_, __) =>
+                var openBtn = new Button
                 {
-                    try
-                    {
-                        Process.Start(new ProcessStartInfo(post.VideoUrl) { UseShellExecute = true });
-                    }
-                    catch { }
+                    Content = "🎬 Открыть видео по ссылке",
+                    Padding = new Thickness(10, 4, 10, 4),
+                    HorizontalAlignment = HorizontalAlignment.Left
                 };
-                text.Inlines.Add(link);
-                stack.Children.Add(text);
+                openBtn.Click += (_, __) => OpenExternal(post.VideoUrl!);
+                stack.Children.Add(openBtn);
+            }
+        }
+
+        private static void OpenExternal(string pathOrUrl)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(pathOrUrl) { UseShellExecute = true });
+            }
+            catch
+            {
             }
         }
     }
