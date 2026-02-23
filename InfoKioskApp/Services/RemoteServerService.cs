@@ -734,6 +734,44 @@ namespace InfoKioskApp.Services
             await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = post.Id }));
         }
 
+        private static async Task HandleEditorMyNews(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string login = ctx.Request.QueryString["login"] ?? "";
+            if (string.IsNullOrWhiteSpace(login))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            var pending = ReadNewsList(NewsPendingPath)
+                .Where(x => (x.AuthorLogin ?? "").Equals(login, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+
+            var published = ReadNewsList(NewsPublishedPath)
+                .Where(x => (x.AuthorLogin ?? "").Equals(login, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+
+            var rejected = ReadNewsList(NewsRejectedPath)
+                .Where(x => (x.AuthorLogin ?? "").Equals(login, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new
+            {
+                pending,
+                published,
+                rejected
+            }, Formatting.Indented));
+        }
+
         private static async Task HandleAdminPendingNews(HttpListenerContext ctx)
         {
             if (!IsAdminAuthorized(ctx))

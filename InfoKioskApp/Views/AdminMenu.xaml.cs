@@ -1,5 +1,5 @@
-﻿using System.Windows;
 using InfoKioskApp.Views.AdminTabs;
+using System.Windows;
 
 namespace InfoKioskApp.Views
 {
@@ -8,75 +8,48 @@ namespace InfoKioskApp.Views
         public AdminMenu()
         {
             InitializeComponent();
+            OpenSection("Интерфейс и темы", new InterfaceSettingsView());
+        }
+
+        private void OpenSection(string title, object view)
+        {
+            SectionTitleText.Text = title;
+            ContentArea.Content = view;
         }
 
         private void InterfaceSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new InterfaceSettingsView();
-        }
-
-        private void ScheduleSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new ScheduleSettingsView();
-        }
+            => OpenSection("Интерфейс и темы", new InterfaceSettingsView());
 
         private void BellSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new BellSettingsView();
-        }
+            => OpenSection("Расписание звонков", new BellSettingsView());
 
         private void WeatherSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new WeatherSettingsView();
-        }
+            => OpenSection("Погода", new WeatherSettingsView());
 
         private void CalendarSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new CalendarSettingsView();
-        }
-        private void FilesSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new FilesSettingsView();
-        }
-
+            => OpenSection("Календарь", new CalendarSettingsView());
 
         private void RemoteSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new AdminTabs.RemoteAccessView();
-        }
+            => OpenSection("Remote и доступ", new RemoteAccessView());
 
         private void ChangePin_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new ChangePinView();
-        }
+            => OpenSection("Смена PIN", new ChangePinView());
 
         private void AboutDeveloper_Click(object sender, RoutedEventArgs e)
-        {
-            ContentArea.Content = new AboutDeveloperView();
-        }
-
+            => OpenSection("О разработчике", new AboutDeveloperView());
 
         private void Logout_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
+            => Close();
 
         private void Exit_Click(object sender, RoutedEventArgs e)
-        {
-            Application.Current.Shutdown();
-        }
+            => Application.Current?.Shutdown();
 
         private void Minimize_Click(object sender, RoutedEventArgs e)
         {
-            // Сворачивает главное окно (MainWindow)
-            if (Application.Current.MainWindow != null)
-            {
+            if (Application.Current?.MainWindow != null)
                 Application.Current.MainWindow.WindowState = WindowState.Minimized;
-            }
 
-            // Сворачивает также само админ-меню (чтобы не висело отдельно)
-            this.WindowState = WindowState.Minimized;
+            WindowState = WindowState.Minimized;
         }
-
     }
 }

@@ -452,8 +452,12 @@ namespace InfoKioskApp
             Resources["ButtonForegroundBrush"] = btnFg;
             Resources["TextForegroundBrush"] = btnFg;
 
-            Application.Current.Resources["AppFontFamily"] = new FontFamily(ui.FontFamily ?? "Segoe UI");
-            Application.Current.Resources["AppFontSize"] = ui.FontSize <= 0 ? 14 : ui.FontSize;
+            var appResources = Application.Current?.Resources;
+            if (appResources != null)
+            {
+                appResources["AppFontFamily"] = new FontFamily(ui.FontFamily ?? "Segoe UI");
+                appResources["AppFontSize"] = ui.FontSize <= 0 ? 14 : ui.FontSize;
+            }
 
             if (FindName("LeftMenuPanel") is StackPanel leftMenu)
             {
