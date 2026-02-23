@@ -3,12 +3,14 @@
 
 // базовый адрес API (использует тот же origin, откуда загружена страница)
 const api = location.origin;
+let adminToken = sessionStorage.getItem("adminToken") || "";
 
 // ---- Инициализация ----
 window.addEventListener("load", async () => {
   try {
     document.getElementById("server-status").textContent = "✔ Подключено: " + api;
 
+    await requireAdminAuth();
     setupTabs();
     setupDragAndDrop();
     setupModalControls();
@@ -22,10 +24,133 @@ window.addEventListener("load", async () => {
     await loadSettings();
     await loadConfigSettings();
     await loadThemeAndExtraSettings();
+    await loadEditors();
+    await loadPendingNews();
   } catch (err) {
     console.error("Init error:", err);
   }
 });
+
+async function requireAdminAuth() {
+  if (adminToken) return;
+
+  for (let i = 0; i < 3; i++) {
+    const password = prompt("Введите пароль администратора:");
+    if (!password) continue;
+
+    const res = await fetch(`${api}/auth/admin/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      adminToken = data.token;
+      sessionStorage.setItem("adminToken", adminToken);
+      return;
+    }
+    alert("Неверный пароль");
+  }
+
+  document.body.innerHTML = "<div style='padding:30px;color:white;font-size:24px'>Доступ запрещён</div>";
+  throw new Error("Admin auth failed");
+}
+
+async function loadEditors() {
+  try {
+    const res = await fetch(`${api}/news/admin/editors`, { headers: { "X-Admin-Token": adminToken } });
+    if (!res.ok) return;
+    const editors = await res.json();
+    const ul = document.getElementById("editors-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    editors.forEach(ed => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${escapeHtml(ed.login || ed.Login)}</span><div><button onclick="deleteEditor('${escapeHtml(ed.login || ed.Login)}')">🗑</button></div>`;
+      ul.appendChild(li);
+    });
+  } catch (err) {
+    console.error("loadEditors", err);
+  }
+}
+
+async function createEditor() {
+  const login = (document.getElementById("editor-login").value || "").trim();
+  const password = (document.getElementById("editor-password").value || "").trim();
+  if (!login || !password) return alert("Введите логин и пароль");
+
+  const res = await fetch(`${api}/news/admin/editors`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ action: "add", login, password })
+  });
+
+  if (!res.ok) return alert("Ошибка добавления редактора");
+  document.getElementById("editor-login").value = "";
+  document.getElementById("editor-password").value = "";
+  await loadEditors();
+}
+
+async function deleteEditor(login) {
+  if (!confirm(`Удалить редактора ${login}?`)) return;
+  const res = await fetch(`${api}/news/admin/editors`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ action: "delete", login })
+  });
+  if (!res.ok) return alert("Ошибка удаления");
+  await loadEditors();
+}
+
+async function loadPendingNews() {
+  try {
+    const res = await fetch(`${api}/news/admin/pending`, { headers: { "X-Admin-Token": adminToken } });
+    if (!res.ok) return;
+    const items = await res.json();
+    const ul = document.getElementById("pending-news-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+
+    if (!items.length) {
+      ul.innerHTML = "<li>Нет новостей на модерации</li>";
+      return;
+    }
+
+    items.forEach(n => {
+      const id = n.id || n.Id;
+      const title = n.title || n.Title;
+      const author = n.authorLogin || n.AuthorLogin || "редактор";
+      const text = (n.content || n.Content || "").slice(0, 180);
+      const li = document.createElement("li");
+      li.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div style='color:var(--muted)'>${escapeHtml(author)} · ${escapeHtml(text)}</div></div><div><button onclick="publishNews('${id}')">✅</button> <button onclick="rejectNews('${id}')">❌</button></div>`;
+      ul.appendChild(li);
+    });
+  } catch (err) {
+    console.error("loadPendingNews", err);
+  }
+}
+
+async function publishNews(id) {
+  const res = await fetch(`${api}/news/admin/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id })
+  });
+  if (!res.ok) return alert("Ошибка публикации");
+  await loadPendingNews();
+}
+
+async function rejectNews(id) {
+  const reason = prompt("Причина отклонения:", "") || "";
+  const res = await fetch(`${api}/news/admin/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id, reason })
+  });
+  if (!res.ok) return alert("Ошибка отклонения");
+  await loadPendingNews();
+}
 
 // ---- UI: Tabs ----
 function setupTabs() {

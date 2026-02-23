@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoKiosk Editor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>✍️ Панель редактора</h1>
+      <p class="subtitle">Создайте новость и отправьте на модерацию администратору</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="tab-content active">
+      <div class="grid-2">
+        <div class="card">
+          <h3>Авторизация редактора</h3>
+          <label>Логин</label>
+          <input id="editor-login" type="text">
+          <label>Пароль</label>
+          <input id="editor-password" type="password">
+          <button onclick="loginEditor()">Войти</button>
+          <p id="editor-auth-status" class="hint"></p>
+        </div>
+
+        <div class="card">
+          <h3>Новая новость</h3>
+          <label>Заголовок</label>
+          <input id="news-title" type="text">
+          <label>Текст новости</label>
+          <textarea id="news-content"></textarea>
+          <label>Ссылка на видео (YouTube/VK/файл)</label>
+          <input id="news-video-url" type="text">
+          <label>Или прикрепить видеофайл</label>
+          <input id="news-video-file" type="file" accept="video/*">
+          <button onclick="submitNews()">📤 Отправить на модерацию</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Мои отправленные новости</h3>
+        <button onclick="loadMyPending()">🔄 Обновить</button>
+        <ul id="my-news-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <script src="editor.js"></script>
+</body>
+</html>

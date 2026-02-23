@@ -26,6 +26,7 @@
             <div class="menu-item" data-tab="files"><span class="icon">🗂️</span><span class="title">Файлы</span></div>
             <div class="menu-item" data-tab="media"><span class="icon">🖼️</span><span class="title">Медиа</span></div>
             <div class="menu-item" data-tab="calendar"><span class="icon">🗓️</span><span class="title">Календарь</span></div>
+            <div class="menu-item" data-tab="news"><span class="icon">📰</span><span class="title">Новости</span></div>
             <div class="menu-item" data-tab="settings"><span class="icon">⚙️</span><span class="title">Настройки</span></div>
         </nav>
 
@@ -179,6 +180,40 @@
                 <div class="card">
                     <h3>Список событий</h3>
                     <ul id="calendar"></ul>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="tab-news" class="tab-content">
+            <div class="tab-head">
+                <h2>📰 Новости и модерация</h2>
+                <p>Создавайте редакторов, принимайте или отклоняйте новости, отправленные на модерацию.</p>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <h3>Редакторы</h3>
+                        <label>Логин:</label>
+                        <input id="editor-login" type="text">
+                        <label>Пароль:</label>
+                        <input id="editor-password" type="text">
+                        <button onclick="createEditor()">➕ Добавить редактора</button>
+                        <ul id="editors-list"></ul>
+                    </div>
+
+                    <div class="card">
+                        <h3>Ссылка для редакторов</h3>
+                        <p>Передайте редактору страницу <code>/editor.html</code></p>
+                        <a href="editor.html" target="_blank">Открыть editor.html</a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Новости на модерации</h3>
+                    <button onclick="loadPendingNews()">🔄 Обновить</button>
+                    <ul id="pending-news-list"></ul>
                 </div>
             </div>
         </section>

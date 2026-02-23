@@ -33,6 +33,7 @@ namespace InfoKioskApp
         private MediaView? _mediaView;
         private ScheduleView? _scheduleView;
         private CalendarView? _calendarView;
+        private NewsView? _newsView;
 
 
         private double _tickerX;
@@ -340,6 +341,12 @@ namespace InfoKioskApp
             ContentArea.Content = _mediaView;
         }
 
+
+        private void News_Click(object sender, RoutedEventArgs e)
+        {
+            _newsView ??= new NewsView();
+            ContentArea.Content = _newsView;
+        }
 
         private void Schedule_Click(object sender, RoutedEventArgs e)
         {

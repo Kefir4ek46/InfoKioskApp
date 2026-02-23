@@ -235,29 +235,17 @@ namespace InfoKioskApp.Views
                 switch (currentMeal.ToLower())
                 {
                     case "завтрак":
-                        if (!breakfastHeaderAdded)
-                        {
-                            BreakfastPanel.Children.Add(CreateHeaderRow());
-                            breakfastHeaderAdded = true;
-                        }
+                        breakfastHeaderAdded = true;
                         BreakfastPanel.Children.Add(rowGrid);
                         break;
 
                     case "завтрак 2":
-                        if (!breakfast2HeaderAdded)
-                        {
-                            Breakfast2Panel.Children.Add(CreateHeaderRow());
-                            breakfast2HeaderAdded = true;
-                        }
+                        breakfast2HeaderAdded = true;
                         Breakfast2Panel.Children.Add(rowGrid);
                         break;
 
                     case "обед":
-                        if (!lunchHeaderAdded)
-                        {
-                            LunchPanel.Children.Add(CreateHeaderRow());
-                            lunchHeaderAdded = true;
-                        }
+                        lunchHeaderAdded = true;
                         LunchPanel.Children.Add(rowGrid);
                         break;
                 }
@@ -270,104 +258,82 @@ namespace InfoKioskApp.Views
         #endregion
 
 
-        private Grid CreateHeaderRow()
-        {
-            var grid = new Grid
-            {
-                Background = new SolidColorBrush(Color.FromRgb(58, 58, 58)),
-                Height = 40,
-                Margin = new Thickness(0, 10, 0, 5)
-            };
-
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-
-            AddHeaderCell(grid, "Раздел", 0);
-            AddHeaderCell(grid, "№рец.", 1);
-            AddHeaderCell(grid, "Блюдо", 2);
-            AddHeaderCell(grid, "Выход,г", 3);
-            AddHeaderCell(grid, "Цена", 4);
-            AddHeaderCell(grid, "Ккал", 5);
-            AddHeaderCell(grid, "Белки", 6);
-            AddHeaderCell(grid, "Жиры", 7);
-            AddHeaderCell(grid, "Углеводы", 8);
-
-            return grid;
-        }
-
-        private void AddHeaderCell(Grid grid, string text, int column)
-        {
-            var tb = new TextBlock
-            {
-                Text = text,
-                Foreground = Brushes.White,
-                FontWeight = FontWeights.Bold,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 5, 0),
-                FontSize = 14
-            };
-
-            Grid.SetColumn(tb, column);
-            grid.Children.Add(tb);
-        }
-
-
-
-        private Grid CreateMenuRow(string section, string recipe, string dish,
+        private Border CreateMenuRow(string section, string recipe, string dish,
                            string output, string price,
                            string calories, string proteins,
                            string fats, string carbs)
         {
-            var grid = new Grid
+            var card = new Border
             {
-                Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
-                Margin = new Thickness(0, 2, 0, 2),
-                Height = 40
+                Background = new SolidColorBrush(Color.FromRgb(34, 34, 42)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(58, 58, 72)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12),
+                Margin = new Thickness(0, 0, 0, 10),
+                Padding = new Thickness(16, 12, 16, 12)
             };
 
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(50) });
+            var rootGrid = new Grid();
+            rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            rootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            AddCell(grid, section, 0);
-            AddCell(grid, recipe, 1);
-            AddCell(grid, dish, 2);
-            AddCell(grid, output, 3);
-            AddCell(grid, price, 4);
-            AddCell(grid, calories, 5);
-            AddCell(grid, proteins, 6);
-            AddCell(grid, fats, 7);
-            AddCell(grid, carbs, 8);
+            var leftStack = new StackPanel();
+            leftStack.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(section) ? recipe : section,
+                Foreground = new SolidColorBrush(Color.FromRgb(145, 145, 155)),
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold
+            });
+            leftStack.Children.Add(new TextBlock
+            {
+                Text = dish,
+                Foreground = Brushes.White,
+                FontSize = 42,
+                FontWeight = FontWeights.Medium,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 8, 0, 0)
+            });
+            Grid.SetColumn(leftStack, 0);
 
-            return grid;
+            var rightGrid = new Grid { Margin = new Thickness(20, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            for (int i = 0; i < 5; i++)
+                rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            AddMetric(rightGrid, 0, "Выход,г", output);
+            AddMetric(rightGrid, 1, "Цена", price);
+            AddMetric(rightGrid, 2, "Белки", proteins);
+            AddMetric(rightGrid, 3, "Жиры", fats);
+            AddMetric(rightGrid, 4, "Углев.", carbs);
+            Grid.SetColumn(rightGrid, 1);
+
+            rootGrid.Children.Add(leftStack);
+            rootGrid.Children.Add(rightGrid);
+            card.Child = rootGrid;
+            return card;
         }
 
-        private void AddCell(Grid grid, string text, int column)
+        private static void AddMetric(Grid grid, int column, string label, string value)
         {
-            var tb = new TextBlock
+            var stack = new StackPanel { Margin = new Thickness(18, 0, 0, 0) };
+            stack.Children.Add(new TextBlock
             {
-                Text = text,
+                Text = label,
+                Foreground = new SolidColorBrush(Color.FromRgb(140, 140, 150)),
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Right
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(value) ? "—" : value,
                 Foreground = Brushes.White,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(5, 0, 5, 0),
-                FontSize = 14
-            };
-
-            Grid.SetColumn(tb, column);
-            grid.Children.Add(tb);
+                FontSize = 28,
+                Margin = new Thickness(0, 4, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Right
+            });
+            Grid.SetColumn(stack, column);
+            grid.Children.Add(stack);
         }
 
 

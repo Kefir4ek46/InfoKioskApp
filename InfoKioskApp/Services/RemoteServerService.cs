@@ -23,6 +23,14 @@ namespace InfoKioskApp.Services
         public static event Action<bool> ServerStatusChanged;
 
         private static readonly string DataRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+        private static readonly HashSet<string> AdminTokens = new();
+        private static readonly HashSet<string> EditorTokens = new();
+
+        private static string NewsRoot => Path.Combine(DataRoot, "news");
+        private static string NewsPendingPath => Path.Combine(NewsRoot, "pending.json");
+        private static string NewsPublishedPath => Path.Combine(NewsRoot, "published.json");
+        private static string NewsRejectedPath => Path.Combine(NewsRoot, "rejected.json");
+        private static string NewsEditorsPath => Path.Combine(NewsRoot, "editors.json");
 
         // ---------------------------- START / STOP ----------------------------
 
@@ -122,6 +130,18 @@ namespace InfoKioskApp.Services
 
 
 
+
+                    case "/auth/admin/login": await HandleAdminLogin(ctx); break;
+                    case "/auth/editor/login": await HandleEditorLogin(ctx); break;
+
+                    case "/news/published": await HandleNewsPublishedList(ctx); break;
+                    case "/news/editor/submit": await HandleEditorSubmitNews(ctx); break;
+                    case "/news/editor/mine": await HandleEditorMyNews(ctx); break;
+
+                    case "/news/admin/pending": await HandleAdminPendingNews(ctx); break;
+                    case "/news/admin/publish": await HandleAdminPublishNews(ctx); break;
+                    case "/news/admin/reject": await HandleAdminRejectNews(ctx); break;
+                    case "/news/admin/editors": await HandleAdminEditors(ctx); break;
 
                     case "/settings/get": await HandleGetConfig(ctx); break;
 
@@ -267,6 +287,7 @@ namespace InfoKioskApp.Services
                 "docs" or "documents" => Path.Combine(DataRoot, "documents"),
                 "schoollogo" => Path.Combine(DataRoot, "schoolLogo"),
                 "schoolphotos" => Path.Combine(DataRoot, "schoolPhotos"),
+                "newsmedia" => Path.Combine(NewsRoot, "media"),
                 _ => DataRoot,
             };
         }
@@ -568,6 +589,292 @@ namespace InfoKioskApp.Services
             {
                 await WriteText(ctx, $"Ошибка сохранения: {ex.Message}", 500);
             }
+        }
+
+        // ---------------------------- NEWS/AUTH API ----------------------------
+
+        private static bool IsAdminAuthorized(HttpListenerContext ctx)
+        {
+            string token = ctx.Request.Headers["X-Admin-Token"] ?? "";
+            return !string.IsNullOrWhiteSpace(token) && AdminTokens.Contains(token);
+        }
+
+        private static bool IsEditorAuthorized(HttpListenerContext ctx)
+        {
+            string token = ctx.Request.Headers["X-Editor-Token"] ?? "";
+            return !string.IsNullOrWhiteSpace(token) && EditorTokens.Contains(token);
+        }
+
+        private static List<NewsPost> ReadNewsList(string path)
+        {
+            try
+            {
+                Directory.CreateDirectory(NewsRoot);
+                if (!File.Exists(path)) return new List<NewsPost>();
+                return JsonConvert.DeserializeObject<List<NewsPost>>(File.ReadAllText(path, Encoding.UTF8)) ?? new List<NewsPost>();
+            }
+            catch
+            {
+                return new List<NewsPost>();
+            }
+        }
+
+        private static void WriteNewsList(string path, List<NewsPost> list)
+        {
+            Directory.CreateDirectory(NewsRoot);
+            File.WriteAllText(path, JsonConvert.SerializeObject(list, Formatting.Indented), Encoding.UTF8);
+        }
+
+        private static List<NewsEditor> ReadEditors()
+        {
+            try
+            {
+                Directory.CreateDirectory(NewsRoot);
+                if (!File.Exists(NewsEditorsPath)) return new List<NewsEditor>();
+                return JsonConvert.DeserializeObject<List<NewsEditor>>(File.ReadAllText(NewsEditorsPath, Encoding.UTF8)) ?? new List<NewsEditor>();
+            }
+            catch
+            {
+                return new List<NewsEditor>();
+            }
+        }
+
+        private static void WriteEditors(List<NewsEditor> editors)
+        {
+            Directory.CreateDirectory(NewsRoot);
+            File.WriteAllText(NewsEditorsPath, JsonConvert.SerializeObject(editors, Formatting.Indented), Encoding.UTF8);
+        }
+
+        private static async Task HandleAdminLogin(HttpListenerContext ctx)
+        {
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string password = (string?)data?.password ?? "";
+            string pin = ConfigService.LoadConfig().PinCode ?? "1234";
+
+            if (password != pin)
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string token = Guid.NewGuid().ToString("N");
+            AdminTokens.Add(token);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { token }));
+        }
+
+        private static async Task HandleEditorLogin(HttpListenerContext ctx)
+        {
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string login = (string?)data?.login ?? "";
+            string password = (string?)data?.password ?? "";
+
+            var editor = ReadEditors().FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Password == password && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string token = Guid.NewGuid().ToString("N");
+            EditorTokens.Add(token);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login }));
+        }
+
+        private static async Task HandleNewsPublishedList(HttpListenerContext ctx)
+        {
+            var list = ReadNewsList(NewsPublishedPath)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+            await WriteJson(ctx, JsonConvert.SerializeObject(list, Formatting.Indented));
+        }
+
+        private static async Task HandleEditorSubmitNews(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            var post = JsonConvert.DeserializeObject<NewsPost>(body);
+            if (post == null || string.IsNullOrWhiteSpace(post.Title))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            post.Id = Guid.NewGuid().ToString("N");
+            post.CreatedAt = DateTime.Now;
+            post.Status = "pending";
+
+            var pending = ReadNewsList(NewsPendingPath);
+            pending.Add(post);
+            WriteNewsList(NewsPendingPath, pending);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = post.Id }));
+        }
+
+        private static async Task HandleAdminPendingNews(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            var pending = ReadNewsList(NewsPendingPath)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+            await WriteJson(ctx, JsonConvert.SerializeObject(pending, Formatting.Indented));
+        }
+
+        private static async Task HandleAdminPublishNews(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            var pending = ReadNewsList(NewsPendingPath);
+            var item = pending.FirstOrDefault(x => x.Id == id);
+            if (item == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            pending.Remove(item);
+            WriteNewsList(NewsPendingPath, pending);
+
+            var published = ReadNewsList(NewsPublishedPath);
+            item.Status = "published";
+            item.ModeratedAt = DateTime.Now;
+            published.Add(item);
+            WriteNewsList(NewsPublishedPath, published);
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        private static async Task HandleAdminRejectNews(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            string reason = (string?)data?.reason ?? "";
+
+            var pending = ReadNewsList(NewsPendingPath);
+            var item = pending.FirstOrDefault(x => x.Id == id);
+            if (item == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            pending.Remove(item);
+            WriteNewsList(NewsPendingPath, pending);
+
+            var rejected = ReadNewsList(NewsRejectedPath);
+            item.Status = "rejected";
+            item.RejectReason = reason;
+            item.ModeratedAt = DateTime.Now;
+            rejected.Add(item);
+            WriteNewsList(NewsRejectedPath, rejected);
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        private static async Task HandleAdminEditors(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod == "GET")
+            {
+                var editors = ReadEditors();
+                await WriteJson(ctx, JsonConvert.SerializeObject(editors, Formatting.Indented));
+                return;
+            }
+
+            if (ctx.Request.HttpMethod == "POST")
+            {
+                string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+                dynamic data = JsonConvert.DeserializeObject(body);
+                string action = (string?)data?.action ?? "add";
+
+                var editors = ReadEditors();
+
+                if (action == "add")
+                {
+                    string login = (string?)data?.login ?? "";
+                    string password = (string?)data?.password ?? "";
+                    if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+                    {
+                        await WriteText(ctx, "Bad request", 400);
+                        return;
+                    }
+
+                    if (editors.Any(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        await WriteText(ctx, "Editor exists", 409);
+                        return;
+                    }
+
+                    editors.Add(new NewsEditor { Login = login, Password = password, Active = true });
+                    WriteEditors(editors);
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+                    return;
+                }
+
+                if (action == "delete")
+                {
+                    string login = (string?)data?.login ?? "";
+                    editors.RemoveAll(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase));
+                    WriteEditors(editors);
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+                    return;
+                }
+            }
+
+            await WriteText(ctx, "Unsupported method", 405);
         }
 
         // ---------------------------- HELPERS ----------------------------
