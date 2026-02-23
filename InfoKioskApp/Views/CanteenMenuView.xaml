@@ -160,15 +160,15 @@
 
                     <StackPanel Margin="20">
 
-                        <TextBlock Text="Завтрак"
+                        <TextBlock x:Name="BreakfastHeader" Text="Завтрак"
                            Style="{StaticResource SectionHeaderStyle}"/>
                         <StackPanel x:Name="BreakfastPanel"/>
 
-                        <TextBlock Text="Завтрак 2"
+                        <TextBlock x:Name="Breakfast2Header" Text="Завтрак 2"
                            Style="{StaticResource SectionHeaderStyle}"/>
                         <StackPanel x:Name="Breakfast2Panel"/>
 
-                        <TextBlock Text="Обед"
+                        <TextBlock x:Name="LunchHeader" Text="Обед"
                            Style="{StaticResource SectionHeaderStyle}"/>
                         <StackPanel x:Name="LunchPanel"/>
 
