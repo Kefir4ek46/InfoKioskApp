@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -7,285 +7,250 @@
     <link rel="icon" href="Logo.ico" type="image/x-icon">
     <link rel="shortcut icon" href="Logo.ico" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
-
 </head>
 <body>
-
-    <header>
-        <h1>🌐 InfoKiosk Remote Admin</h1>
-        <p id="server-status">Подключение...</p>
+    <header class="topbar">
+        <div class="topbar-left">
+            <h1>🌐 InfoKiosk Remote Admin</h1>
+            <p class="subtitle">Единая панель для расписаний, файлов, медиа, календаря и системных настроек</p>
+        </div>
+        <div class="status-box">
+            <div id="server-status">Подключение...</div>
+            <div class="status-hint">API: текущий адрес страницы</div>
+        </div>
     </header>
 
     <main>
-
-        <!-- Навигация -->
         <nav class="menu">
-            <div class="menu-item active" data-tab="schedules">
-                <span class="icon">📜</span>
-                <span class="title">Расписания</span>
-            </div>
-
-            <div class="menu-item" data-tab="files">
-                <span class="icon">🗂️</span>
-                <span class="title">Файлы</span>
-            </div>
-
-            <div class="menu-item" data-tab="media">
-                <span class="icon">🖼️</span>
-                <span class="title">Медиа</span>
-            </div>
-
-            <div class="menu-item" data-tab="calendar">
-                <span class="icon">🗓️</span>
-                <span class="title">Календарь</span>
-            </div>
-            <!-- Навигация-->
-            <div class="menu-item" data-tab="settings">
-                  <span class="icon">⚙️</span>
-                 <span class="title">Настройки</span>
-            </div> 
+            <div class="menu-item active" data-tab="schedules"><span class="icon">📜</span><span class="title">Расписания</span></div>
+            <div class="menu-item" data-tab="files"><span class="icon">🗂️</span><span class="title">Файлы</span></div>
+            <div class="menu-item" data-tab="media"><span class="icon">🖼️</span><span class="title">Медиа</span></div>
+            <div class="menu-item" data-tab="calendar"><span class="icon">🗓️</span><span class="title">Календарь</span></div>
+            <div class="menu-item" data-tab="settings"><span class="icon">⚙️</span><span class="title">Настройки</span></div>
         </nav>
 
-        <!-- ТАБ: Расписания -->
         <section id="tab-schedules" class="tab-content active">
-
-            <h2>📂 Управление расписаниями</h2>
-
-            <div class="card drop-zone">
-                <h3>Основное расписание</h3>
-                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
-                <input type="file" id="main-file" multiple>
-                <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
+            <div class="tab-head">
+                <h2>📂 Управление расписаниями</h2>
+                <p>Загружайте основные и дополнительные файлы расписаний через drag&drop или ручной выбор.</p>
             </div>
 
-            <div class="card drop-zone">
-                <h3>Изменённое расписание</h3>
-                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
-                <input type="file" id="changes-file" multiple>
-                <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
+            <div class="grid-3">
+                <div class="card drop-zone">
+                    <h3>Основное расписание</h3>
+                    <p class="hint">Поддерживается множественная загрузка.</p>
+                    <input type="file" id="main-file" multiple>
+                    <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
+                </div>
+
+                <div class="card drop-zone">
+                    <h3>Изменённое расписание</h3>
+                    <p class="hint">Файлы попадут в раздел изменений.</p>
+                    <input type="file" id="changes-file" multiple>
+                    <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
+                </div>
+
+                <div class="card drop-zone">
+                    <h3>Другое расписание</h3>
+                    <p class="hint">Дополнительные таблицы и вспомогательные файлы.</p>
+                    <input type="file" id="other-file" multiple>
+                    <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
+                </div>
             </div>
 
-            <div class="card drop-zone">
-                <h3>Другое расписание</h3>
-                <p class="hint">Перетащите сюда файлы или выберите вручную:</p>
-                <input type="file" id="other-file" multiple>
-                <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
+            <div class="card">
+                <h3>📋 Список дополнительных файлов</h3>
+                <ul id="other-files"></ul>
             </div>
-
-            <h3>📋 Список дополнительных файлов</h3>
-            <ul id="other-files"></ul>
         </section>
 
-
-
-        <!-- ТАБ: Файлы -->
         <section id="tab-files" class="tab-content">
-
-            <h2>🗂 Управление файлами</h2>
-
-            <div class="card drop-zone">
-                <h3>Документы</h3>
-                <p class="hint">Перетащите сюда файлы документов или выберите вручную:</p>
-                <input type="file" id="docs-file" multiple>
-                <button onclick="uploadFileType('docs')">⬆ Загрузить</button>
+            <div class="tab-head">
+                <h2>🗂 Управление файлами</h2>
+                <p>Работа с документами и встроенный предпросмотр.</p>
             </div>
 
-            <div class="file-list">
-                <h3>📁 Список файлов</h3>
-                <select id="file-category" onchange="loadFilesCategory()">
-                    <option value="docs">Документы</option>
-                    
-                </select>
-                <button onclick="loadFilesCategory()">🔄</button>
-                <ul id="files-list"></ul>
-            </div>
+            <div class="grid-2">
+                <div>
+                    <div class="card drop-zone">
+                        <h3>Документы</h3>
+                        <p class="hint">Перетащите файлы сюда, чтобы загрузить их в раздел документов.</p>
+                        <input type="file" id="docs-file" multiple>
+                        <button onclick="uploadFileType('docs')">⬆ Загрузить</button>
+                    </div>
 
-            <div class="file-preview card">
-                <h3>📄 Предпросмотр</h3>
-                <div id="preview-area" class="preview-area"></div>
+                    <div class="card file-list">
+                        <h3>📁 Список файлов</h3>
+                        <div class="row-inline">
+                            <select id="file-category" onchange="loadFilesCategory()">
+                                <option value="docs">Документы</option>
+                            </select>
+                            <button onclick="loadFilesCategory()">🔄</button>
+                        </div>
+                        <ul id="files-list"></ul>
+                    </div>
+                </div>
+
+                <div class="card file-preview">
+                    <h3>📄 Предпросмотр</h3>
+                    <div id="preview-area" class="preview-area"></div>
+                </div>
             </div>
         </section>
 
-
-
-        <!-- ТАБ: МЕДИА (посты) -->
         <section id="tab-media" class="tab-content">
-
-            <h2>🖼 Медиа и посты</h2>
-
-            <!-- Создание поста -->
-            <div class="card create-post-panel">
-
-                <h3>Создать пост</h3>
-
-                <label>Категория:</label>
-                <select id="post-category"></select>
-
-                <label>Название:</label>
-                <input id="post-title" type="text">
-
-                <label>Описание:</label>
-                <textarea id="post-description"></textarea>
-
-                <label>Дата:</label>
-                <input id="post-date" type="date">
-
-                <label>Фотографии:</label>
-                <input id="post-images" type="file" accept="image/*" multiple>
-
-                <button onclick="createFullPost()">Создать пост</button>
+            <div class="tab-head">
+                <h2>🖼 Медиа и посты</h2>
+                <p>Создание постов, загрузка изображений и управление категориями.</p>
             </div>
 
-            <!-- Категории -->
-            <div class="card category-bar">
-                <label>Категория:</label>
-                <select id="category-select" onchange="onCategoryChange()"></select>
+            <div class="grid-2">
+                <div class="card create-post-panel">
+                    <h3>Создать пост</h3>
+                    <label>Категория:</label>
+                    <select id="post-category"></select>
 
-                <button class="cat-btn" onclick="renameCategoryPrompt()">✏ Переименовать</button>
-                <button class="cat-btn danger" onclick="deleteCategory()">🗑 Удалить</button>
+                    <label>Название:</label>
+                    <input id="post-title" type="text">
 
-                <input id="new-category-name" placeholder="Новая категория">
-                <button onclick="createCategory()">➕ Добавить</button>
+                    <label>Описание:</label>
+                    <textarea id="post-description"></textarea>
+
+                    <label>Дата:</label>
+                    <input id="post-date" type="date">
+
+                    <label>Фотографии:</label>
+                    <input id="post-images" type="file" accept="image/*" multiple>
+
+                    <button onclick="createFullPost()">Создать пост</button>
+                </div>
+
+                <div class="card category-bar">
+                    <h3>Категории</h3>
+                    <label>Текущая категория:</label>
+                    <select id="category-select" onchange="onCategoryChange()"></select>
+
+                    <div class="row-inline wrap">
+                        <button class="cat-btn" onclick="renameCategoryPrompt()">✏ Переименовать</button>
+                        <button class="cat-btn danger" onclick="deleteCategory()">🗑 Удалить</button>
+                    </div>
+
+                    <label>Новая категория:</label>
+                    <div class="row-inline">
+                        <input id="new-category-name" placeholder="Новая категория">
+                        <button onclick="createCategory()">➕ Добавить</button>
+                    </div>
+                </div>
             </div>
 
-
-            <!-- Посты -->
-            <div id="media-posts-area" class="posts-grid"></div>
+            <div class="card">
+                <h3>Посты</h3>
+                <div id="media-posts-area" class="posts-grid"></div>
+            </div>
         </section>
 
-
-
-        <!-- ТАБ: Календарь -->
         <section id="tab-calendar" class="tab-content">
-
-            <h2>📅 Календарь событий</h2>
-            <div class="calendar-form card">
-
-                <input id="event-title" placeholder="Название события">
-
-                <label>Начало:</label>
-                <input id="event-start" type="date">
-
-                <label>Окончание:</label>
-                <input id="event-end" type="date">
-
-                <label>Тип:</label>
-                <select id="event-type">
-                    <option value="Праздник">🎉 Праздник</option>
-                    <option value="Каникулы">🏖 Каникулы</option>
-                    <option value="Выходной">🕊 Выходной</option>
-                    <option value="Другое" selected>📌 Другое</option>
-                </select>
-
-                <button onclick="addEvent()">Добавить</button>
+            <div class="tab-head">
+                <h2>📅 Календарь событий</h2>
+                <p>Публикуйте школьные события, праздники, каникулы и выходные.</p>
             </div>
 
-            <ul id="calendar"></ul>
+            <div class="grid-2">
+                <div class="calendar-form card">
+                    <input id="event-title" placeholder="Название события">
+
+                    <label>Начало:</label>
+                    <input id="event-start" type="date">
+
+                    <label>Окончание:</label>
+                    <input id="event-end" type="date">
+
+                    <label>Тип:</label>
+                    <select id="event-type">
+                        <option value="Праздник">🎉 Праздник</option>
+                        <option value="Каникулы">🏖 Каникулы</option>
+                        <option value="Выходной">🕊 Выходной</option>
+                        <option value="Другое" selected>📌 Другое</option>
+                    </select>
+
+                    <button onclick="addEvent()">Добавить</button>
+                </div>
+
+                <div class="card">
+                    <h3>Список событий</h3>
+                    <ul id="calendar"></ul>
+                </div>
+            </div>
         </section>
 
-
-
-        <!-- ТАБ: Настройки -->
         <section id="tab-settings" class="tab-content">
-
-            <h2>⚙ Настройки</h2>
-
-            <div class="card">
-                <h3>Автозапуск</h3>
-                <label class="switch">
-                    <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
-                    <span class="slider"></span>
-                </label>
+            <div class="tab-head">
+                <h2>⚙ Настройки</h2>
+                <p>Параметры удалённого доступа, столовой и обновления приложения.</p>
             </div>
 
-            <div class="card">
-                <h3>Спящий режим</h3>
-                <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
-                <button onclick="saveSleepMode()">Сохранить</button>
-            </div>
-
-
-            <div class="card">
-                <h3>Столовая (FoodBlockId)</h3>
-                <input id="food-block-id" type="text" placeholder="Например, 15159">
-                <button onclick="saveFoodBlockId()">Сохранить</button>
-            </div>
-
-            <div class="card storage-card">
-                <h3>💾 Память устройства</h3>
-
-                <div class="storage-row">
-                    <span>📀 Диск:</span>
-                    <span id="disk-total">—</span>
-                </div>
-
-                <div class="storage-row">
-                    <span>📉 Использовано:</span>
-                    <span id="disk-used">—</span>
-                </div>
-
-                <div class="storage-row">
-                    <span>📈 Свободно:</span>
-                    <span id="disk-free">—</span>
-                </div>
-
-                <hr>
-
-                <div class="storage-row">
-                    <span>📂 Папка data:</span>
-                    <span id="data-size">—</span>
-                </div>
-            </div>
-
-            <div class="card update-card">
-                <h3>🔄 Обновление системы</h3>
-
-                <div class="update-versions">
-                    <div class="update-row">
-                        <span>Текущая версия:</span>
-                        <strong id="currentVersion">—</strong>
+            <div class="grid-2">
+                <div>
+                    <div class="card">
+                        <h3>Автозапуск удалённого сервера</h3>
+                        <label class="switch">
+                            <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                    <div class="update-row">
-                        <span>Доступная версия:</span>
-                        <strong id="latestVersion">—</strong>
+
+                    <div class="card">
+                        <h3>Спящий режим панели (локально в браузере)</h3>
+                        <input id="sleep-time" type="number" min="0" max="240" placeholder="минут">
+                        <button onclick="saveSleepMode()">Сохранить</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Столовая (FoodBlockId)</h3>
+                        <input id="food-block-id" type="text" placeholder="Например, 15159">
+                        <button onclick="saveFoodBlockId()">Сохранить</button>
                     </div>
                 </div>
 
-                <div class="update-actions">
-                    <button class="btn secondary" onclick="checkUpdate()">
-                        Проверить обновления
-                    </button>
+                <div>
+                    <div class="card storage-card">
+                        <h3>💾 Память устройства</h3>
+                        <div class="storage-row"><span>📀 Диск:</span><span id="disk-total">—</span></div>
+                        <div class="storage-row"><span>📉 Использовано:</span><span id="disk-used">—</span></div>
+                        <div class="storage-row"><span>📈 Свободно:</span><span id="disk-free">—</span></div>
+                        <hr>
+                        <div class="storage-row"><span>📂 Папка data:</span><span id="data-size">—</span></div>
+                    </div>
 
-                    <button class="btn primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>
-                        Обновить
-                    </button>
+                    <div class="card update-card">
+                        <h3>🔄 Обновление системы</h3>
+                        <div class="update-versions">
+                            <div class="update-row"><span>Текущая версия:</span><strong id="currentVersion">—</strong></div>
+                            <div class="update-row"><span>Доступная версия:</span><strong id="latestVersion">—</strong></div>
+                        </div>
 
-                    <button class="btn danger" onclick="rollbackUpdate()">
-                        Откат версии
-                    </button>
-                </div>
+                        <div class="update-actions">
+                            <button class="btn secondary" onclick="checkUpdate()">Проверить обновления</button>
+                            <button class="btn primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>Обновить</button>
+                            <button class="btn danger" onclick="rollbackUpdate()">Откат версии</button>
+                        </div>
 
-                <div class="update-log-wrapper">
-                    <div class="update-log-title">Статус обновления</div>
-                    <pre id="updateLog" class="update-log">
-Ожидание действий...
-        </pre>
+                        <div class="update-log-wrapper">
+                            <div class="update-log-title">Статус обновления</div>
+                            <pre id="updateLog" class="update-log">Ожидание действий...</pre>
+                        </div>
+                    </div>
                 </div>
             </div>
-
         </section>
-
     </main>
 
-
-    <!-- МОДАЛЬНОЕ ОКНО ПОСТА -->
     <div id="post-modal" class="post-modal hidden">
         <div class="post-modal-content">
             <span class="post-modal-close">&times;</span>
             <h2 id="modal-post-title"></h2>
             <p id="modal-post-date"></p>
             <p id="modal-post-desc"></p>
-
             <div class="modal-gallery">
                 <button id="modal-prev" class="gallery-nav">⟵</button>
                 <img id="modal-img" class="modal-img">
@@ -300,25 +265,16 @@
                 <h3>InfoKioskApp Admin</h3>
                 <p>© 2025. Все права защищены.</p>
             </div>
-
             <div class="footer-center">
-                <a href="https://vk.com/akabudakoff" target="_blank" class="footer-link">
-                    <span class="icon">🌐</span> VK
-                </a>
-                <a href="https://t.me/krasivyy_Max" target="_blank" class="footer-link">
-                    <span class="icon">💬</span> Telegram
-                </a>
-                <a href="https://github.com/Kefir4ek46" target="_blank" class="footer-link">
-                    <span class="icon">💻</span> GitHub
-                </a>
+                <a href="https://vk.com/akabudakoff" target="_blank" class="footer-link"><span class="icon">🌐</span> VK</a>
+                <a href="https://t.me/krasivyy_Max" target="_blank" class="footer-link"><span class="icon">💬</span> Telegram</a>
+                <a href="https://github.com/Kefir4ek46" target="_blank" class="footer-link"><span class="icon">💻</span> GitHub</a>
             </div>
-
             <div class="footer-right">
-                <p>Разработчик: <strong>Maks aka Fizik aka Kefir4ek46 </strong></p>
+                <p>Разработчик: <strong>Maks aka Fizik aka Kefir4ek46</strong></p>
             </div>
         </div>
     </footer>
-
 
     <script src="script.js"></script>
 </body>

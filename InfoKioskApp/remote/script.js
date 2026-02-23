@@ -89,14 +89,45 @@ async function loadSettings() {
     const res = await fetch(`${api}/settings/get`);
     if (!res.ok) return;
     const data = await res.json();
-    document.getElementById("autostart-toggle").checked = !!data.autostart;
-    document.getElementById("sleep-time").value = data.sleepMinutes ?? "";
+
+    const autoStartValue = data.remoteAutoStart ?? data.RemoteAutoStart ?? data.autostart ?? false;
+    document.getElementById("autostart-toggle").checked = !!autoStartValue;
+
+    const sleepValue = localStorage.getItem("remoteSleepMinutes") || data.sleepMinutes || "";
+    document.getElementById("sleep-time").value = sleepValue;
   } catch (err) {
     console.warn("loadSettings:", err);
   }
   loadStorageInfo();
 }
 
+async function toggleAutostart() {
+  try {
+    const enabled = document.getElementById("autostart-toggle").checked;
+    const getRes = await fetch(`${api}/config`);
+    if (!getRes.ok) throw new Error("config get failed");
+
+    const cfg = await getRes.json();
+    cfg.remoteAutoStart = enabled;
+
+    const saveRes = await fetch(`${api}/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cfg)
+    });
+
+    if (!saveRes.ok) throw new Error("config save failed");
+  } catch (err) {
+    console.error("toggleAutostart", err);
+    alert("Не удалось сохранить автозапуск");
+  }
+}
+
+function saveSleepMode() {
+  const value = (document.getElementById("sleep-time").value || "").trim();
+  localStorage.setItem("remoteSleepMinutes", value);
+  alert("Параметр спящего режима сохранён локально в браузере");
+}
 
 async function loadConfigSettings() {
   try {
@@ -923,70 +954,3 @@ function stopLogPolling() {
 document.addEventListener("DOMContentLoaded", () => {
     loadUpdateStatus();
 });
-
-
-
-
-// -------------------------------
-// ROLLBACK
-// -------------------------------
-async function rollbackUpdate() {
-    if (!confirm("Откатить приложение к предыдущей версии?")) return;
-
-    clearUpdateLog();
-    appendUpdateLog("↩ Запуск отката версии...");
-
-    startLogPolling();
-
-    try {
-        const res = await fetch("/api/update/rollback", { method: "POST" });
-        const json = await res.json();
-
-        if (json.ok) {
-            appendUpdateLog("✅ Откат завершён");
-            await loadUpdateStatus();
-        } else {
-            appendUpdateLog("❌ Ошибка отката: " + json.msg);
-        }
-    } catch (e) {
-        appendUpdateLog("❌ Не удалось запустить rollback");
-    } finally {
-        stopLogPolling(); // 🔥
-    }
-}
-
-
-// -------------------------------
-// LOG POLLING
-// -------------------------------
-function startLogPolling() {
-    if (logTimer) return;
-
-    logTimer = setInterval(async () => {
-        try {
-            const res = await fetch("/api/update/log");
-            const text = await res.text();
-
-            updateLogEl.textContent = text;
-            updateLogEl.scrollTop = updateLogEl.scrollHeight;
-        } catch {
-            // сервер может временно упасть — молчим
-        }
-    }, 1500);
-}
-
-function stopLogPolling() {
-    if (logTimer) {
-        clearInterval(logTimer);
-        logTimer = null;
-    }
-}
-
-// -------------------------------
-// INIT
-// -------------------------------
-document.addEventListener("DOMContentLoaded", () => {
-    loadUpdateStatus();
-});
-
-
