@@ -13,9 +13,9 @@
         <StackPanel>
             <TextBlock Text="Настройки путей к файлам" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,0,0,18"/>
 
-            <TextBlock Text="Основное расписание" Foreground="#DDE3F1" Margin="0,0,0,6"/>
+            <TextBlock Text="Папка медиа" Foreground="#DDE3F1" Margin="0,0,0,6"/>
             <DockPanel Margin="0,0,0,14">
-                <TextBox x:Name="MainSchedulePathBox"
+                <TextBox x:Name="MediaPathBox"
                          Height="34"
                          Padding="8,6"
                          Background="#1F2129"
@@ -31,12 +31,12 @@
                         Background="#3A6DF0"
                         Foreground="White"
                         BorderThickness="0"
-                        Click="BrowseMainSchedule_Click"/>
+                        Click="SelectMediaFolder_Click"/>
             </DockPanel>
 
-            <TextBlock Text="Изменённое расписание" Foreground="#DDE3F1" Margin="0,0,0,6"/>
+            <TextBlock Text="Папка документов" Foreground="#DDE3F1" Margin="0,0,0,6"/>
             <DockPanel Margin="0,0,0,18">
-                <TextBox x:Name="ChangesPathBox"
+                <TextBox x:Name="DocumentsPathBox"
                          Height="34"
                          Padding="8,6"
                          Background="#1F2129"
@@ -52,7 +52,7 @@
                         Background="#3A6DF0"
                         Foreground="White"
                         BorderThickness="0"
-                        Click="BrowseChanges_Click"/>
+                        Click="SelectDocumentsFolder_Click"/>
             </DockPanel>
 
             <Button Content="💾 Сохранить пути"
@@ -63,7 +63,7 @@
                     Foreground="White"
                     FontWeight="SemiBold"
                     BorderThickness="0"
-                    Click="SavePaths_Click"/>
+                    Click="Save_Click"/>
         </StackPanel>
     </Border>
 </UserControl>

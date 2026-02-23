@@ -8,19 +8,29 @@
             <TextBlock Text="Удалённое управление" FontSize="22" FontWeight="Bold" Foreground="White" Margin="0,0,0,16"/>
 
             <TextBlock Text="Порт сервера:" Foreground="#DDE3F1" Margin="0,0,0,6"/>
-            <TextBox x:Name="PortBox" Width="120" Height="34" Padding="8,6" Background="#1F2129" Foreground="White" BorderBrush="#343848" BorderThickness="1" Margin="0,0,0,14"/>
+            <TextBox x:Name="PortBox" Width="120" Height="34" Padding="8,6" Background="#1F2129" Foreground="White" BorderBrush="#343848" BorderThickness="1" Margin="0,0,0,12"/>
 
-            <CheckBox x:Name="AutoStartCheck" Content="Автозапуск сервера" Foreground="White" Margin="0,0,0,6"/>
-            <CheckBox x:Name="EnableUploadCheck" Content="Разрешить загрузку файлов" Foreground="White" Margin="0,0,0,16"/>
+            <CheckBox x:Name="AutoStartCheck" Content="Автозапуск сервера" Foreground="White" Margin="0,0,0,12"/>
 
-            <TextBlock Text="Статус:" Foreground="#DDE3F1" Margin="0,0,0,6"/>
-            <TextBlock x:Name="ServerStatusText" Text="Остановлен" Foreground="#F3C969" Margin="0,0,0,16"/>
+            <TextBlock Text="IP устройства:" Foreground="#DDE3F1" Margin="0,0,0,4"/>
+            <TextBlock x:Name="IpText" Text="localhost" Foreground="White" Margin="0,0,0,10"/>
 
-            <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Статус:" Foreground="#DDE3F1" Margin="0,0,0,4"/>
+            <TextBlock x:Name="ServerStatus" Text="Сервер остановлен ⏹" Foreground="#F3C969" Margin="0,0,0,12"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                 <Button Content="▶ Запустить" Width="130" Height="34" Margin="0,0,10,0" Background="#3A6DF0" Foreground="White" BorderThickness="0" Click="StartServer_Click"/>
                 <Button Content="■ Остановить" Width="130" Height="34" Margin="0,0,10,0" Background="#C44747" Foreground="White" BorderThickness="0" Click="StopServer_Click"/>
                 <Button Content="💾 Сохранить" Width="130" Height="34" Background="#2D9A56" Foreground="White" BorderThickness="0" Click="SaveSettings_Click"/>
             </StackPanel>
+
+            <Border x:Name="QrPanel" Background="#1F2129" BorderBrush="#343848" BorderThickness="1" CornerRadius="8" Padding="12" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Ссылка для подключения:" Foreground="#DDE3F1" Margin="0,0,0,4"/>
+                    <TextBlock x:Name="ConnectUrl" Foreground="#9CC2FF" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <Image x:Name="QrImage" Width="180" Height="180" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Border>
 </UserControl>
