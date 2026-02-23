@@ -18,6 +18,7 @@ namespace InfoKioskApp.Views
         private readonly List<NewsMediaItem> _overlayMedia = new();
         private int _overlayMediaIndex;
         private int _overlayRotation;
+        private MediaElement? _activeOverlayMediaElement;
 
         public NewsView()
         {
@@ -194,8 +195,21 @@ namespace InfoKioskApp.Views
             }
         }
 
+        private void StopActiveOverlayMedia()
+        {
+            try
+            {
+                _activeOverlayMediaElement?.Stop();
+            }
+            catch { }
+
+            _activeOverlayMediaElement = null;
+        }
+
         private void RenderOverlayMedia()
         {
+            StopActiveOverlayMedia();
+
             if (_overlayMedia.Count == 0)
             {
                 OverlayMediaHost.Content = new TextBlock { Text = "Нет медиа", Foreground = Brushes.Gray };
@@ -236,6 +250,7 @@ namespace InfoKioskApp.Views
                     RenderTransform = new RotateTransform(_overlayRotation)
                 };
 
+                _activeOverlayMediaElement = media;
                 wrap.Children.Add(media);
                 var controls = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) };
                 controls.Children.Add(CreateControlButton("▶", (_, __) => media.Play()));
@@ -264,7 +279,11 @@ namespace InfoKioskApp.Views
             try { Process.Start(new ProcessStartInfo(pathOrUrl) { UseShellExecute = true }); } catch { }
         }
 
-        private void CloseOverlay_Click(object sender, RoutedEventArgs e) => NewsOverlay.Visibility = Visibility.Collapsed;
+        private void CloseOverlay_Click(object sender, RoutedEventArgs e)
+        {
+            StopActiveOverlayMedia();
+            NewsOverlay.Visibility = Visibility.Collapsed;
+        }
         private void PrevMedia_Click(object sender, RoutedEventArgs e) { _overlayMediaIndex--; RenderOverlayMedia(); }
         private void NextMedia_Click(object sender, RoutedEventArgs e) { _overlayMediaIndex++; RenderOverlayMedia(); }
         private void RotateMedia_Click(object sender, RoutedEventArgs e) { _overlayRotation = (_overlayRotation + 90) % 360; RenderOverlayMedia(); }

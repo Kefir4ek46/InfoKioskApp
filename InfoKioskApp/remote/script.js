@@ -34,16 +34,31 @@ window.addEventListener("load", async () => {
 });
 
 async function requireAdminAuth() {
-  if (adminToken) return;
+  if (adminToken) {
+    const check = await fetch(`${api}/news/admin/pending`, { headers: { "X-Admin-Token": adminToken } });
+    if (check.ok) return;
+    if (check.status === 401) {
+      adminToken = "";
+      sessionStorage.removeItem("adminToken");
+    }
+  }
 
-  for (let i = 0; i < 3; i++) {
+  while (!adminToken) {
     const password = prompt("Введите пароль администратора:");
-    if (!password) continue;
+    if (password === null) {
+      renderAuthBlocked();
+      throw new Error("Admin auth cancelled");
+    }
+
+    if (!password.trim()) {
+      alert("Введите пароль");
+      continue;
+    }
 
     const res = await fetch(`${api}/auth/admin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
+      body: JSON.stringify({ password: password.trim() })
     });
 
     if (res.ok) {
@@ -52,11 +67,19 @@ async function requireAdminAuth() {
       sessionStorage.setItem("adminToken", adminToken);
       return;
     }
-    alert("Неверный пароль");
-  }
 
-  document.body.innerHTML = "<div style='padding:30px;color:white;font-size:24px'>Доступ запрещён</div>";
-  throw new Error("Admin auth failed");
+    alert("Неверный пароль. Попробуйте снова.");
+  }
+}
+
+function renderAuthBlocked() {
+  document.body.innerHTML = `<div style="padding:30px;color:white;max-width:560px">
+      <div style="font-size:28px;font-weight:700;margin-bottom:8px">Требуется авторизация</div>
+      <div style="opacity:.85;margin-bottom:16px">Вход был отменен. Нажмите кнопку ниже, чтобы повторить авторизацию.</div>
+      <button id="retry-auth-btn" style="padding:10px 14px;font-size:16px;cursor:pointer">Повторить вход</button>
+    </div>`;
+  const btn = document.getElementById("retry-auth-btn");
+  if (btn) btn.addEventListener("click", () => location.reload());
 }
 
 async function loadEditors() {
@@ -1234,9 +1257,6 @@ async function loadStorageInfo() {
         if (mediaSizeEl) mediaSizeEl.textContent = data.mediaFolder?.size || "—";
         const newsSizeEl = document.getElementById("news-size");
         if (newsSizeEl) newsSizeEl.textContent = data.newsFolder?.size || "—";
-
-        const dataPathEl = document.getElementById("data-path");
-        if (dataPathEl) dataPathEl.textContent = data.dataFolder.path || "—";
 
         const appProcessEl = document.getElementById("app-process");
         if (appProcessEl) appProcessEl.textContent = data.app?.process || "—";
