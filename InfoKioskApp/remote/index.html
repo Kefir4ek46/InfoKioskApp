@@ -317,6 +317,9 @@
                         <div class="storage-row"><span>📀 Диск:</span><span id="disk-total">—</span></div>
                         <div class="storage-row"><span>📉 Использовано:</span><span id="disk-used">—</span></div>
                         <div class="storage-row"><span>📈 Свободно:</span><span id="disk-free">—</span></div>
+                        <div class="storage-row"><span>🧠 ОЗУ (процесс):</span><span id="perf-process-ram">—</span></div>
+                        <div class="storage-row"><span>🧠 ОЗУ (managed):</span><span id="perf-managed-ram">—</span></div>
+                        <div class="storage-row"><span>⚙ CPU (устройство):</span><span id="perf-cpu">—</span></div>
                         <hr>
                         <div class="storage-row"><span>📂 Папка data:</span><span id="data-size">—</span></div>
                         <div class="storage-row"><span>🖼 Папка media:</span><span id="media-size">—</span></div>
@@ -333,6 +336,13 @@
                             <div class="update-row"><span>Доступная версия:</span><strong id="latestVersion">—</strong></div>
                             <div class="update-row"><span>Путь app:</span><strong id="update-app-base-dir">—</strong></div>
                             <div class="update-row"><span>InstallDir updater:</span><strong id="update-install-dir">—</strong></div>
+                        </div>
+                        <div class="update-release-notes">
+                            <div class="update-row"><span>Релиз:</span><strong id="update-release-name">—</strong></div>
+                            <div class="update-row"><span>Тег:</span><strong id="update-release-tag">—</strong></div>
+                            <div class="update-row"><span>Ссылка:</span><a id="update-release-url" href="#" target="_blank">—</a></div>
+                            <label style="display:block;margin-top:8px;color:var(--muted)">Что нового:</label>
+                            <pre id="update-release-notes" class="log" style="max-height:180px;white-space:pre-wrap;">—</pre>
                         </div>
 
                         <div class="update-actions">

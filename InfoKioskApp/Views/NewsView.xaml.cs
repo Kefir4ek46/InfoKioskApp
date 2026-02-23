@@ -2,7 +2,6 @@ using InfoKioskApp.Models;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -187,16 +186,17 @@ namespace InfoKioskApp.Views
                 }
             }
 
+            if (_overlayMedia.Count == 0 && !string.IsNullOrWhiteSpace(post.VideoUrl))
+            {
+                _overlayMedia.Add(new NewsMediaItem { Type = "video", Path = post.VideoUrl!, IsRemote = true, ExpectedPortrait = (post.VideoHeight ?? 0) > (post.VideoWidth ?? 0) });
+            }
+
             foreach (var photo in (post.PhotoFiles ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).Select(Path.GetFileName).Distinct())
             {
                 var p = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "news", "media", photo);
                 if (File.Exists(p)) _overlayMedia.Add(new NewsMediaItem { Type = "photo", Path = p });
             }
 
-            if (_overlayMedia.Count == 0 && !string.IsNullOrWhiteSpace(post.VideoUrl))
-            {
-                _overlayMedia.Add(new NewsMediaItem { Type = "link", Path = post.VideoUrl! });
-            }
         }
 
         private void StopActiveOverlayMedia()
@@ -259,7 +259,7 @@ namespace InfoKioskApp.Views
                 var wrap = new StackPanel();
                 var media = new MediaElement
                 {
-                    Source = new Uri(item.Path, UriKind.Absolute),
+                    Source = new Uri(item.Path, item.IsRemote ? UriKind.Absolute : UriKind.Absolute),
                     LoadedBehavior = MediaState.Manual,
                     UnloadedBehavior = MediaState.Stop,
                     Stretch = Stretch.Uniform,
@@ -287,9 +287,13 @@ namespace InfoKioskApp.Views
                 return;
             }
 
-            var btn = CreateControlButton("🎬 Открыть видео по ссылке", (_, __) => OpenExternal(item.Path));
-            btn.HorizontalAlignment = HorizontalAlignment.Center;
-            OverlayMediaHost.Content = btn;
+            OverlayMediaHost.Content = new TextBlock
+            {
+                Text = "Неподдерживаемый формат медиа",
+                Foreground = Brushes.Gray,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
         }
 
         private static Button CreateControlButton(string text, RoutedEventHandler handler)
@@ -299,10 +303,6 @@ namespace InfoKioskApp.Views
             return b;
         }
 
-        private static void OpenExternal(string pathOrUrl)
-        {
-            try { Process.Start(new ProcessStartInfo(pathOrUrl) { UseShellExecute = true }); } catch { }
-        }
 
         private void CloseOverlay_Click(object sender, RoutedEventArgs e)
         {
@@ -318,6 +318,7 @@ namespace InfoKioskApp.Views
             public string Type { get; set; } = "photo";
             public string Path { get; set; } = "";
             public bool ExpectedPortrait { get; set; }
+            public bool IsRemote { get; set; }
             public bool IsVideo => Type == "video";
         }
     }

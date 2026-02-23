@@ -26,6 +26,8 @@ namespace InfoKioskApp.Services
         private static readonly string DataRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
         private static readonly HashSet<string> AdminTokens = new();
         private static readonly HashSet<string> EditorTokens = new();
+        private static DateTime _lastCpuSampleTimeUtc = DateTime.UtcNow;
+        private static TimeSpan _lastCpuTotalProcessorTime = Process.GetCurrentProcess().TotalProcessorTime;
 
         private static string NewsRoot => Path.Combine(DataRoot, "news");
         private static string NewsPendingPath => Path.Combine(NewsRoot, "pending.json");
@@ -960,6 +962,7 @@ namespace InfoKioskApp.Services
                 return;
             }
 
+            CleanupUnusedNewsMediaFiles();
             await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
         }
 
@@ -1565,11 +1568,45 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
             await WriteJson(ctx, result);
         }
 
+
+        private static async Task<object?> FetchGithubReleaseInfo(string baseDir)
+        {
+            try
+            {
+                string updaterConfigPath = Path.Combine(baseDir, "updater.config.json");
+                if (!File.Exists(updaterConfigPath)) return null;
+
+                var cfg = JObject.Parse(File.ReadAllText(updaterConfigPath, Encoding.UTF8));
+                string repoApiUrl = cfg["RepoApiUrl"]?.ToString() ?? "";
+                if (string.IsNullOrWhiteSpace(repoApiUrl)) return null;
+
+                using var client = new WebClient();
+                client.Headers.Add("User-Agent", "InfoKioskApp/2.0");
+                client.Encoding = Encoding.UTF8;
+                string json = await client.DownloadStringTaskAsync(repoApiUrl);
+                var rel = JObject.Parse(json);
+
+                return new
+                {
+                    name = rel["name"]?.ToString() ?? "",
+                    tag = rel["tag_name"]?.ToString() ?? "",
+                    publishedAt = rel["published_at"]?.ToString() ?? "",
+                    url = rel["html_url"]?.ToString() ?? "",
+                    body = rel["body"]?.ToString() ?? ""
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static async Task HandleUpdateStatus(HttpListenerContext ctx)
         {
             try
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var githubRelease = await FetchGithubReleaseInfo(baseDir);
 
                 string currentVersionPath = Path.Combine(baseDir, "version.txt");
                 string latestVersionPath = Path.Combine(baseDir, "latest_version.txt");
@@ -1614,7 +1651,8 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
                         currentVersionPath,
                         latestVersionPath,
                         installDirFromConfig
-                    }
+                    },
+                    githubRelease
                 };
 
                 string json = JsonConvert.SerializeObject(payload);
@@ -1651,6 +1689,97 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
 
 
 
+
+
+        private static void CleanupUnusedNewsMediaFiles()
+        {
+            try
+            {
+                string mediaDir = Path.Combine(NewsRoot, "media");
+                if (!Directory.Exists(mediaDir)) return;
+
+                var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var listPath in new[] { NewsPendingPath, NewsPublishedPath, NewsRejectedPath })
+                {
+                    foreach (var post in ReadNewsList(listPath))
+                    {
+                        if (!string.IsNullOrWhiteSpace(post.VideoFile))
+                            used.Add(Path.GetFileName(post.VideoFile));
+
+                        foreach (var photo in post.PhotoFiles ?? new List<string>())
+                        {
+                            if (!string.IsNullOrWhiteSpace(photo))
+                                used.Add(Path.GetFileName(photo));
+                        }
+                    }
+                }
+
+                foreach (var file in Directory.EnumerateFiles(mediaDir))
+                {
+                    var name = Path.GetFileName(file);
+                    if (!used.Contains(name))
+                    {
+                        try { File.Delete(file); } catch { }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private static object GetPerformanceSnapshot()
+        {
+            try
+            {
+                var proc = Process.GetCurrentProcess();
+                var gcInfo = GC.GetGCMemoryInfo();
+                long totalAvailable = gcInfo.TotalAvailableMemoryBytes > 0 ? gcInfo.TotalAvailableMemoryBytes : 0;
+                long usedManaged = GC.GetTotalMemory(false);
+                double cpuPercent = ReadProcessCpuUsagePercent(proc);
+
+                return new
+                {
+                    processWorkingSetBytes = proc.WorkingSet64,
+                    processWorkingSet = SystemInfoService.FormatBytes(proc.WorkingSet64),
+                    managedMemoryBytes = usedManaged,
+                    managedMemory = SystemInfoService.FormatBytes(usedManaged),
+                    systemMemoryAvailableBytes = totalAvailable,
+                    systemMemoryAvailable = totalAvailable > 0 ? SystemInfoService.FormatBytes(totalAvailable) : "—",
+                    cpuUsagePercent = Math.Round(cpuPercent, 1)
+                };
+            }
+            catch
+            {
+                return new { };
+            }
+        }
+
+        private static double ReadProcessCpuUsagePercent(Process proc)
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                var total = proc.TotalProcessorTime;
+                var elapsedMs = (now - _lastCpuSampleTimeUtc).TotalMilliseconds;
+                if (elapsedMs <= 0)
+                {
+                    _lastCpuSampleTimeUtc = now;
+                    _lastCpuTotalProcessorTime = total;
+                    return 0;
+                }
+
+                var cpuMs = (total - _lastCpuTotalProcessorTime).TotalMilliseconds;
+                _lastCpuSampleTimeUtc = now;
+                _lastCpuTotalProcessorTime = total;
+
+                double usage = cpuMs / (Environment.ProcessorCount * elapsedMs) * 100.0;
+                if (double.IsNaN(usage) || double.IsInfinity(usage)) return 0;
+                return Math.Max(0, Math.Min(100, usage));
+            }
+            catch
+            {
+                return 0;
+            }
+        }
 
         private static async Task HandleStorageInfo(HttpListenerContext ctx)
         {
@@ -1700,6 +1829,7 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
                         process = Process.GetCurrentProcess().ProcessName,
                         pid = Process.GetCurrentProcess().Id
                     },
+                    performance = GetPerformanceSnapshot(),
                     timestamp = DateTime.Now
                 };
 

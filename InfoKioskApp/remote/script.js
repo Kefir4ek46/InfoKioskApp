@@ -1258,6 +1258,18 @@ async function loadStorageInfo() {
         const newsSizeEl = document.getElementById("news-size");
         if (newsSizeEl) newsSizeEl.textContent = data.newsFolder?.size || "—";
 
+        const perfProcRamEl = document.getElementById("perf-process-ram");
+        if (perfProcRamEl) perfProcRamEl.textContent = data.performance?.processWorkingSet || "—";
+
+        const perfManagedRamEl = document.getElementById("perf-managed-ram");
+        if (perfManagedRamEl) perfManagedRamEl.textContent = data.performance?.managedMemory || "—";
+
+        const perfCpuEl = document.getElementById("perf-cpu");
+        if (perfCpuEl) {
+            const cpu = Number(data.performance?.cpuUsagePercent || 0);
+            perfCpuEl.textContent = cpu > 0 ? `${cpu.toFixed(1)}%` : "—";
+        }
+
         const appProcessEl = document.getElementById("app-process");
         if (appProcessEl) appProcessEl.textContent = data.app?.process || "—";
 
@@ -1317,6 +1329,20 @@ async function loadUpdateStatus() {
         const installDirEl = document.getElementById("update-install-dir");
         if (appBaseEl) appBaseEl.textContent = data.paths?.appBaseDir || "—";
         if (installDirEl) installDirEl.textContent = data.paths?.installDirFromConfig || "—";
+
+        const rel = data.githubRelease || {};
+        const relNameEl = document.getElementById("update-release-name");
+        const relTagEl = document.getElementById("update-release-tag");
+        const relUrlEl = document.getElementById("update-release-url");
+        const relNotesEl = document.getElementById("update-release-notes");
+
+        if (relNameEl) relNameEl.textContent = rel.name || "—";
+        if (relTagEl) relTagEl.textContent = rel.tag || "—";
+        if (relUrlEl) {
+            relUrlEl.textContent = rel.url || "—";
+            relUrlEl.href = rel.url || "#";
+        }
+        if (relNotesEl) relNotesEl.textContent = rel.body || "Информация о релизе недоступна";
 
         if (data.paths?.appBaseDir && data.paths?.installDirFromConfig) {
             const normA = String(data.paths.appBaseDir).replace(/[\/]+$/, "").toLowerCase();
