@@ -1,4 +1,5 @@
 ﻿using ClosedXML.Excel;
+using InfoKioskApp.Services;
 using System;
 using System.Data;
 using System.IO;
@@ -13,18 +14,26 @@ namespace InfoKioskApp.Views
     public partial class CanteenMenuView : UserControl
     {
         private readonly string BaseUrl = "https://foodmonitoring.ru";
-        private readonly string FoodBlockId = "15159";
-
-        private readonly string MenuFolder =
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "CanteenMenu");
 
         public CanteenMenuView()
         {
             InitializeComponent();
 
-            Directory.CreateDirectory(MenuFolder);
-
             Loaded += CanteenMenuView_Loaded;
+        }
+
+        private string GetFoodBlockId()
+        {
+            var configuredValue = ConfigService.LoadConfig().FoodBlockId?.Trim();
+            return string.IsNullOrWhiteSpace(configuredValue) ? "15159" : configuredValue;
+        }
+
+        private string GetMenuFolderForFoodBlock(string foodBlockId)
+        {
+            var safeFoodBlockId = string.Join("_", foodBlockId.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+            var menuFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "CanteenMenu", safeFoodBlockId);
+            Directory.CreateDirectory(menuFolder);
+            return menuFolder;
         }
 
         #region Загрузка вкладки
@@ -54,13 +63,15 @@ namespace InfoKioskApp.Views
 
         private async Task<string?> EnsureMenuFileExists(DateTime date)
         {
+            string foodBlockId = GetFoodBlockId();
+            string menuFolder = GetMenuFolderForFoodBlock(foodBlockId);
             string fileName = $"{date:yyyy-MM-dd}-sm.xlsx";
-            string localPath = Path.Combine(MenuFolder, fileName);
+            string localPath = Path.Combine(menuFolder, fileName);
 
             if (File.Exists(localPath))
                 return localPath;
 
-            string url = $"{BaseUrl}/{FoodBlockId}/food/{fileName}";
+            string url = $"{BaseUrl}/{foodBlockId}/food/{fileName}";
 
             try
             {

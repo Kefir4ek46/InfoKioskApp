@@ -53,6 +53,16 @@ HeaderBackground="Gray"
                               SelectedColorChanged="ColorPicker_SelectedColorChanged"/>
         </StackPanel>
 
+
+        <!-- ID пищеблока -->
+        <StackPanel Orientation="Horizontal" Margin="0 10">
+            <TextBlock Text="FoodBlockId:" Foreground="White" Width="150" VerticalAlignment="Center"/>
+            <TextBox x:Name="FoodBlockIdTextBox"
+                     Width="200"
+                     Height="28"
+                     VerticalContentAlignment="Center"
+                     Foreground="Black"/>
+        </StackPanel>
         <!-- Кнопки управления -->
         <StackPanel Orientation="Horizontal" Margin="0 20 0 0">
             <Button Content="✅ Применить" Width="150" Height="40" Margin="0,0,10,0"

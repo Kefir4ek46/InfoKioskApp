@@ -24,6 +24,9 @@ namespace InfoKioskApp.Models
         public string MediaPath { get; set; } = "data/media";
         public string DocumentsPath { get; set; } = "data/documents";
 
+        // === Столовая ===
+        public string FoodBlockId { get; set; } = "15159";
+
         // === Настройки отображения ===
         public bool ShowChanges { get; set; } = true;
         public string ChangesType { get; set; } = "Table";

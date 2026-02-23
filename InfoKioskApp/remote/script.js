@@ -20,6 +20,7 @@ window.addEventListener("load", async () => {
     await loadFilesCategory();
     await loadCalendar();
     await loadSettings();
+    await loadConfigSettings();
   } catch (err) {
     console.error("Init error:", err);
   }
@@ -94,6 +95,49 @@ async function loadSettings() {
     console.warn("loadSettings:", err);
   }
   loadStorageInfo();
+}
+
+
+async function loadConfigSettings() {
+  try {
+    const res = await fetch(`${api}/config`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+    document.getElementById("food-block-id").value = cfg.foodBlockId || cfg.FoodBlockId || "15159";
+  } catch (err) {
+    console.warn("loadConfigSettings:", err);
+  }
+}
+
+async function saveFoodBlockId() {
+  try {
+    const value = (document.getElementById("food-block-id").value || "").trim() || "15159";
+
+    const getRes = await fetch(`${api}/config`);
+    if (!getRes.ok) {
+      alert("Не удалось загрузить текущий конфиг");
+      return;
+    }
+
+    const cfg = await getRes.json();
+    cfg.foodBlockId = value;
+
+    const saveRes = await fetch(`${api}/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cfg)
+    });
+
+    if (!saveRes.ok) {
+      alert("Ошибка сохранения FoodBlockId");
+      return;
+    }
+
+    alert("FoodBlockId сохранён");
+  } catch (err) {
+    console.error("saveFoodBlockId", err);
+    alert("Ошибка сохранения FoodBlockId");
+  }
 }
 
 // ---- Categories + Posts UI ----

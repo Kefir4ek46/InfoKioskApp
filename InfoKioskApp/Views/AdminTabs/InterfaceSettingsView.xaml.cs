@@ -28,6 +28,8 @@ namespace InfoKioskApp.Views.AdminTabs
                 TextColorPicker.SelectedColor =
                     (Color)ColorConverter.ConvertFromString(_config.InterfaceSettings.ButtonForeground ?? "White");
             }
+
+            FoodBlockIdTextBox.Text = _config.FoodBlockId ?? "15159";
         }
 
         private void ColorPicker_SelectedColorChanged(object sender, RoutedPropertyChangedEventArgs<Color?> e)
@@ -55,6 +57,9 @@ namespace InfoKioskApp.Views.AdminTabs
             _config.InterfaceSettings.BackgroundColor = BackgroundColorPicker.SelectedColor?.ToString();
             _config.InterfaceSettings.ButtonBackground = ButtonColorPicker.SelectedColor?.ToString();
             _config.InterfaceSettings.ButtonForeground = TextColorPicker.SelectedColor?.ToString();
+            _config.FoodBlockId = string.IsNullOrWhiteSpace(FoodBlockIdTextBox.Text)
+                ? "15159"
+                : FoodBlockIdTextBox.Text.Trim();
 
             ConfigService.SaveConfig(_config);
             MessageBox.Show("Настройки сохранены и применены!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
