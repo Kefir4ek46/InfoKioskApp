@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace InfoKioskApp.Models
 {
@@ -12,6 +13,7 @@ namespace InfoKioskApp.Models
         public string Status { get; set; } = "pending"; // pending/published/rejected
         public string? VideoUrl { get; set; }
         public string? VideoFile { get; set; }
+        public List<string> PhotoFiles { get; set; } = new();
         public DateTime? ModeratedAt { get; set; }
         public string? RejectReason { get; set; }
     }

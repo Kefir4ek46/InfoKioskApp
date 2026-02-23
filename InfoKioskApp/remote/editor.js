@@ -30,45 +30,63 @@ async function loginEditor() {
   await loadMyPending();
 }
 
+async function uploadOneFile(file) {
+  const utf8Name = unescape(encodeURIComponent(file.name));
+  const nameB64 = btoa(utf8Name);
+  const uploadRes = await fetch(`${api}/upload?target=newsmedia`, {
+    method: "POST",
+    headers: { "X-Filename-Base64": nameB64 },
+    body: file
+  });
+  if (!uploadRes.ok) throw new Error(`Не удалось загрузить файл: ${file.name}`);
+  return file.name;
+}
+
 async function submitNews() {
   if (!editorToken) return alert("Сначала войдите");
 
   const title = (document.getElementById("news-title").value || "").trim();
   const content = (document.getElementById("news-content").value || "").trim();
   const videoUrl = (document.getElementById("news-video-url").value || "").trim();
-  const fileInput = document.getElementById("news-video-file");
-  const file = fileInput.files?.[0];
+  const videoInput = document.getElementById("news-video-file");
+  const photosInput = document.getElementById("news-photos");
 
   if (!title || !content) return alert("Заполните заголовок и текст");
 
-  let videoFile = "";
-  if (file) {
-    const utf8Name = unescape(encodeURIComponent(file.name));
-    const nameB64 = btoa(utf8Name);
-    const uploadRes = await fetch(`${api}/upload?target=newsmedia`, {
+  try {
+    let videoFile = "";
+    const video = videoInput.files?.[0];
+    if (video) videoFile = await uploadOneFile(video);
+
+    const photoFiles = [];
+    for (const image of Array.from(photosInput.files || [])) {
+      const uploaded = await uploadOneFile(image);
+      photoFiles.push(uploaded);
+    }
+
+    const payload = { title, content, authorLogin: editorLogin, videoUrl, videoFile, photoFiles };
+    const res = await fetch(`${api}/news/editor/submit`, {
       method: "POST",
-      headers: { "X-Filename-Base64": nameB64 },
-      body: file
+      headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
+      body: JSON.stringify(payload)
     });
-    if (!uploadRes.ok) return alert("Не удалось загрузить видеофайл");
-    videoFile = file.name;
+
+    if (!res.ok) return alert("Ошибка отправки новости");
+
+    alert("Новость отправлена на модерацию");
+    document.getElementById("news-title").value = "";
+    document.getElementById("news-content").value = "";
+    document.getElementById("news-video-url").value = "";
+    videoInput.value = "";
+    photosInput.value = "";
+    await loadMyPending();
+  } catch (e) {
+    alert(e.message || "Ошибка загрузки файлов");
   }
+}
 
-  const payload = { title, content, authorLogin: editorLogin, videoUrl, videoFile };
-  const res = await fetch(`${api}/news/editor/submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
-    body: JSON.stringify(payload)
-  });
-
-  if (!res.ok) return alert("Ошибка отправки новости");
-
-  alert("Новость отправлена на модерацию");
-  document.getElementById("news-title").value = "";
-  document.getElementById("news-content").value = "";
-  document.getElementById("news-video-url").value = "";
-  fileInput.value = "";
-  await loadMyPending();
+function escapeHtml(str) {
+  return (str || "").replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
 async function loadMyPending() {
@@ -87,8 +105,10 @@ async function loadMyPending() {
     (items || []).forEach(n => {
       const title = n.title || n.Title;
       const created = n.createdAt || n.CreatedAt;
+      const rejectReason = n.rejectReason || n.RejectReason || "";
+      const reasonHtml = rejectReason ? `<div style='color:#ff9d9d'>Причина: ${escapeHtml(rejectReason)}</div>` : "";
       const li = document.createElement("li");
-      li.innerHTML = `<div><strong>${title}</strong><div style='color:var(--muted)'>${new Date(created).toLocaleString('ru-RU')} • ${state}</div></div>`;
+      li.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div style='color:var(--muted)'>${new Date(created).toLocaleString('ru-RU')} • ${state}</div>${reasonHtml}</div>`;
       ul.appendChild(li);
     });
   };

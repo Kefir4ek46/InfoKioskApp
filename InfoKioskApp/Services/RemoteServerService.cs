@@ -223,6 +223,12 @@ namespace InfoKioskApp.Services
                 ext == ".png" ? "image/png" :
                 ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" :
                 ext == ".gif" ? "image/gif" :
+                ext == ".webp" ? "image/webp" :
+                ext == ".bmp" ? "image/bmp" :
+                ext == ".mp4" ? "video/mp4" :
+                ext == ".webm" ? "video/webm" :
+                ext == ".ogg" || ext == ".ogv" ? "video/ogg" :
+                ext == ".mov" ? "video/quicktime" :
                 "application/octet-stream";
 
             ctx.Response.ContentLength64 = data.Length;
@@ -727,6 +733,13 @@ namespace InfoKioskApp.Services
             post.Id = Guid.NewGuid().ToString("N");
             post.CreatedAt = DateTime.Now;
             post.Status = "pending";
+            post.PhotoFiles ??= new List<string>();
+            post.PhotoFiles = post.PhotoFiles
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(Path.GetFileName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            post.VideoFile = string.IsNullOrWhiteSpace(post.VideoFile) ? null : Path.GetFileName(post.VideoFile);
 
             var pending = ReadNewsList(NewsPendingPath);
             pending.Add(post);
@@ -834,7 +847,8 @@ namespace InfoKioskApp.Services
             string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(body);
             string id = (string?)data?.id ?? "";
-            string reason = (string?)data?.reason ?? "";
+            string reason = ((string?)data?.reason ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(reason)) reason = "Причина не указана";
 
             var pending = ReadNewsList(NewsPendingPath);
             var item = pending.FirstOrDefault(x => x.Id == id);

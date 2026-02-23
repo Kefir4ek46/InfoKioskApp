@@ -8,7 +8,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="📰 Новости" FontSize="28" FontWeight="Bold" Margin="0,0,0,12"/>
+        <TextBlock Text="📰 Новости" FontSize="28" FontWeight="Bold" Foreground="White" Margin="0,0,0,12"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel x:Name="NewsPanel"/>

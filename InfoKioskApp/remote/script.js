@@ -117,13 +117,38 @@ async function loadPendingNews() {
       return;
     }
 
+    const mediaBase = `${api}/download?target=newsmedia&name=`;
+
     items.forEach(n => {
       const id = n.id || n.Id;
       const title = n.title || n.Title;
       const author = n.authorLogin || n.AuthorLogin || "редактор";
-      const text = (n.content || n.Content || "").slice(0, 180);
+      const text = n.content || n.Content || "";
+      const videoUrl = n.videoUrl || n.VideoUrl || "";
+      const videoFile = n.videoFile || n.VideoFile || "";
+      const photos = n.photoFiles || n.PhotoFiles || [];
+
+      const photoHtml = photos.slice(0, 4).map(file =>
+        `<img src="${mediaBase}${encodeURIComponent(file)}" alt="photo" style="width:120px;height:72px;object-fit:cover;border-radius:8px;margin:4px 6px 0 0;">`
+      ).join("");
+
+      const videoHtml = videoFile
+        ? `<video controls preload="metadata" style="width:100%;max-width:380px;margin-top:8px;border-radius:8px;" src="${mediaBase}${encodeURIComponent(videoFile)}"></video>`
+        : (videoUrl ? `<div style="margin-top:8px"><a href="${escapeHtml(videoUrl)}" target="_blank">🎬 Открыть видео по ссылке</a></div>` : "");
+
       const li = document.createElement("li");
-      li.innerHTML = `<div><strong>${escapeHtml(title)}</strong><div style='color:var(--muted)'>${escapeHtml(author)} · ${escapeHtml(text)}</div></div><div><button onclick="publishNews('${id}')">✅</button> <button onclick="rejectNews('${id}')">❌</button></div>`;
+      li.innerHTML = `
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <div style='color:var(--muted); margin:4px 0;'>${escapeHtml(author)}</div>
+          <div style='margin-top:6px; white-space:pre-wrap;'>${escapeHtml(text)}</div>
+          ${photoHtml ? `<div style='margin-top:8px'>${photoHtml}</div>` : ""}
+          ${videoHtml}
+        </div>
+        <div style='display:flex;gap:8px;align-items:flex-start;'>
+          <button onclick="publishNews('${id}')">✅</button>
+          <button onclick="rejectNews('${id}')">❌</button>
+        </div>`;
       ul.appendChild(li);
     });
   } catch (err) {
@@ -142,7 +167,8 @@ async function publishNews(id) {
 }
 
 async function rejectNews(id) {
-  const reason = prompt("Причина отклонения:", "") || "";
+  const reason = (prompt("Причина отклонения:", "") || "").trim();
+  if (!reason) return alert("Укажите причину отклонения");
   const res = await fetch(`${api}/news/admin/reject`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
@@ -315,6 +341,12 @@ async function loadThemeAndExtraSettings() {
     document.getElementById("theme-nav-bg").value = ui.navigationButtonBackground || ui.NavigationButtonBackground || "#3A3A3A";
     document.getElementById("theme-nav-fg").value = ui.navigationButtonForeground || ui.NavigationButtonForeground || "#FFFFFF";
 
+    // restore original dark palette defaults
+    if (!ui.backgroundColor && !ui.BackgroundColor && (ui.theme || ui.Theme || "dark").toLowerCase() === "dark") {
+      document.getElementById("theme-nav-bg").value = "#3A3A3A";
+      document.getElementById("theme-nav-fg").value = "#FFFFFF";
+    }
+
     document.getElementById("ticker-enabled").checked = !!(ticker.enabled ?? ticker.Enabled ?? false);
     document.getElementById("ticker-text").value = ticker.text || ticker.Text || "";
     document.getElementById("ticker-speed").value = ticker.speed || ticker.Speed || 1.5;
@@ -342,6 +374,19 @@ async function saveThemeSettings() {
     cfg.interfaceSettings.navigationButtonFontSize = Number(document.getElementById("theme-nav-font-size").value || 15);
     cfg.interfaceSettings.navigationButtonBackground = document.getElementById("theme-nav-bg").value || "#3A3A3A";
     cfg.interfaceSettings.navigationButtonForeground = document.getElementById("theme-nav-fg").value || "#FFFFFF";
+
+    const selectedTheme = (cfg.interfaceSettings.theme || "dark").toLowerCase();
+    if (selectedTheme === "dark") {
+      cfg.interfaceSettings.backgroundColor = "#1E1E1E";
+      cfg.interfaceSettings.buttonBackground = "#3A3A3A";
+      cfg.interfaceSettings.buttonForeground = "White";
+      cfg.interfaceSettings.navigationButtonBackground = "#3A3A3A";
+      cfg.interfaceSettings.navigationButtonForeground = "White";
+    } else {
+      cfg.interfaceSettings.backgroundColor = "#F5F5F5";
+      cfg.interfaceSettings.buttonBackground = "#E0E0E0";
+      cfg.interfaceSettings.buttonForeground = "#222222";
+    }
 
     const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
     if (!save.ok) return alert("Ошибка сохранения темы");

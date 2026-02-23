@@ -10,7 +10,7 @@
   <header class="topbar">
     <div>
       <h1>✍️ Панель редактора</h1>
-      <p class="subtitle">Создайте новость и отправьте на модерацию администратору</p>
+      <p class="subtitle">Создайте новость, добавьте фото/видео и отправьте на модерацию</p>
     </div>
   </header>
 
@@ -37,6 +37,8 @@
           <input id="news-video-url" type="text">
           <label>Или прикрепить видеофайл</label>
           <input id="news-video-file" type="file" accept="video/*">
+          <label>Фото (можно несколько)</label>
+          <input id="news-photos" type="file" accept="image/*" multiple>
           <button onclick="submitNews()">📤 Отправить на модерацию</button>
         </div>
       </div>
