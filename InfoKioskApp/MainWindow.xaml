@@ -145,23 +145,25 @@
 
 		<!-- Контент -->
 		<Border Grid.Row="2" Grid.Column="1" Margin="15" Background="{DynamicResource AppBackgroundBrush}" CornerRadius="12">
-			<ContentControl x:Name="ContentArea" Margin="10"/>
+            <Grid>
+			    <ContentControl x:Name="ContentArea" Margin="10"/>
+
+                <Grid x:Name="IdleOverlay" Visibility="Collapsed" Background="#E6000000" Panel.ZIndex="999">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Image x:Name="IdleImage" Stretch="UniformToFill" Opacity="0"/>
+
+                    <Border Grid.Row="1" Background="#88000000" Padding="12">
+                        <TextBlock Text="Экран ожидания — коснитесь экрана для продолжения"
+                                   HorizontalAlignment="Center"
+                                   Foreground="White"
+                                   FontSize="18"/>
+                    </Border>
+                </Grid>
+            </Grid>
 		</Border>
-
-        <Grid x:Name="IdleOverlay" Visibility="Collapsed" Background="#E6000000" Panel.ZIndex="999">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <Image x:Name="IdleImage" Stretch="UniformToFill" Opacity="0"/>
-
-            <Border Grid.Row="1" Background="#88000000" Padding="12">
-                <TextBlock Text="Экран ожидания — коснитесь экрана для продолжения"
-                           HorizontalAlignment="Center"
-                           Foreground="White"
-                           FontSize="18"/>
-            </Border>
-        </Grid>
 	</Grid>
 </Window>

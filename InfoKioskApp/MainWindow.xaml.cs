@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -34,8 +35,11 @@ namespace InfoKioskApp
         private CalendarView? _calendarView;
 
 
-        private DispatcherTimer _tickerTimer;
         private double _tickerX;
+        private double _tickerSpeed = 1.5;
+        private DateTime _lastTickerFrameTime = DateTime.UtcNow;
+
+        private FileSystemWatcher? _configWatcher;
 
         private DispatcherTimer _idleTimer;
         private DispatcherTimer _idleSlideTimer;
@@ -48,12 +52,11 @@ namespace InfoKioskApp
             StartClock();
             LoadBellSchedule();
             StartLessonTimer();
-            ApplyInterfaceSettings();
+            ApplyRuntimeSettings();
             _ = UpdateWeatherAsync();
             StartWeatherTimer();
-            InitializeTicker();
-            InitializeIdleScreen();
             BindActivityEvents();
+            SetupConfigWatcher();
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -73,6 +76,48 @@ namespace InfoKioskApp
 
         }
 
+
+        private void ApplyRuntimeSettings()
+        {
+            ApplyInterfaceSettings();
+            InitializeTicker();
+            InitializeIdleScreen();
+        }
+
+        private void SetupConfigWatcher()
+        {
+            try
+            {
+                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json");
+                string configDir = Path.GetDirectoryName(configPath) ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
+                string configFile = Path.GetFileName(configPath);
+                Directory.CreateDirectory(configDir);
+
+                _configWatcher = new FileSystemWatcher(configDir, configFile)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.CreationTime | NotifyFilters.FileName,
+                    EnableRaisingEvents = true,
+                    IncludeSubdirectories = false
+                };
+
+                void refresh(object? s, FileSystemEventArgs e)
+                {
+                    Dispatcher.InvokeAsync(async () =>
+                    {
+                        await Task.Delay(150);
+                        ApplyRuntimeSettings();
+                    });
+                }
+
+                _configWatcher.Changed += refresh;
+                _configWatcher.Created += refresh;
+                _configWatcher.Renamed += (s, e) => refresh(s, e);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Config watcher error: {ex.Message}");
+            }
+        }
 
         #region === Время и дата ===
         private void StartClock()
@@ -323,9 +368,7 @@ namespace InfoKioskApp
 
                 // 🔄 После выхода из админ-панели обновляем меню (вдруг добавились новые разделы)
                 AddCustomSections(true);
-                ApplyInterfaceSettings();
-                InitializeTicker();
-                InitializeIdleScreen();
+                ApplyRuntimeSettings();
             }
         }
         #endregion
@@ -427,31 +470,35 @@ namespace InfoKioskApp
             TickerTextBlock.Text = ticker.Text ?? string.Empty;
             TickerTextBlock.FontSize = ticker.FontSize > 0 ? ticker.FontSize : 20;
             TickerTextBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(ticker.Foreground ?? "#FFFFFF"));
+            _tickerSpeed = Math.Max(20, (ticker.Speed <= 0 ? 1.5 : ticker.Speed) * 60);
+
+            CompositionTarget.Rendering -= OnTickerRendering;
 
             if (!ticker.Enabled || string.IsNullOrWhiteSpace(TickerTextBlock.Text))
             {
                 TickerCanvas.Visibility = Visibility.Collapsed;
-                _tickerTimer?.Stop();
                 return;
             }
 
             TickerCanvas.Visibility = Visibility.Visible;
             TickerCanvas.UpdateLayout();
+            TickerTextBlock.UpdateLayout();
             _tickerX = TickerCanvas.ActualWidth;
             Canvas.SetLeft(TickerTextBlock, _tickerX);
             Canvas.SetTop(TickerTextBlock, 6);
-
-            _tickerTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-            _tickerTimer.Tick -= TickerTick;
-            _tickerTimer.Tick += TickerTick;
-            _tickerTimer.Start();
+            _lastTickerFrameTime = DateTime.UtcNow;
+            CompositionTarget.Rendering += OnTickerRendering;
         }
 
-        private void TickerTick(object sender, EventArgs e)
+        private void OnTickerRendering(object? sender, EventArgs e)
         {
-            var speed = ConfigService.LoadConfig().Ticker?.Speed ?? 1.5;
-            _tickerX -= Math.Max(0.5, speed);
+            var now = DateTime.UtcNow;
+            var dt = (now - _lastTickerFrameTime).TotalSeconds;
+            _lastTickerFrameTime = now;
+            if (dt <= 0 || dt > 0.5)
+                return;
 
+            _tickerX -= _tickerSpeed * dt;
             if (_tickerX < -TickerTextBlock.ActualWidth)
                 _tickerX = TickerCanvas.ActualWidth;
 
