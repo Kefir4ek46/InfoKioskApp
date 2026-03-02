@@ -23,12 +23,12 @@
             <Border Margin="20" Background="#1A1C22" CornerRadius="12" BorderBrush="#2F3340" BorderThickness="1" Padding="16">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="320"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="0.48*"/>
+                        <ColumnDefinition Width="0.52*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="1" Content="✕" Width="38" Height="38" HorizontalAlignment="Right" VerticalAlignment="Top" Click="CloseOverlay_Click"/>
 
-                    <Border Grid.Column="0" Margin="0,32,12,0" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8">
+                    <Border Grid.Column="0" Margin="0,32,16,0" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8">
                         <Image x:Name="DetailPhoto" Stretch="Uniform"/>
                     </Border>
 

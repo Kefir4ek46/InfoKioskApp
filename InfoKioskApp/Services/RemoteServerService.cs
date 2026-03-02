@@ -609,6 +609,24 @@ namespace InfoKioskApp.Services
                 var newConfig = JsonConvert.DeserializeObject<AppConfig>(body);
                 if (newConfig != null)
                 {
+                    if (newConfig.Ticker != null)
+                    {
+                        newConfig.Ticker.Text = (newConfig.Ticker.Text ?? string.Empty).Trim();
+                        var cleaned = (newConfig.Ticker.Items ?? new List<string>())
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => x.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .Take(200)
+                            .ToList();
+                        newConfig.Ticker.Items = cleaned;
+
+                        if (!newConfig.Ticker.Enabled || (string.IsNullOrWhiteSpace(newConfig.Ticker.Text) && cleaned.Count == 0))
+                        {
+                            newConfig.Ticker.Text = string.Empty;
+                            newConfig.Ticker.Items = new List<string>();
+                        }
+                    }
+
                     ConfigService.SaveConfig(newConfig);
                     await WriteText(ctx, "✅ Конфигурация сохранена");
                 }

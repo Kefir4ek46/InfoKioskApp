@@ -278,7 +278,8 @@
 
                     <div class="card">
                         <h3>Время перехода устройства в сон</h3>
-                        <p class="hint">Формат HH:mm (например, 22:30). В это время приложение отправляет устройство в сон.</p>
+                        <label><input id="sleep-enabled" type="checkbox"> Включить автосон по расписанию</label>
+                        <p class="hint">Если выключено — автосон полностью отключён. Если включено, укажите время HH:mm.</p>
                         <input id="sleep-time" type="time" step="60">
                         <button onclick="saveSleepMode()">Сохранить</button>
                     </div>
@@ -318,7 +319,10 @@
                         <textarea id="ticker-items" placeholder="Первое сообщение&#10;Второе сообщение"></textarea>
                         <label>Скорость:</label>
                         <input id="ticker-speed" type="number" step="0.1">
-                        <button onclick="saveTickerSettings()">Сохранить бегущую строку</button>
+                        <div class="row-inline wrap">
+                            <button onclick="saveTickerSettings()">Сохранить бегущую строку</button>
+                            <button onclick="clearTickerSettings()" class="danger">Очистить строку</button>
+                        </div>
                     </div>
 
                     <div class="card">

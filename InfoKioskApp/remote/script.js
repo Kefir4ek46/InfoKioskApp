@@ -530,7 +530,10 @@ async function loadSettings() {
     const cfgRes = await fetch(`${api}/config`);
     if (cfgRes.ok) {
       const cfg = await cfgRes.json();
-      document.getElementById("sleep-time").value = cfg.sleepAt || cfg.SleepAt || "";
+      const sleepValue = cfg.sleepAt || cfg.SleepAt || "";
+      document.getElementById("sleep-time").value = sleepValue;
+      const sleepEnabledEl = document.getElementById("sleep-enabled");
+      if (sleepEnabledEl) sleepEnabledEl.checked = !!sleepValue;
     }
   } catch (err) {
     console.warn("loadSettings:", err);
@@ -700,6 +703,20 @@ async function saveThemeSettings() {
   }
 }
 
+function normalizeTickerItems(rawText) {
+  const source = (rawText || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+  const unique = [];
+  const seen = new Set();
+  for (const item of source) {
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+    if (unique.length >= 200) break;
+  }
+  return unique;
+}
+
 async function saveTickerSettings() {
   try {
     const res = await fetch(`${api}/config`);
@@ -708,8 +725,14 @@ async function saveTickerSettings() {
     cfg.ticker = cfg.ticker || cfg.Ticker || {};
     cfg.Ticker = cfg.ticker;
     cfg.ticker.enabled = document.getElementById("ticker-enabled").checked;
-    cfg.ticker.text = document.getElementById("ticker-text").value || "";
-    cfg.ticker.items = (document.getElementById("ticker-items").value || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    const textValue = (document.getElementById("ticker-text").value || "").trim();
+    const items = normalizeTickerItems(document.getElementById("ticker-items").value || "");
+    cfg.ticker.text = textValue;
+    cfg.ticker.items = items;
+    if (!cfg.ticker.enabled || (!textValue && items.length === 0)) {
+      cfg.ticker.text = "";
+      cfg.ticker.items = [];
+    }
     cfg.ticker.speed = Number(document.getElementById("ticker-speed").value || 1.5);
 
     const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
@@ -721,6 +744,13 @@ async function saveTickerSettings() {
   }
 }
 
+
+async function clearTickerSettings() {
+  document.getElementById("ticker-enabled").checked = false;
+  document.getElementById("ticker-text").value = "";
+  document.getElementById("ticker-items").value = "";
+  await saveTickerSettings();
+}
 
 async function changeAdminPassword() {
   const oldPassword = (document.getElementById("admin-old-password").value || "").trim();
