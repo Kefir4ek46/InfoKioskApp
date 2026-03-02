@@ -9,6 +9,7 @@ namespace InfoKioskApp.Models
         public string Title { get; set; } = "";
         public string Content { get; set; } = "";
         public string AuthorLogin { get; set; } = "";
+        public string AuthorName { get; set; } = "";
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public string Status { get; set; } = "pending"; // pending/published/rejected
         public string? VideoUrl { get; set; }

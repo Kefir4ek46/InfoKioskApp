@@ -234,7 +234,7 @@ function normalizeNews(n, source) {
   return {
     id: n.id || n.Id,
     title: n.title || n.Title || "Без названия",
-    author: n.authorLogin || n.AuthorLogin || "редактор",
+    author: n.authorName || n.AuthorName || n.authorLogin || n.AuthorLogin || "редактор",
     content: n.content || n.Content || "",
     createdAt: n.createdAt || n.CreatedAt || "",
     videoUrl: n.videoUrl || n.VideoUrl || "",

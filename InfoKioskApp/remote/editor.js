@@ -15,15 +15,17 @@ function getDeviceId() {
 window.addEventListener("load", async () => {
   const rememberedLogin = localStorage.getItem("editorRememberLogin") || "";
   if (rememberedLogin) {
-    const loginInput = document.getElementById("editor-login");
     const loginModalInput = document.getElementById("editor-login-modal");
-    if (loginInput) loginInput.value = rememberedLogin;
     if (loginModalInput) loginModalInput.value = rememberedLogin;
   }
 
   const modal = document.getElementById("editor-auth-modal");
   if (editorToken) {
     if (modal) modal.classList.add("hidden");
+    const nameEl = document.getElementById("editor-name");
+    const loginEl = document.getElementById("editor-login");
+    if (nameEl) nameEl.value = editorName || "";
+    if (loginEl) loginEl.value = editorLogin || "";
     document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorName || editorLogin}`;
     await loadMyPending();
     return;
@@ -62,8 +64,10 @@ function setEditorSession(data, fallbackLogin) {
   sessionStorage.setItem("editorName", editorName);
   document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorName || editorLogin}`;
   const nameEl = document.getElementById("editor-name");
+  const loginEl = document.getElementById("editor-login");
   const nameModalEl = document.getElementById("editor-name-modal");
   if (nameEl) nameEl.value = editorName || "";
+  if (loginEl) loginEl.value = editorLogin || "";
   if (nameModalEl) nameModalEl.value = editorName || "";
 }
 
@@ -87,15 +91,6 @@ async function loginEditorFromModal() {
   }
 
   document.getElementById("editor-auth-modal")?.classList.add("hidden");
-}
-
-async function loginEditor() {
-  const login = (document.getElementById("editor-login").value || "").trim();
-  const password = (document.getElementById("editor-password").value || "").trim();
-  if (!login || !password) return alert("Введите логин и пароль");
-
-  const ok = await doEditorLogin(login, password);
-  if (!ok) return alert("Неверный логин/пароль");
 }
 
 async function doEditorLogin(login, password) {
@@ -154,7 +149,7 @@ async function submitNews() {
 
   const title = (document.getElementById("news-title").value || "").trim();
   const content = (document.getElementById("news-content").value || "").trim();
-  const videoUrl = (document.getElementById("news-video-url").value || "").trim();
+  const videoUrl = "";
   const linkUrl = (document.getElementById("news-link-url").value || "").trim();
   const videoInput = document.getElementById("news-video-file");
   const photosInput = document.getElementById("news-photos");
@@ -179,7 +174,7 @@ async function submitNews() {
       photoFiles.push(uploaded);
     }
 
-    const payload = { title, content, authorLogin: editorLogin, videoUrl, linkUrl, videoFile, photoFiles, videoWidth, videoHeight };
+    const payload = { title, content, authorLogin: editorLogin, authorName: editorName || editorLogin, videoUrl, linkUrl, videoFile, photoFiles, videoWidth, videoHeight };
     const res = await fetch(`${api}/news/editor/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
@@ -191,7 +186,6 @@ async function submitNews() {
     alert("Новость отправлена на модерацию");
     document.getElementById("news-title").value = "";
     document.getElementById("news-content").value = "";
-    document.getElementById("news-video-url").value = "";
     document.getElementById("news-link-url").value = "";
     videoInput.value = "";
     photosInput.value = "";
@@ -199,6 +193,25 @@ async function submitNews() {
   } catch (e) {
     alert(e.message || "Ошибка загрузки файлов");
   }
+}
+
+
+async function changeEditorPassword() {
+  if (!editorToken) return alert("Сначала войдите");
+  const oldPassword = (document.getElementById("editor-old-password").value || "").trim();
+  const newPassword = (document.getElementById("editor-new-password").value || "").trim();
+  if (!oldPassword || !newPassword) return alert("Введите текущий и новый пароль");
+
+  const res = await fetch(`${api}/auth/editor/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
+    body: JSON.stringify({ login: editorLogin, oldPassword, newPassword })
+  });
+
+  if (!res.ok) return alert("Не удалось сменить пароль");
+  document.getElementById("editor-old-password").value = "";
+  document.getElementById("editor-new-password").value = "";
+  alert("Пароль успешно изменен");
 }
 
 function escapeHtml(str) {

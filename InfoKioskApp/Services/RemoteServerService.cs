@@ -147,6 +147,7 @@ namespace InfoKioskApp.Services
                     case "/auth/admin/login": await HandleAdminLogin(ctx); break;
                     case "/auth/editor/login": await HandleEditorLogin(ctx); break;
                     case "/auth/editor/device-login": await HandleEditorDeviceLogin(ctx); break;
+                    case "/auth/editor/change-password": await HandleEditorChangePassword(ctx); break;
                     case "/auth/admin/change-password": await HandleAdminChangePassword(ctx); break;
                     case "/system/volume": await HandleSystemVolume(ctx); break;
 
@@ -829,6 +830,45 @@ namespace InfoKioskApp.Services
             await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, action }));
         }
 
+        private static async Task HandleEditorChangePassword(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string login = ((string?)data?.login ?? "").Trim();
+            string oldPassword = ((string?)data?.oldPassword ?? "").Trim();
+            string newPassword = ((string?)data?.newPassword ?? "").Trim();
+
+            var editors = ReadEditors();
+            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active);
+            if (editor == null || editor.Password != oldPassword)
+            {
+                await WriteText(ctx, "Invalid credentials", 400);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 4)
+            {
+                await WriteText(ctx, "New password too short", 400);
+                return;
+            }
+
+            editor.Password = newPassword;
+            WriteEditors(editors);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
         private static async Task HandleNewsPublishedList(HttpListenerContext ctx)
         {
             var list = ReadNewsList(NewsPublishedPath)
@@ -870,6 +910,7 @@ namespace InfoKioskApp.Services
                 .ToList();
             post.VideoFile = string.IsNullOrWhiteSpace(post.VideoFile) ? null : Path.GetFileName(post.VideoFile);
             post.LinkUrl = string.IsNullOrWhiteSpace(post.LinkUrl) ? null : post.LinkUrl.Trim();
+            post.AuthorName = (post.AuthorName ?? "").Trim();
 
             var pending = ReadNewsList(NewsPendingPath);
             pending.Add(post);

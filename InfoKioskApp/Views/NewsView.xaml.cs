@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using QRCoder;
 
 namespace InfoKioskApp.Views
 {
@@ -83,7 +84,7 @@ namespace InfoKioskApp.Views
             });
             text.Children.Add(new TextBlock
             {
-                Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {post.AuthorLogin}",
+                Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {(string.IsNullOrWhiteSpace(post.AuthorName) ? post.AuthorLogin : post.AuthorName)}",
                 Foreground = Brushes.Gray,
                 Margin = new Thickness(0, 4, 0, 8)
             });
@@ -163,8 +164,9 @@ namespace InfoKioskApp.Views
         private void OpenOverlay(NewsPost post)
         {
             OverlayTitleText.Text = string.IsNullOrWhiteSpace(post.Title) ? "Без названия" : post.Title;
-            OverlayMetaText.Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {post.AuthorLogin}";
+            OverlayMetaText.Text = $"{post.CreatedAt:dd.MM.yyyy HH:mm} • {(string.IsNullOrWhiteSpace(post.AuthorName) ? post.AuthorLogin : post.AuthorName)}";
             OverlayContentText.Text = post.Content ?? "";
+            RenderLinkQr(post.LinkUrl);
 
             BuildOverlayMedia(post);
             _overlayMediaIndex = 0;
@@ -213,8 +215,18 @@ namespace InfoKioskApp.Views
             OverlayLinkText.Text = $"Ссылка: {linkUrl}";
             try
             {
-                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={Uri.EscapeDataString(linkUrl)}";
-                OverlayQrImage.Source = new BitmapImage(new Uri(qrUrl));
+                using var generator = new QRCodeGenerator();
+                using var qrData = generator.CreateQrCode(linkUrl, QRCodeGenerator.ECCLevel.Q);
+                var png = new PngByteQRCode(qrData);
+                var bytes = png.GetGraphic(8);
+                using var ms = new MemoryStream(bytes);
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.StreamSource = ms;
+                bmp.EndInit();
+                bmp.Freeze();
+                OverlayQrImage.Source = bmp;
                 OverlayQrImage.Visibility = Visibility.Visible;
             }
             catch

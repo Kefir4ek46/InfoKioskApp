@@ -34,16 +34,19 @@
     <section class="tab-content active">
       <div class="grid-2">
         <div class="card">
-          <h3>Авторизация редактора</h3>
+          <h3>Профиль редактора</h3>
           <label>Логин</label>
-          <input id="editor-login" type="text">
+          <input id="editor-login" type="text" readonly>
           <label>Имя</label>
           <input id="editor-name" type="text" readonly>
-          <label>Пароль</label>
-          <input id="editor-password" type="password">
-          <label><input id="remember-editor" type="checkbox" checked> Запомнить вход на этом устройстве</label>
-          <button onclick="loginEditor()">Войти</button>
           <p id="editor-auth-status" class="hint"></p>
+
+          <h4 style="margin-top:14px;">Смена пароля</h4>
+          <label>Текущий пароль</label>
+          <input id="editor-old-password" type="password">
+          <label>Новый пароль</label>
+          <input id="editor-new-password" type="password">
+          <button onclick="changeEditorPassword()">🔐 Сменить пароль</button>
         </div>
 
         <div class="card">
@@ -52,9 +55,7 @@
           <input id="news-title" type="text">
           <label>Текст новости</label>
           <textarea id="news-content"></textarea>
-          <label>Ссылка на видео (YouTube/VK/файл)</label>
-          <input id="news-video-url" type="text">
-          <label>Ссылка к новости (для QR-кода)</label>
+                    <label>Ссылка к новости (для QR-кода)</label>
           <input id="news-link-url" type="text" placeholder="https://...">
           <label>Или прикрепить видеофайл</label>
           <input id="news-video-file" type="file" accept="video/*">

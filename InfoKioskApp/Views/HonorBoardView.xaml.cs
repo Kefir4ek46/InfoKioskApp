@@ -61,7 +61,7 @@ namespace InfoKioskApp.Views
             };
 
             var panel = new StackPanel();
-            var img = new Image { Height = 190, Stretch = Stretch.UniformToFill };
+            var img = new Image { Height = 190, Stretch = Stretch.Uniform };
             var photoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "honor", "media", Path.GetFileName(item.PhotoFile ?? ""));
             if (File.Exists(photoPath)) img.Source = new BitmapImage(new Uri(photoPath, UriKind.Absolute));
             panel.Children.Add(img);
