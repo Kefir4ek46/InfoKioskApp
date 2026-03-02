@@ -28,6 +28,7 @@ window.addEventListener("load", async () => {
     await loadEditors();
     await loadPendingNews();
     await loadPublishedNewsAdmin();
+    await loadHonorBoard();
   } catch (err) {
     console.error("Init error:", err);
   }
@@ -141,6 +142,90 @@ function copyEditorLink() {
   input.select();
   document.execCommand("copy");
   alert("Ссылка скопирована");
+}
+
+function resetHonorForm() {
+  document.getElementById("honor-id").value = "";
+  document.getElementById("honor-name").value = "";
+  document.getElementById("honor-description").value = "";
+  document.getElementById("honor-photo").value = "";
+}
+
+async function saveHonorPerson() {
+  const id = (document.getElementById("honor-id").value || "").trim();
+  const fullName = (document.getElementById("honor-name").value || "").trim();
+  const description = (document.getElementById("honor-description").value || "").trim();
+  const photoInput = document.getElementById("honor-photo");
+
+  if (!fullName) return alert("Введите ФИО");
+
+  let photoFile = "";
+  const photo = photoInput.files?.[0];
+  if (photo) {
+    const utf8Name = unescape(encodeURIComponent(photo.name));
+    const nameB64 = btoa(utf8Name);
+    const uploadRes = await fetch(`${api}/upload?target=honor`, {
+      method: "POST",
+      headers: { "X-Filename-Base64": nameB64 },
+      body: photo
+    });
+    if (!uploadRes.ok) return alert("Не удалось загрузить фото");
+    photoFile = photo.name;
+  }
+
+  const res = await fetch(`${api}/honor/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id, fullName, description, photoFile })
+  });
+
+  if (!res.ok) return alert("Ошибка сохранения карточки");
+  resetHonorForm();
+  await loadHonorBoard();
+}
+
+async function deleteHonorPerson(id) {
+  if (!confirm("Удалить карточку?")) return;
+  const res = await fetch(`${api}/honor/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ id })
+  });
+  if (!res.ok) return alert("Ошибка удаления");
+  await loadHonorBoard();
+}
+
+async function loadHonorBoard() {
+  const res = await fetch(`${api}/honor/list`);
+  if (!res.ok) return;
+  const items = await res.json();
+  const host = document.getElementById("honor-admin-list");
+  if (!host) return;
+  host.innerHTML = "";
+
+  if (!items.length) {
+    host.innerHTML = "<div class='card'>Пока нет карточек</div>";
+    return;
+  }
+
+  items.forEach(item => {
+    const id = item.id || item.Id;
+    const fullName = item.fullName || item.FullName || "";
+    const description = item.description || item.Description || "";
+    const photo = item.photoFile || item.PhotoFile || "";
+    const card = document.createElement("div");
+    card.className = "post-card";
+    const imgHtml = photo ? `<img src='${api}/download?target=honor&name=${encodeURIComponent(photo)}' style='width:100%;height:160px;object-fit:cover'>` : "<div style='height:160px;display:flex;align-items:center;justify-content:center;background:#0f131c;color:#777'>Нет фото</div>";
+    card.innerHTML = `<div class='cover'>${imgHtml}</div><div class='meta'><div class='title'>${escapeHtml(fullName)}</div><div style='color:var(--muted)'>${escapeHtml(description.slice(0,100))}</div><div class='actions'><button onclick='editHonorPerson(${JSON.stringify(id)},${JSON.stringify(fullName)},${JSON.stringify(description)})'>✏️</button><button class='danger' onclick='deleteHonorPerson(${JSON.stringify(id)})'>🗑</button></div></div>`;
+    host.appendChild(card);
+  });
+}
+
+function editHonorPerson(id, fullName, description) {
+  document.getElementById("honor-id").value = id || "";
+  document.getElementById("honor-name").value = fullName || "";
+  document.getElementById("honor-description").value = description || "";
+  document.getElementById("tab-honor")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 const newsState = { items: [], source: "pending", index: 0, mediaIndex: 0, rotation: 0 };
@@ -331,6 +416,7 @@ async function publishNews(id) {
   if (!res.ok) return alert("Ошибка публикации");
   await loadPendingNews();
     await loadPublishedNewsAdmin();
+    await loadHonorBoard();
 }
 
 async function rejectNews(id) {
@@ -344,6 +430,7 @@ async function rejectNews(id) {
   if (!res.ok) return alert("Ошибка отклонения");
   await loadPendingNews();
     await loadPublishedNewsAdmin();
+    await loadHonorBoard();
 }
 
 function setupNewsModalControls() {

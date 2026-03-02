@@ -35,6 +35,7 @@ namespace InfoKioskApp
         private ScheduleView? _scheduleView;
         private CalendarView? _calendarView;
         private NewsView? _newsView;
+        private HonorBoardView? _honorView;
 
 
         private double _tickerX;
@@ -353,6 +354,13 @@ namespace InfoKioskApp
         {
             _newsView ??= new NewsView();
             ContentArea.Content = _newsView;
+        }
+
+
+        private void HonorBoard_Click(object sender, RoutedEventArgs e)
+        {
+            _honorView ??= new HonorBoardView();
+            ContentArea.Content = _honorView;
         }
 
         private void Schedule_Click(object sender, RoutedEventArgs e)

@@ -42,6 +42,8 @@ namespace InfoKioskApp.Services
         private static string NewsPublishedPath => Path.Combine(NewsRoot, "published.json");
         private static string NewsRejectedPath => Path.Combine(NewsRoot, "rejected.json");
         private static string NewsEditorsPath => Path.Combine(NewsRoot, "editors.json");
+        private static string HonorRoot => Path.Combine(DataRoot, "honor");
+        private static string HonorItemsPath => Path.Combine(HonorRoot, "items.json");
 
         // ---------------------------- START / STOP ----------------------------
 
@@ -158,6 +160,10 @@ namespace InfoKioskApp.Services
                     case "/news/admin/update": await HandleAdminUpdateNews(ctx); break;
                     case "/news/admin/delete": await HandleAdminDeleteNews(ctx); break;
                     case "/news/admin/editors": await HandleAdminEditors(ctx); break;
+
+                    case "/honor/list": await HandleHonorList(ctx); break;
+                    case "/honor/save": await HandleHonorSave(ctx); break;
+                    case "/honor/delete": await HandleHonorDelete(ctx); break;
 
                     case "/settings/get": await HandleGetConfig(ctx); break;
 
@@ -310,6 +316,7 @@ namespace InfoKioskApp.Services
                 "schoollogo" => Path.Combine(DataRoot, "schoolLogo"),
                 "schoolphotos" => Path.Combine(DataRoot, "schoolPhotos"),
                 "newsmedia" => Path.Combine(NewsRoot, "media"),
+                "honor" => Path.Combine(HonorRoot, "media"),
                 _ => DataRoot,
             };
         }
@@ -1143,6 +1150,106 @@ namespace InfoKioskApp.Services
             }
 
             await WriteText(ctx, "Unsupported method", 405);
+        }
+
+        private static List<HonorPerson> ReadHonorItems()
+        {
+            try
+            {
+                Directory.CreateDirectory(HonorRoot);
+                if (!File.Exists(HonorItemsPath)) return new List<HonorPerson>();
+                return JsonConvert.DeserializeObject<List<HonorPerson>>(File.ReadAllText(HonorItemsPath, Encoding.UTF8)) ?? new List<HonorPerson>();
+            }
+            catch
+            {
+                return new List<HonorPerson>();
+            }
+        }
+
+        private static void WriteHonorItems(List<HonorPerson> items)
+        {
+            Directory.CreateDirectory(HonorRoot);
+            File.WriteAllText(HonorItemsPath, JsonConvert.SerializeObject(items, Formatting.Indented), Encoding.UTF8);
+        }
+
+        private static async Task HandleHonorList(HttpListenerContext ctx)
+        {
+            var items = ReadHonorItems().OrderByDescending(x => x.CreatedAt).ToList();
+            await WriteJson(ctx, JsonConvert.SerializeObject(items, Formatting.Indented));
+        }
+
+        private static async Task HandleHonorSave(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            var item = JsonConvert.DeserializeObject<HonorPerson>(body);
+            if (item == null || string.IsNullOrWhiteSpace(item.FullName))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            item.PhotoFile = Path.GetFileName(item.PhotoFile ?? "");
+            item.Description ??= "";
+
+            var items = ReadHonorItems();
+            var existing = items.FirstOrDefault(x => x.Id == item.Id && !string.IsNullOrWhiteSpace(item.Id));
+            if (existing == null)
+            {
+                item.Id = Guid.NewGuid().ToString("N");
+                item.CreatedAt = DateTime.Now;
+                items.Add(item);
+            }
+            else
+            {
+                existing.FullName = item.FullName;
+                existing.Description = item.Description;
+                if (!string.IsNullOrWhiteSpace(item.PhotoFile))
+                    existing.PhotoFile = item.PhotoFile;
+            }
+
+            WriteHonorItems(items);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        private static async Task HandleHonorDelete(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            var items = ReadHonorItems();
+            items.RemoveAll(x => x.Id == id);
+            WriteHonorItems(items);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
         }
 
         // ---------------------------- HELPERS ----------------------------

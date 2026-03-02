@@ -27,6 +27,7 @@
             <div class="menu-item" data-tab="media"><span class="icon">🖼️</span><span class="title">Медиа</span></div>
             <div class="menu-item" data-tab="calendar"><span class="icon">🗓️</span><span class="title">Календарь</span></div>
             <div class="menu-item" data-tab="news"><span class="icon">📰</span><span class="title">Новости</span></div>
+            <div class="menu-item" data-tab="honor"><span class="icon">🏅</span><span class="title">Мы ими гордимся</span></div>
             <div class="menu-item" data-tab="settings"><span class="icon">⚙️</span><span class="title">Настройки</span></div>
         </nav>
 
@@ -226,6 +227,35 @@
                     <h3>Уже опубликованные новости</h3>
                     <button onclick="loadPublishedNewsAdmin()">🔄 Обновить</button>
                     <div id="published-news-list" class="news-list"></div>
+                </div>
+            </div>
+        </section>
+
+
+        <section id="tab-honor" class="tab-content">
+            <div class="tab-head">
+                <h2>🏅 Мы ими гордимся</h2>
+                <p>Доска почета: карточки с фото, ФИО и описанием достижений.</p>
+            </div>
+            <div class="grid-2">
+                <div class="card">
+                    <h3>Добавить / обновить карточку</h3>
+                    <input id="honor-id" type="hidden">
+                    <label>ФИО</label>
+                    <input id="honor-name" type="text">
+                    <label>Описание / достижения</label>
+                    <textarea id="honor-description" style="min-height:140px"></textarea>
+                    <label>Фото</label>
+                    <input id="honor-photo" type="file" accept="image/*">
+                    <div class="row-inline wrap">
+                        <button onclick="saveHonorPerson()">💾 Сохранить карточку</button>
+                        <button onclick="resetHonorForm()" class="secondary">Очистить форму</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Карточки доски почета</h3>
+                    <button onclick="loadHonorBoard()">🔄 Обновить</button>
+                    <div id="honor-admin-list" class="posts-grid"></div>
                 </div>
             </div>
         </section>
