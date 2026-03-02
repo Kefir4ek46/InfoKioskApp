@@ -60,23 +60,32 @@ namespace InfoKioskApp.Views
                 Cursor = System.Windows.Input.Cursors.Hand
             };
 
-            var panel = new StackPanel();
-            var img = new Image { Height = 190, Stretch = Stretch.Uniform };
             var photoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "honor", "media", Path.GetFileName(item.PhotoFile ?? ""));
-            if (File.Exists(photoPath)) img.Source = new BitmapImage(new Uri(photoPath, UriKind.Absolute));
-            panel.Children.Add(img);
-            panel.Children.Add(new TextBlock
+
+            var cardGrid = new Grid();
+            var img = new Image { Stretch = Stretch.UniformToFill };
+            if (File.Exists(photoPath))
+                img.Source = new BitmapImage(new Uri(photoPath, UriKind.Absolute));
+            cardGrid.Children.Add(img);
+
+            var nameOverlay = new Border
+            {
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Background = new SolidColorBrush(Color.FromArgb(150, 10, 16, 28)),
+                Padding = new Thickness(10, 8, 10, 8)
+            };
+            nameOverlay.Child = new TextBlock
             {
                 Text = item.FullName,
                 Foreground = Brushes.White,
-                FontSize = 20,
+                FontSize = 21,
                 FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(10, 8, 10, 10),
                 TextAlignment = TextAlignment.Center,
                 TextWrapping = TextWrapping.Wrap
-            });
+            };
+            cardGrid.Children.Add(nameOverlay);
 
-            border.Child = panel;
+            border.Child = cardGrid;
             border.MouseLeftButtonUp += (_, __) => OpenDetails(item, photoPath);
             return border;
         }

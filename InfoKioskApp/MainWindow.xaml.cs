@@ -45,6 +45,8 @@ namespace InfoKioskApp
         private int _tickerItemIndex;
 
         private FileSystemWatcher? _configWatcher;
+        private DispatcherTimer? _runtimeRefreshTimer;
+        private string _runtimeConfigSnapshot = string.Empty;
 
         private DispatcherTimer _idleTimer;
         private DispatcherTimer _idleSlideTimer;
@@ -65,6 +67,7 @@ namespace InfoKioskApp
             StartWeatherTimer();
             BindActivityEvents();
             SetupConfigWatcher();
+            StartRuntimeRefreshTimer();
 
             // ✅ Добавляем пользовательские разделы из конфига
             AddCustomSections();
@@ -91,6 +94,13 @@ namespace InfoKioskApp
             InitializeTicker();
             InitializeIdleScreen();
             InitializeSleepSchedule();
+            try
+            {
+                var cfgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json");
+                if (File.Exists(cfgPath))
+                    _runtimeConfigSnapshot = File.ReadAllText(cfgPath);
+            }
+            catch { }
         }
 
         private void SetupConfigWatcher()
@@ -125,6 +135,35 @@ namespace InfoKioskApp
             catch (Exception ex)
             {
                 Console.WriteLine($"Config watcher error: {ex.Message}");
+            }
+        }
+
+
+        private void StartRuntimeRefreshTimer()
+        {
+            _runtimeRefreshTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _runtimeRefreshTimer.Tick -= RuntimeRefreshTick;
+            _runtimeRefreshTimer.Tick += RuntimeRefreshTick;
+            _runtimeRefreshTimer.Start();
+        }
+
+        private void RuntimeRefreshTick(object? sender, EventArgs e)
+        {
+            try
+            {
+                var cfgPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json");
+                if (!File.Exists(cfgPath)) return;
+
+                var nowSnapshot = File.ReadAllText(cfgPath);
+                if (string.Equals(nowSnapshot, _runtimeConfigSnapshot, StringComparison.Ordinal))
+                    return;
+
+                _runtimeConfigSnapshot = nowSnapshot;
+                ApplyRuntimeSettings();
+            }
+            catch
+            {
+                // ignore transient file locks while config is being written
             }
         }
 
