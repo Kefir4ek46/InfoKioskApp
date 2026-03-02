@@ -15,7 +15,7 @@
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,10,0,0">
-            <UniformGrid x:Name="CardsGrid" Rows="2" Columns="3" MinHeight="760"/>
+            <UniformGrid x:Name="CardsGrid" Rows="2" Columns="4" MinHeight="500" MaxHeight="740"/>
             <TextBlock x:Name="EmptyStateText"
                        Visibility="Collapsed"
                        Text="Пока нет карточек на доске почета"

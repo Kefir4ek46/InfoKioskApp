@@ -15,7 +15,7 @@ namespace InfoKioskApp.Views
     {
         private readonly List<HonorPerson> _items = new();
         private int _page;
-        private const int PageSize = 6;
+        private const int PageSize = 8;
 
         public HonorBoardView()
         {
