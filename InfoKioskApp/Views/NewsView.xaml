@@ -32,11 +32,13 @@
                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
                         <TextBlock x:Name="OverlayTitleText" FontSize="34" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
                         <TextBlock x:Name="OverlayMetaText" Foreground="#B3BAC9" Margin="0,8,0,14"/>
-                        <Border Background="#11131A" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8" Padding="12" Height="500">
+                        <Border Background="#11131A" BorderBrush="#2F3340" BorderThickness="1" CornerRadius="8" Padding="12" Height="420">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <TextBlock x:Name="OverlayContentText" Foreground="White" FontSize="22" TextWrapping="Wrap"/>
                             </ScrollViewer>
                         </Border>
+                        <TextBlock x:Name="OverlayLinkText" Foreground="#9dc2ff" Margin="0,10,0,6" TextWrapping="Wrap"/>
+                        <Image x:Name="OverlayQrImage" Height="120" Width="120" HorizontalAlignment="Left" Visibility="Collapsed" Stretch="Uniform"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" Grid.Column="1">

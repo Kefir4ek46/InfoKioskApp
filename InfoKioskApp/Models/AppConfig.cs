@@ -59,6 +59,7 @@ namespace InfoKioskApp.Models
         {
             public bool Enabled { get; set; } = false;
             public string Text { get; set; } = "Добро пожаловать в школу!";
+            public List<string> Items { get; set; } = [];
             public double Speed { get; set; } = 1.5;
             public string Foreground { get; set; } = "#FFFFFF";
             public double FontSize { get; set; } = 20;

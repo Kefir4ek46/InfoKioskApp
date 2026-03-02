@@ -235,3 +235,17 @@ li {
     .status-box { width: 100%; text-align: left; min-width: 0; }
     .posts-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 600px) {
+    main { padding: 0 8px; margin-top: 12px; }
+    .tab-content { padding: 12px; }
+    .menu { overflow-x: auto; flex-wrap: nowrap; }
+    .menu-item { min-width: fit-content; }
+    .card { padding: 10px; }
+    .post-modal-content { width: 100%; max-height: 92vh; overflow:auto; }
+    input[type="text"], input[type="password"], input[type="date"], input[type="number"], textarea, select {
+        font-size: 16px;
+    }
+    button { width: 100%; }
+    .row-inline button { width: auto; }
+}

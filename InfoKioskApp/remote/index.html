@@ -194,7 +194,9 @@
             <div class="grid-2">
                 <div>
                     <div class="card">
-                        <h3>Редакторы (логин / пароль)</h3>
+                        <h3>Редакторы (имя / логин / пароль)</h3>
+                        <label>Имя:</label>
+                        <input id="editor-name" type="text">
                         <label>Логин:</label>
                         <input id="editor-login" type="text">
                         <label>Пароль:</label>
@@ -280,8 +282,10 @@
                     <div class="card">
                         <h3>Бегущая строка</h3>
                         <label><input id="ticker-enabled" type="checkbox"> Включить</label>
-                        <label>Текст:</label>
+                        <label>Текст по умолчанию:</label>
                         <input id="ticker-text" type="text">
+                        <label>Несколько сообщений (каждое с новой строки):</label>
+                        <textarea id="ticker-items" placeholder="Первое сообщение&#10;Второе сообщение"></textarea>
                         <label>Скорость:</label>
                         <input id="ticker-speed" type="number" step="0.1">
                         <button onclick="saveTickerSettings()">Сохранить бегущую строку</button>
@@ -296,6 +300,26 @@
                         <label>Смена слайда (сек):</label>
                         <input id="idle-slide-duration" type="number">
                         <button onclick="saveIdleSettings()">Сохранить экран ожидания</button>
+                    </div>
+
+                    
+                    <div class="card">
+                        <h3>Безопасность администратора</h3>
+                        <label>Текущий пароль:</label>
+                        <input id="admin-old-password" type="password">
+                        <label>Новый пароль:</label>
+                        <input id="admin-new-password" type="password">
+                        <button onclick="changeAdminPassword()">Сменить пароль admin</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Громкость устройства (Windows)</h3>
+                        <p class="hint">Команды применяются на устройстве, где запущен InfoKiosk.</p>
+                        <div class="row-inline wrap">
+                            <button onclick="changeVolume('down')">🔉 Тише</button>
+                            <button onclick="changeVolume('up')">🔊 Громче</button>
+                            <button onclick="changeVolume('mute')">🔇 Mute</button>
+                        </div>
                     </div>
 
                     <div class="card drop-zone">
@@ -369,7 +393,8 @@
                 <div>
                     <label>Заголовок</label><input id="news-modal-title" type="text">
                     <p id="news-modal-meta" style="color:var(--muted);"></p>
-                    <textarea id="news-modal-content" style="min-height:360px;width:100%;"></textarea>
+                    <textarea id="news-modal-content" style="min-height:300px;width:100%;"></textarea>
+                    <label>Ссылка для QR:</label><input id="news-modal-link" type="text" placeholder="https://...">
                     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                         <button id="news-save-btn">💾 Сохранить текст</button>
                         <button id="news-publish-btn">✅ Опубликовать</button>

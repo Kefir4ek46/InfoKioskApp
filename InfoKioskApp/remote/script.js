@@ -91,10 +91,11 @@ async function loadEditors() {
     if (!ul) return;
     ul.innerHTML = "";
     editors.forEach(ed => {
+      const name = ed.name || ed.Name || "";
       const login = ed.login || ed.Login || "";
       const password = ed.password || ed.Password || "";
       const li = document.createElement("li");
-      li.innerHTML = `<div><strong>${escapeHtml(login)}</strong><div style='color:var(--muted)'>Пароль: ${escapeHtml(password)}</div></div><div><button onclick="deleteEditor('${escapeHtml(login)}')">🗑</button></div>`;
+      li.innerHTML = `<div><strong>${escapeHtml(name)}</strong><div style='color:var(--muted)'>${escapeHtml(login)} • Пароль: ${escapeHtml(password)}</div></div><div><button onclick="deleteEditor('${escapeHtml(login)}')">🗑</button></div>`;
       ul.appendChild(li);
     });
     const linkInput = document.getElementById("editor-link");
@@ -105,17 +106,19 @@ async function loadEditors() {
 }
 
 async function createEditor() {
+  const name = (document.getElementById("editor-name").value || "").trim();
   const login = (document.getElementById("editor-login").value || "").trim();
   const password = (document.getElementById("editor-password").value || "").trim();
-  if (!login || !password) return alert("Введите логин и пароль");
+  if (!name || !login || !password) return alert("Введите имя, логин и пароль");
 
   const res = await fetch(`${api}/news/admin/editors`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-    body: JSON.stringify({ action: "add", login, password })
+    body: JSON.stringify({ action: "add", name, login, password })
   });
 
   if (!res.ok) return alert("Ошибка добавления редактора");
+  document.getElementById("editor-name").value = "";
   document.getElementById("editor-login").value = "";
   document.getElementById("editor-password").value = "";
   await loadEditors();
@@ -150,6 +153,7 @@ function normalizeNews(n, source) {
     content: n.content || n.Content || "",
     createdAt: n.createdAt || n.CreatedAt || "",
     videoUrl: n.videoUrl || n.VideoUrl || "",
+    linkUrl: n.linkUrl || n.LinkUrl || "",
     videoFile: n.videoFile || n.VideoFile || "",
     photos: n.photoFiles || n.PhotoFiles || [],
     source
@@ -185,6 +189,8 @@ function openNewsModal(item) {
   document.getElementById("news-modal-title").value = item.title;
   document.getElementById("news-modal-meta").textContent = `${item.author} • ${item.createdAt || ""}`;
   document.getElementById("news-modal-content").value = item.content || "";
+  const modalLink = document.getElementById("news-modal-link");
+  if (modalLink) modalLink.value = item.linkUrl || "";
   document.getElementById("news-modal").classList.remove("hidden");
 
   document.getElementById("news-publish-btn").style.display = item.source === "pending" ? "inline-block" : "none";
@@ -243,10 +249,11 @@ async function saveNewsText() {
   if (!item) return;
   const title = (document.getElementById("news-modal-title").value || "").trim();
   const content = (document.getElementById("news-modal-content").value || "").trim();
+  const linkUrl = (document.getElementById("news-modal-link")?.value || "").trim();
   const res = await fetch(`${api}/news/admin/update`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
-    body: JSON.stringify({ id: item.id, title, content })
+    body: JSON.stringify({ id: item.id, title, content, linkUrl })
   });
   if (!res.ok) return alert("Ошибка сохранения новости");
   alert("Текст сохранён");
@@ -556,6 +563,8 @@ async function loadThemeAndExtraSettings() {
 
     document.getElementById("ticker-enabled").checked = !!(ticker.enabled ?? ticker.Enabled ?? false);
     document.getElementById("ticker-text").value = ticker.text || ticker.Text || "";
+    const tickerItems = ticker.items || ticker.Items || [];
+    document.getElementById("ticker-items").value = Array.isArray(tickerItems) ? tickerItems.join("\n") : "";
     document.getElementById("ticker-speed").value = ticker.speed || ticker.Speed || 1.5;
 
     document.getElementById("idle-enabled").checked = !!(idle.enabled ?? idle.Enabled ?? true);
@@ -613,6 +622,7 @@ async function saveTickerSettings() {
     cfg.Ticker = cfg.ticker;
     cfg.ticker.enabled = document.getElementById("ticker-enabled").checked;
     cfg.ticker.text = document.getElementById("ticker-text").value || "";
+    cfg.ticker.items = (document.getElementById("ticker-items").value || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
     cfg.ticker.speed = Number(document.getElementById("ticker-speed").value || 1.5);
 
     const save = await fetch(`${api}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
@@ -624,6 +634,28 @@ async function saveTickerSettings() {
   }
 }
 
+
+async function changeAdminPassword() {
+  const oldPassword = (document.getElementById("admin-old-password").value || "").trim();
+  const newPassword = (document.getElementById("admin-new-password").value || "").trim();
+  if (!oldPassword || !newPassword) return alert("Введите текущий и новый пароль");
+  const res = await fetch(`${api}/auth/admin/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Admin-Token": adminToken },
+    body: JSON.stringify({ oldPassword, newPassword })
+  });
+  if (!res.ok) return alert("Не удалось сменить пароль");
+  document.getElementById("admin-old-password").value = "";
+  document.getElementById("admin-new-password").value = "";
+  alert("Пароль администратора обновлен");
+}
+
+async function changeVolume(action) {
+  const res = await fetch(`${api}/system/volume?action=${encodeURIComponent(action)}`, {
+    headers: { "X-Admin-Token": adminToken }
+  });
+  if (!res.ok) return alert("Команда громкости не выполнена");
+}
 async function saveIdleSettings() {
   try {
     const res = await fetch(`${api}/config`);

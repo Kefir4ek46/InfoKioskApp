@@ -40,6 +40,8 @@ namespace InfoKioskApp
         private double _tickerX;
         private double _tickerSpeed = 1.5;
         private DateTime _lastTickerFrameTime = DateTime.UtcNow;
+        private List<string> _tickerItems = [];
+        private int _tickerItemIndex;
 
         private FileSystemWatcher? _configWatcher;
 
@@ -483,14 +485,22 @@ namespace InfoKioskApp
             var config = ConfigService.LoadConfig();
             var ticker = config.Ticker ?? new AppConfig.TickerSettings();
 
-            TickerTextBlock.Text = ticker.Text ?? string.Empty;
+            _tickerItems = (ticker.Items ?? [])
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .ToList();
+            if (_tickerItems.Count == 0 && !string.IsNullOrWhiteSpace(ticker.Text))
+                _tickerItems.Add(ticker.Text.Trim());
+
+            _tickerItemIndex = 0;
+            TickerTextBlock.Text = _tickerItems.FirstOrDefault() ?? string.Empty;
             TickerTextBlock.FontSize = ticker.FontSize > 0 ? ticker.FontSize : 20;
             TickerTextBlock.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(ticker.Foreground ?? "#FFFFFF"));
             _tickerSpeed = Math.Max(20, (ticker.Speed <= 0 ? 1.5 : ticker.Speed) * 60);
 
             CompositionTarget.Rendering -= OnTickerRendering;
 
-            if (!ticker.Enabled || string.IsNullOrWhiteSpace(TickerTextBlock.Text))
+            if (!ticker.Enabled || _tickerItems.Count == 0 || string.IsNullOrWhiteSpace(TickerTextBlock.Text))
             {
                 TickerCanvas.Visibility = Visibility.Collapsed;
                 return;
@@ -516,7 +526,12 @@ namespace InfoKioskApp
 
             _tickerX -= _tickerSpeed * dt;
             if (_tickerX < -TickerTextBlock.ActualWidth)
+            {
+                _tickerItemIndex = (_tickerItemIndex + 1) % _tickerItems.Count;
+                TickerTextBlock.Text = _tickerItems[_tickerItemIndex];
+                TickerTextBlock.UpdateLayout();
                 _tickerX = TickerCanvas.ActualWidth;
+            }
 
             Canvas.SetLeft(TickerTextBlock, _tickerX);
         }

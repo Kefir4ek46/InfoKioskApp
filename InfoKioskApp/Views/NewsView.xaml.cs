@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,6 +19,7 @@ namespace InfoKioskApp.Views
         private int _overlayMediaIndex;
         private int _overlayRotation;
         private MediaElement? _activeOverlayMediaElement;
+        private static readonly HttpClient _http = new();
 
         public NewsView()
         {
@@ -197,6 +199,28 @@ namespace InfoKioskApp.Views
                 if (File.Exists(p)) _overlayMedia.Add(new NewsMediaItem { Type = "photo", Path = p });
             }
 
+        }
+
+        private void RenderLinkQr(string? linkUrl)
+        {
+            OverlayLinkText.Text = string.Empty;
+            OverlayQrImage.Source = null;
+            OverlayQrImage.Visibility = Visibility.Collapsed;
+
+            if (string.IsNullOrWhiteSpace(linkUrl))
+                return;
+
+            OverlayLinkText.Text = $"Ссылка: {linkUrl}";
+            try
+            {
+                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={Uri.EscapeDataString(linkUrl)}";
+                OverlayQrImage.Source = new BitmapImage(new Uri(qrUrl));
+                OverlayQrImage.Visibility = Visibility.Visible;
+            }
+            catch
+            {
+                OverlayLinkText.Text += " (QR недоступен)";
+            }
         }
 
         private void StopActiveOverlayMedia()

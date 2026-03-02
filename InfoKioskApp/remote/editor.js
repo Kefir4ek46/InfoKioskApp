@@ -1,17 +1,71 @@
 ﻿const api = location.origin;
 let editorToken = sessionStorage.getItem("editorToken") || "";
 let editorLogin = sessionStorage.getItem("editorLogin") || "";
+let editorName = sessionStorage.getItem("editorName") || "";
+
+function getDeviceId() {
+  let id = localStorage.getItem("editorDeviceId");
+  if (!id) {
+    id = `${navigator.userAgent}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem("editorDeviceId", id);
+  }
+  return id;
+}
 
 window.addEventListener("load", async () => {
+  const rememberedLogin = localStorage.getItem("editorRememberLogin") || "";
+  if (rememberedLogin) {
+    const loginInput = document.getElementById("editor-login");
+    const loginModalInput = document.getElementById("editor-login-modal");
+    if (loginInput) loginInput.value = rememberedLogin;
+    if (loginModalInput) loginModalInput.value = rememberedLogin;
+  }
+
   const modal = document.getElementById("editor-auth-modal");
   if (editorToken) {
     if (modal) modal.classList.add("hidden");
-    document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorLogin}`;
+    document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorName || editorLogin}`;
     await loadMyPending();
-  } else {
-    if (modal) modal.classList.remove("hidden");
+    return;
   }
+
+  if (rememberedLogin) {
+    const ok = await deviceLogin(rememberedLogin);
+    if (ok) {
+      if (modal) modal.classList.add("hidden");
+      return;
+    }
+  }
+
+  if (modal) modal.classList.remove("hidden");
 });
+
+async function deviceLogin(login) {
+  const res = await fetch(`${api}/auth/editor/device-login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login, deviceId: getDeviceId() })
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  setEditorSession(data, login);
+  await loadMyPending();
+  return true;
+}
+
+function setEditorSession(data, fallbackLogin) {
+  editorToken = data.token;
+  editorLogin = data.login || fallbackLogin;
+  editorName = data.name || "";
+  sessionStorage.setItem("editorToken", editorToken);
+  sessionStorage.setItem("editorLogin", editorLogin);
+  sessionStorage.setItem("editorName", editorName);
+  document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorName || editorLogin}`;
+  const nameEl = document.getElementById("editor-name");
+  const nameModalEl = document.getElementById("editor-name-modal");
+  if (nameEl) nameEl.value = editorName || "";
+  if (nameModalEl) nameModalEl.value = editorName || "";
+}
 
 async function loginEditorFromModal() {
   const loginEl = document.getElementById("editor-login-modal");
@@ -42,23 +96,20 @@ async function loginEditor() {
 
   const ok = await doEditorLogin(login, password);
   if (!ok) return alert("Неверный логин/пароль");
-
 }
 
 async function doEditorLogin(login, password) {
+  const remember = !!document.getElementById("remember-editor")?.checked;
   const res = await fetch(`${api}/auth/editor/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ login, password })
+    body: JSON.stringify({ login, password, deviceId: remember ? getDeviceId() : "" })
   });
 
   if (!res.ok) return false;
   const data = await res.json();
-  editorToken = data.token;
-  editorLogin = data.login || login;
-  sessionStorage.setItem("editorToken", editorToken);
-  sessionStorage.setItem("editorLogin", editorLogin);
-  document.getElementById("editor-auth-status").textContent = `Вошли как: ${editorLogin}`;
+  setEditorSession(data, login);
+  if (remember) localStorage.setItem("editorRememberLogin", editorLogin);
   await loadMyPending();
   return true;
 }
@@ -75,7 +126,6 @@ async function uploadOneFile(file) {
   return file.name;
 }
 
-
 async function readVideoSize(file) {
   return await new Promise((resolve) => {
     try {
@@ -83,21 +133,15 @@ async function readVideoSize(file) {
       video.preload = "metadata";
       video.muted = true;
       video.playsInline = true;
-
       video.onloadedmetadata = () => {
-        const result = {
-          videoWidth: Number(video.videoWidth || 0),
-          videoHeight: Number(video.videoHeight || 0)
-        };
+        const result = { videoWidth: Number(video.videoWidth || 0), videoHeight: Number(video.videoHeight || 0) };
         URL.revokeObjectURL(video.src);
         resolve(result);
       };
-
       video.onerror = () => {
         if (video.src) URL.revokeObjectURL(video.src);
         resolve({ videoWidth: 0, videoHeight: 0 });
       };
-
       video.src = URL.createObjectURL(file);
     } catch {
       resolve({ videoWidth: 0, videoHeight: 0 });
@@ -111,6 +155,7 @@ async function submitNews() {
   const title = (document.getElementById("news-title").value || "").trim();
   const content = (document.getElementById("news-content").value || "").trim();
   const videoUrl = (document.getElementById("news-video-url").value || "").trim();
+  const linkUrl = (document.getElementById("news-link-url").value || "").trim();
   const videoInput = document.getElementById("news-video-file");
   const photosInput = document.getElementById("news-photos");
 
@@ -121,8 +166,7 @@ async function submitNews() {
     let videoWidth = 0;
     let videoHeight = 0;
     const video = videoInput.files?.[0];
-    if (video)
-    {
+    if (video) {
       const dims = await readVideoSize(video);
       videoWidth = dims.videoWidth || 0;
       videoHeight = dims.videoHeight || 0;
@@ -135,7 +179,7 @@ async function submitNews() {
       photoFiles.push(uploaded);
     }
 
-    const payload = { title, content, authorLogin: editorLogin, videoUrl, videoFile, photoFiles, videoWidth, videoHeight };
+    const payload = { title, content, authorLogin: editorLogin, videoUrl, linkUrl, videoFile, photoFiles, videoWidth, videoHeight };
     const res = await fetch(`${api}/news/editor/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Editor-Token": editorToken },
@@ -148,6 +192,7 @@ async function submitNews() {
     document.getElementById("news-title").value = "";
     document.getElementById("news-content").value = "";
     document.getElementById("news-video-url").value = "";
+    document.getElementById("news-link-url").value = "";
     videoInput.value = "";
     photosInput.value = "";
     await loadMyPending();
@@ -162,10 +207,7 @@ function escapeHtml(str) {
 
 async function loadMyPending() {
   if (!editorToken || !editorLogin) return;
-
-  const res = await fetch(`${api}/news/editor/mine?login=${encodeURIComponent(editorLogin)}`, {
-    headers: { "X-Editor-Token": editorToken }
-  });
+  const res = await fetch(`${api}/news/editor/mine?login=${encodeURIComponent(editorLogin)}`, { headers: { "X-Editor-Token": editorToken } });
   if (!res.ok) return;
 
   const data = await res.json();
@@ -187,6 +229,5 @@ async function loadMyPending() {
   render(data.pending, "на модерации");
   render(data.published, "опубликовано");
   render(data.rejected, "отклонено");
-
   if (!ul.children.length) ul.innerHTML = "<li>Пока нет отправленных новостей</li>";
 }

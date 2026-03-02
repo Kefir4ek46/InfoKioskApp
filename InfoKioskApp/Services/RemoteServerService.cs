@@ -12,6 +12,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 
 namespace InfoKioskApp.Services
@@ -28,6 +29,13 @@ namespace InfoKioskApp.Services
         private static readonly HashSet<string> EditorTokens = new();
         private static DateTime _lastCpuSampleTimeUtc = DateTime.UtcNow;
         private static TimeSpan _lastCpuTotalProcessorTime = Process.GetCurrentProcess().TotalProcessorTime;
+
+        [DllImport("user32.dll")]
+        private static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
+        private const int KEYEVENTF_KEYUP = 0x0002;
+        private const byte VK_VOLUME_MUTE = 0xAD;
+        private const byte VK_VOLUME_DOWN = 0xAE;
+        private const byte VK_VOLUME_UP = 0xAF;
 
         private static string NewsRoot => Path.Combine(DataRoot, "news");
         private static string NewsPendingPath => Path.Combine(NewsRoot, "pending.json");
@@ -136,6 +144,9 @@ namespace InfoKioskApp.Services
 
                     case "/auth/admin/login": await HandleAdminLogin(ctx); break;
                     case "/auth/editor/login": await HandleEditorLogin(ctx); break;
+                    case "/auth/editor/device-login": await HandleEditorDeviceLogin(ctx); break;
+                    case "/auth/admin/change-password": await HandleAdminChangePassword(ctx); break;
+                    case "/system/volume": await HandleSystemVolume(ctx); break;
 
                     case "/news/published": await HandleNewsPublishedList(ctx); break;
                     case "/news/editor/submit": await HandleEditorSubmitNews(ctx); break;
@@ -692,8 +703,46 @@ namespace InfoKioskApp.Services
             dynamic data = JsonConvert.DeserializeObject(body);
             string login = (string?)data?.login ?? "";
             string password = (string?)data?.password ?? "";
+            string deviceId = (string?)data?.deviceId ?? "";
 
-            var editor = ReadEditors().FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Password == password && e.Active);
+            var editors = ReadEditors();
+            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Password == password && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(deviceId))
+            {
+                editor.TrustedDeviceId = deviceId;
+                WriteEditors(editors);
+            }
+
+            string token = Guid.NewGuid().ToString("N");
+            EditorTokens.Add(token);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login, name = editor.Name }));
+        }
+
+        private static async Task HandleEditorDeviceLogin(HttpListenerContext ctx)
+        {
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string login = (string?)data?.login ?? "";
+            string deviceId = (string?)data?.deviceId ?? "";
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(deviceId))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+
+            var editor = ReadEditors().FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active && (e.TrustedDeviceId ?? "") == deviceId);
             if (editor == null)
             {
                 await WriteText(ctx, "Unauthorized", 401);
@@ -702,7 +751,75 @@ namespace InfoKioskApp.Services
 
             string token = Guid.NewGuid().ToString("N");
             EditorTokens.Add(token);
-            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login }));
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login, name = editor.Name }));
+        }
+
+        private static async Task HandleAdminChangePassword(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string oldPassword = ((string?)data?.oldPassword ?? "").Trim();
+            string newPassword = ((string?)data?.newPassword ?? "").Trim();
+            var cfg = ConfigService.LoadConfig();
+            if ((cfg.PinCode ?? "1234") != oldPassword)
+            {
+                await WriteText(ctx, "Old password mismatch", 400);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 4)
+            {
+                await WriteText(ctx, "New password too short", 400);
+                return;
+            }
+            cfg.PinCode = newPassword;
+            ConfigService.SaveConfig(cfg);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        private static void SendVolumeKey(byte key)
+        {
+            keybd_event(key, 0, 0, 0);
+            keybd_event(key, 0, KEYEVENTF_KEYUP, 0);
+        }
+
+        private static async Task HandleSystemVolume(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+
+            string action = (ctx.Request.QueryString["action"] ?? "").ToLowerInvariant();
+            switch (action)
+            {
+                case "up":
+                    SendVolumeKey(VK_VOLUME_UP);
+                    break;
+                case "down":
+                    SendVolumeKey(VK_VOLUME_DOWN);
+                    break;
+                case "mute":
+                    SendVolumeKey(VK_VOLUME_MUTE);
+                    break;
+                default:
+                    await WriteText(ctx, "Bad action", 400);
+                    return;
+            }
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, action }));
         }
 
         private static async Task HandleNewsPublishedList(HttpListenerContext ctx)
@@ -745,6 +862,7 @@ namespace InfoKioskApp.Services
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             post.VideoFile = string.IsNullOrWhiteSpace(post.VideoFile) ? null : Path.GetFileName(post.VideoFile);
+            post.LinkUrl = string.IsNullOrWhiteSpace(post.LinkUrl) ? null : post.LinkUrl.Trim();
 
             var pending = ReadNewsList(NewsPendingPath);
             pending.Add(post);
@@ -895,6 +1013,7 @@ namespace InfoKioskApp.Services
             string id = (string?)data?.id ?? "";
             string title = ((string?)data?.title ?? "").Trim();
             string content = ((string?)data?.content ?? "").Trim();
+            string linkUrl = ((string?)data?.linkUrl ?? "").Trim();
 
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -910,6 +1029,7 @@ namespace InfoKioskApp.Services
 
                 if (!string.IsNullOrWhiteSpace(title)) item.Title = title;
                 if (!string.IsNullOrWhiteSpace(content)) item.Content = content;
+                item.LinkUrl = string.IsNullOrWhiteSpace(linkUrl) ? null : linkUrl;
                 WriteNewsList(path, list);
                 await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
                 return;
@@ -991,9 +1111,10 @@ namespace InfoKioskApp.Services
 
                 if (action == "add")
                 {
+                    string name = ((string?)data?.name ?? "").Trim();
                     string login = (string?)data?.login ?? "";
                     string password = (string?)data?.password ?? "";
-                    if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+                    if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(name))
                     {
                         await WriteText(ctx, "Bad request", 400);
                         return;
@@ -1005,7 +1126,7 @@ namespace InfoKioskApp.Services
                         return;
                     }
 
-                    editors.Add(new NewsEditor { Login = login, Password = password, Active = true });
+                    editors.Add(new NewsEditor { Name = name, Login = login, Password = password, Active = true });
                     WriteEditors(editors);
                     await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
                     return;

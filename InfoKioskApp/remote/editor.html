@@ -19,6 +19,8 @@
       <h2>Вход редактора</h2>
       <label>Логин</label>
       <input id="editor-login-modal" type="text">
+      <label>Имя (для отображения)</label>
+      <input id="editor-name-modal" type="text" readonly>
       <label>Пароль</label>
       <input id="editor-password-modal" type="password">
       <div style="margin-top:12px;display:flex;gap:8px;">
@@ -35,8 +37,11 @@
           <h3>Авторизация редактора</h3>
           <label>Логин</label>
           <input id="editor-login" type="text">
+          <label>Имя</label>
+          <input id="editor-name" type="text" readonly>
           <label>Пароль</label>
           <input id="editor-password" type="password">
+          <label><input id="remember-editor" type="checkbox" checked> Запомнить вход на этом устройстве</label>
           <button onclick="loginEditor()">Войти</button>
           <p id="editor-auth-status" class="hint"></p>
         </div>
@@ -49,6 +54,8 @@
           <textarea id="news-content"></textarea>
           <label>Ссылка на видео (YouTube/VK/файл)</label>
           <input id="news-video-url" type="text">
+          <label>Ссылка к новости (для QR-кода)</label>
+          <input id="news-link-url" type="text" placeholder="https://...">
           <label>Или прикрепить видеофайл</label>
           <input id="news-video-file" type="file" accept="video/*">
           <label>Фото (можно несколько)</label>
