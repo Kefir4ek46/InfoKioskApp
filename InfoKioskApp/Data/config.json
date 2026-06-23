@@ -17,7 +17,7 @@
   "BellSchedulePath": "data/BellSchedule.json",
   "MediaPath": "data/media",
   "DocumentsPath": "data/documents",
-  "FoodBlockId": "15159",
+  "FoodBlockId": "",
   "ShowChanges": true,
   "ChangesType": "Table",
   "Theme": "Dark",
