@@ -1,0 +1,36 @@
+[
+  {
+    "Id": "news-demo-1",
+    "Title": "Добро пожаловать в новую школу!",
+    "Content": "Дорогие ученики и учителя!\n\nМы рады приветствовать вас в нашем новом цифровом инфокиоске. Теперь расписание, меню столовой, новости и анонсы событий всегда под рукой — на одном экране.\n\nУчитесь с удовольствием!",
+    "AuthorLogin": "admin",
+    "AuthorName": "Администрация школы",
+    "CreatedAt": "2026-09-01T09:00:00",
+    "Status": "published",
+    "VideoUrl": null,
+    "LinkUrl": null,
+    "VideoFile": null,
+    "VideoWidth": null,
+    "VideoHeight": null,
+    "PhotoFiles": [],
+    "ModeratedAt": "2026-09-01T09:05:00",
+    "RejectReason": null
+  },
+  {
+    "Id": "news-demo-2",
+    "Title": "Олимпиада по математике",
+    "Content": "В ближайшую субботу в 10:00 состоится школьный этап олимпиады по математике. Ждем участников в кабинете 305.",
+    "AuthorLogin": "admin",
+    "AuthorName": "Учительская",
+    "CreatedAt": "2026-09-15T14:30:00",
+    "Status": "published",
+    "VideoUrl": null,
+    "LinkUrl": null,
+    "VideoFile": null,
+    "VideoWidth": null,
+    "VideoHeight": null,
+    "PhotoFiles": [],
+    "ModeratedAt": "2026-09-15T15:00:00",
+    "RejectReason": null
+  }
+]

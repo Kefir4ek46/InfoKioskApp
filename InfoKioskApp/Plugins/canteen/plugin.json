@@ -1,0 +1,63 @@
+{
+  "id": "canteen",
+  "name": "Столовая",
+  "icon": "🍽",
+  "version": "1.1.0",
+  "author": "InfoKiosk",
+  "description": "Меню столовой на день. Читает xlsx-файлы из data/CanteenMenu/<FoodBlockId>/. Если файла на текущую дату нет — пытается скачать с сайта по URL-шаблону.",
+  "order": 50,
+  "defaultPosition": "after-schedule",
+  "showInSidebar": true,
+  "showInMore": false,
+  "blockDuringLesson": false,
+  "category": "school",
+  "needsBackend": true,
+  "hasSettings": true,
+  "settingsFields": [
+    {
+      "key": "foodBlockId",
+      "label": "ID столовой на сайте",
+      "type": "text",
+      "placeholder": "например, 15159",
+      "required": true,
+      "help": "ID столовой на foodmonitoring.ru. Видно в URL: https://foodmonitoring.ru/<ID>/food"
+    },
+    {
+      "key": "sourceUrl",
+      "label": "URL-шаблон для скачивания меню",
+      "type": "text",
+      "placeholder": "https://foodmonitoring.ru/{id}/food/{filename}",
+      "required": false,
+      "help": "Шаблон URL. Подстановки: {id} = ID столовой, {filename} = имя файла по шаблону ниже."
+    },
+    {
+      "key": "filenameTemplate",
+      "label": "Шаблон имени файла",
+      "type": "text",
+      "placeholder": "{yyyy-mm-dd}-sm.xlsx",
+      "required": false,
+      "help": "Шаблон имени файла. Подстановки: {yyyy-mm-dd} = дата, {yyyy} = год, {mm} = месяц, {dd} = день. По умолчанию: {yyyy-mm-dd}-sm.xlsx"
+    },
+    {
+      "key": "autoDownload",
+      "label": "Автоматически скачивать при отсутствии файла",
+      "type": "checkbox",
+      "default": true
+    },
+    {
+      "key": "refreshIntervalMinutes",
+      "label": "Как часто проверять обновления (минут)",
+      "type": "number",
+      "default": 60,
+      "min": 5,
+      "max": 1440
+    },
+    {
+      "key": "description",
+      "label": "Описание для киоска (подзаголовок вкладки)",
+      "type": "text",
+      "placeholder": "Меню на день",
+      "required": false
+    }
+  ]
+}

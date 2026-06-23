@@ -1,0 +1,1342 @@
+/* ============================================================
+   InfoKiosk — main.css
+   Тёмная тема (как в исходном WPF-проекте):
+     #1E1E1E — фон приложения
+     #252525 / #2C2C2C — панели
+     #3A3A3A — кнопки
+     #3A9FFF — акцент
+     #FFFFFF — текст
+   ============================================================ */
+
+:root {
+  /* Палитра */
+  --bg:            #1E1E1E;
+  --panel:         #252525;
+  --panel-2:       #2C2C2C;
+  --surface:       #2D2D30;
+  --button:        #3A3A3A;
+  --button-hover:  #4A4A4A;
+  --accent:        #3A9FFF;
+  --accent-hover:  #2A82DA;
+  --danger:        #C0392B;
+  --success:       #28A745;
+  --warning:       #F0AD4E;
+
+  --text:          #FFFFFF;
+  --text-muted:    #BBBBBB;
+  --text-dim:      #5A5A5A;
+  --border:        #333333;
+  --border-strong: #444444;
+
+  /* Размеры */
+  --header-h:      110px;
+  --ticker-h:      38px;
+  --sidebar-w:     240px;
+
+  /* Скругления */
+  --radius-sm:     8px;
+  --radius-md:     12px;
+  --radius-lg:     16px;
+
+  /* Тени */
+  --shadow-sm:     0 2px 6px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 14px rgba(0,0,0,0.4);
+  --shadow-lg:     0 12px 40px rgba(0,0,0,0.5);
+
+  /* Шрифт */
+  --font: 'Roboto', 'Noto Sans', 'Segoe UI', system-ui, sans-serif;
+
+  /* Анимации */
+  --ease-spring:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:      150ms;
+  --dur-med:       280ms;
+  --dur-slow:      480ms;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Touch-friendly defaults */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  cursor: default;
+  /* Убираем лишний клик-зум на старых WebKit */
+  touch-action: manipulation;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
+  /* Touch-friendly: убираем нативный zoom на iOS при фокусе на input с <16px */
+  font-size: max(14px, 16px);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ============================== KIOSK LAYOUT ============================== */
+#kiosk {
+  display: grid;
+  grid-template-rows: var(--header-h) auto 1fr;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ------------------------------- HEADER ------------------------------- */
+.kiosk-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 24px;
+  background: linear-gradient(180deg, #252525 0%, #1E1E1E 100%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 10;
+}
+
+.header-left, .header-center, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.header-center { justify-content: center; }
+.header-right  { justify-content: flex-end; }
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-text {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.clock-time {
+  font-size: 42px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+}
+.clock-date {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.lesson-block {
+  display: flex;
+  flex-direction: row;        /* горизонтально: badge + countdown в одну строку */
+  align-items: center;
+  gap: 12px;
+  min-width: 110px;
+  white-space: nowrap;        /* не переносить на новую строку */
+  flex-wrap: nowrap;
+}
+.lesson-badge {
+  display: flex;
+  flex-direction: row;        /* внутри badge: label + num + time в строку */
+  align-items: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  animation: badge-pulse 2s var(--ease-in-out) infinite;
+  transition: background var(--dur-med) var(--ease-out);
+  white-space: nowrap;
+}
+.lesson-badge.break    { background: var(--warning); animation: none; }
+.lesson-badge.upcoming { background: var(--success); animation: none; }
+.lesson-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+.lesson-num   { font-size: 28px; font-weight: 700; line-height: 1; }
+.lesson-time  { font-size: 15px; opacity: 0.95; font-variant-numeric: tabular-nums; }
+
+/* Обратный отсчёт до начала/конца урока */
+.lesson-countdown {
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: rgba(0,0,0,0.35);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(58,159,255,0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(58,159,255,0); }
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.weather:hover {
+  background: var(--button);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.weather:active { transform: translateY(0); }
+.weather-icon { width: 38px; height: 38px; }
+.weather-text { line-height: 1.1; text-align: left; }
+.weather-temp { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.weather-desc { font-size: 12px; color: var(--text-muted); }
+.weather-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* =================== КНОПКИ УПРАВЛЕНИЯ ОКНОМ =================== */
+.window-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+.win-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.win-btn:hover {
+  background: var(--button);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.win-btn:active { transform: scale(0.92); }
+.win-close:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+/* =================== ПОДРОБНАЯ ПАНЕЛЬ ПОГОДЫ =================== */
+.weather-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: wp-fade var(--dur-fast) var(--ease-out);
+}
+.weather-panel[hidden] { display: none; }
+@keyframes wp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.weather-panel-card {
+  position: relative;
+  width: min(560px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  box-shadow: 0 24px 80px rgba(0,0,0,.5);
+  animation: wp-pop var(--dur-slow) var(--ease-out);
+}
+@keyframes wp-pop {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.weather-panel-close {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 36px; height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.weather-panel-close:hover { background: var(--button); color: var(--text); }
+
+.wp-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.wp-icon { width: 80px; height: 80px; flex-shrink: 0; }
+.wp-main { flex: 1; min-width: 0; }
+.wp-city { font-size: 22px; font-weight: 500; }
+.wp-temp { font-size: 36px; font-weight: 300; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.wp-desc { font-size: 14px; color: var(--text-muted); text-transform: capitalize; }
+
+.wp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.wp-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wp-cell-icon { font-size: 20px; }
+.wp-cell-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.wp-cell-value { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 600px) {
+  .wp-grid { grid-template-columns: 1fr; }
+  .weather-panel-card { padding: 22px 18px; }
+}
+
+.header-btn {
+  background: var(--button);
+  color: var(--text);
+  border: none;
+  width: 44px;                 /* touch-target ≥ 44px */
+  height: 44px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.header-btn:hover  { background: var(--button-hover); transform: translateY(-1px); }
+.header-btn:active { transform: translateY(0) scale(0.94); }
+
+/* ------------------------------- TICKER ------------------------------- */
+.kiosk-ticker {
+  height: var(--ticker-h);
+  background: var(--accent);
+  color: #fff;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+.ticker-track {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: var(--ticker-h);
+  padding-left: 100%;
+  will-change: transform;
+}
+
+/* ------------------------------ MAIN AREA ------------------------------ */
+.kiosk-main {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  overflow: hidden;
+}
+
+/* ------------------------------- SIDEBAR ------------------------------- */
+.kiosk-sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 16px;          /* увеличено для тачскрина: было 14px */
+  min-height: 56px;            /* touch-target ≥ 56px для надёжного тапа */
+  background: var(--button);
+  color: var(--text);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.nav-btn::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--accent);
+  transform: translateX(-100%);
+  transition: transform var(--dur-med) var(--ease-spring);
+}
+.nav-btn:hover {
+  background: var(--button-hover);
+  transform: translateX(2px);
+}
+.nav-btn:hover::before { transform: translateX(0); }
+.nav-btn.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(58,159,255,0.4);
+}
+.nav-btn.active::before { transform: translateX(0); background: #fff; }
+.nav-ico { font-size: 22px; flex-shrink: 0; }
+.nav-text { flex: 1; }
+
+/* ------------------------------- CONTENT ------------------------------- */
+.kiosk-content {
+  padding: 20px 28px 28px;
+  overflow-y: auto;
+  position: relative;
+  background: var(--bg);
+}
+
+.view-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+}
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* View Transitions API — плавная смена вкладок */
+@view-transition { navigation: auto; }
+
+/* Появление карточек — stagger через --i */
+.stagger-in {
+  animation: stagger-in var(--dur-med) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================== ADMIN ACCESS BUTTON ============================== */
+/* Маленькая кнопка внизу-слева — вход в админку. По тапу открывает PIN-форму. */
+.admin-access-btn {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 10px 12px;
+  min-height: 44px;            /* touch-target ≥ 44px */
+  background: rgba(45, 45, 48, 0.75);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;   /* убирает двойной тап-зум на мобилках */
+  user-select: none;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.admin-access-btn:hover {
+  background: var(--button-hover);
+  color: var(--text);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+.admin-access-btn:active { transform: translateY(0) scale(0.96); }
+.admin-access-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.admin-access-text { font-size: 13px; }
+
+/* Скрыть текст на маленьких экранах — оставить только иконку */
+@media (max-width: 720px) {
+  .admin-access-text { display: none; }
+  .admin-access-btn { padding: 10px; }
+}
+
+/* ----- PIN-модалка ----- */
+.pin-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pin-backdrop-in var(--dur-fast) var(--ease-out);
+  padding: 16px;
+}
+.pin-modal[hidden] { display: none !important; }
+@keyframes pin-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+
+.pin-modal-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 28px 28px 22px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: var(--shadow-lg);
+  animation: pin-card-in var(--dur-med) var(--ease-spring);
+  text-align: center;
+}
+@keyframes pin-card-in {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pin-modal-title {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.pin-modal-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.pin-modal-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 8px;
+  -webkit-text-security: disc;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+  /* touch-friendly: убираем нативный zoom на iOS */
+  font-size: max(22px, 16px);
+  touch-action: manipulation;
+}
+.pin-modal-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(58,159,255,0.25);
+}
+.pin-modal-error {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(192,57,43,0.15);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  color: #ff8a7a;
+  font-size: 13px;
+  animation: pin-shake 0.32s var(--ease-out);
+}
+@keyframes pin-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* Цифровая клавиатура */
+.pin-modal-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 18px 0 14px;
+}
+.pin-modal-pad button {
+  min-height: 56px;            /* большой touch-target */
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.pin-modal-pad button:hover { background: var(--button-hover); }
+.pin-modal-pad button:active {
+  background: var(--accent);
+  color: #fff;
+  transform: scale(0.94);
+}
+
+.pin-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: stretch;
+}
+.pin-modal-actions button {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.pin-modal-cancel { background: var(--button); color: var(--text); }
+.pin-modal-cancel:hover { background: var(--button-hover); }
+.pin-modal-ok     { background: var(--accent); color: #fff; }
+.pin-modal-ok:hover  { background: var(--accent-hover); }
+.pin-modal-actions button:active { transform: scale(0.96); }
+
+/* Кнопки управления окном в PIN-модалке (только для администратора) */
+.pin-modal-window-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.pin-modal-window-controls button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.pin-modal-window-controls button:hover {
+  background: var(--button);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.pin-modal-window-controls button:active { transform: scale(0.96); }
+.pin-modal-window-controls #win-close:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+/* Кнопки действий администратора (в модалке после PIN) */
+.admin-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all var(--dur-fast) var(--ease-out);
+  width: 100%;
+  text-align: left;
+  margin: 0;
+}
+.admin-action-btn:hover {
+  background: var(--button);
+  border-color: var(--border-strong);
+  transform: translateX(2px);
+}
+.admin-action-btn.primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+  color: #fff;
+  border-color: var(--accent);
+}
+.admin-action-btn.primary:hover {
+  background: linear-gradient(135deg, var(--accent-hover) 0%, #1f6bb8 100%);
+}
+.admin-action-btn.danger {
+  color: var(--danger);
+}
+.admin-action-btn.danger:hover {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+.admin-action-btn svg {
+  flex-shrink: 0;
+}
+
+
+/* ============================== MODAL ============================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: backdrop-in var(--dur-fast) var(--ease-out);
+}
+.modal-backdrop[hidden] { display: none; }
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal {
+  background: var(--panel-2);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  animation: modal-in var(--dur-med) var(--ease-spring);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ============================== IDLE OVERLAY ============================== */
+/*
+   Структура слоёв (z-index):
+     .idle-slide    z:1  — фото-фон (на уровне фона)
+     .idle-bg       z:2  — тёмный градиентный фильтр, чтобы текст был читаем над фото
+     .idle-content  z:3  — часы + дата + подсказка (на уровне переднего плана)
+   Контент прижат к верхней трети экрана, чтобы время было хорошо видно.
+*/
+.idle-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  animation: idle-in var(--dur-slow) var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.idle-overlay[hidden] { display: none; }
+@keyframes idle-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.idle-slide {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  background-color: #000;
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+}
+.idle-slide.active {
+  opacity: 1;
+}
+.idle-slide-next {
+  z-index: 0;
+}
+
+/* Тёмный фильтр поверх фото — повышает читаемость текста.
+   Без него светлые фото «съедают» белые надписи. */
+.idle-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(ellipse at center,
+              rgba(0,0,0,0.35) 0%,
+              rgba(0,0,0,0.65) 70%,
+              rgba(0,0,0,0.85) 100%);
+  pointer-events: none;
+}
+
+/* Контейнер контента: вертикальный stack, прижатый к ВЕРХНЕЙ трети экрана.
+   Раньше использовали justify-content: center — часы «висели» по центру и
+   перекрывались логотипом. Теперь контент смещён вверх, чтобы время и подсказка
+   были хорошо видны над фото-фоном, а надпись «Инфокиоск» убрана совсем. */
+.idle-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 20px;
+  padding: 4vh 40px 40px;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0,0,0,0.9), 0 2px 8px rgba(0,0,0,0.7);
+  width: 100%;
+}
+
+.idle-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.idle-clock-time {
+  font-size: 180px;
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 8px;
+  line-height: 1;
+}
+.idle-clock-date {
+  font-size: 32px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.85);
+  margin-top: 18px;
+  letter-spacing: 1px;
+}
+
+.idle-lesson {
+  font-size: 22px;
+  font-weight: 400;
+  padding: 8px 20px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.idle-hint {
+  margin-top: 8px;
+  font-size: 16px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.5px;
+  animation: idle-hint-pulse 2.4s var(--ease-in-out) infinite;
+}
+@keyframes idle-hint-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.95; }
+}
+
+/* На маленьких экранах уменьшаем гигантские цифры */
+@media (max-width: 800px) {
+  .idle-clock-time   { font-size: 110px; letter-spacing: 4px; }
+  .idle-clock-date   { font-size: 22px; margin-top: 10px; }
+  .idle-content      { gap: 18px; padding: 6vh 24px 24px; }
+}
+@media (max-width: 480px) {
+  .idle-clock-time   { font-size: 76px;  letter-spacing: 2px; }
+  .idle-clock-date   { font-size: 18px; }
+  .idle-content      { gap: 14px; padding: 5vh 16px 16px; }
+}
+
+/* ============================== TOASTS ============================== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 3000;
+  pointer-events: none;
+}
+.toast {
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+  min-width: 240px;
+  max-width: 380px;
+  pointer-events: auto;
+  animation: toast-in var(--dur-med) var(--ease-spring);
+}
+.toast.success { border-left-color: var(--success); }
+.toast.error   { border-left-color: var(--danger);  }
+.toast.warning { border-left-color: var(--warning); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.toast.out { animation: toast-out var(--dur-fast) var(--ease-out) forwards; }
+@keyframes toast-out {
+  to { opacity: 0; transform: translateX(40px); }
+}
+
+/* ============================== SCROLLBAR ============================== */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--panel); }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 5px;
+  border: 2px solid var(--panel);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ============================== UTIL ============================== */
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================== TOUCH ADAPTATIONS ==============================
+   На чистых тачскринах (пресс-экранах инфокиоска) hover-эффекты бесполезны
+   и часто «залипают» — кнопка остаётся подсвеченной после тапа. Эти правила
+   отключают hover и заменяют его более контрастным :active.
+   ============================================================================ */
+@media (hover: none) {
+  .nav-btn:hover,
+  .header-btn:hover,
+  .schedule-tab:hover,
+  .canteen-arrow:hover,
+  .media-cat:hover,
+  .cal-nav button:hover,
+  .cal-day:hover,
+  .card:hover,
+  .news-card:hover,
+  .doc-row:hover,
+  .media-card:hover,
+  .honor-card:hover,
+  .post-images img:hover {
+    transform: none;
+    background: var(--button);          /* вернуть фон */
+    border-color: var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* А вот :active — усиливаем, чтобы на тачскрине был явный отклик */
+  .nav-btn:active,
+  .header-btn:active,
+  .schedule-tab:active,
+  .canteen-arrow:active,
+  .media-cat:active,
+  .cal-nav button:active,
+  .cal-day:active {
+    transform: scale(0.94);
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .cal-day:active { transform: scale(0.96); }
+}
+
+/* Крупный шрифт дат в календаре на тачскринах — чтобы попадать пальцем */
+@media (hover: none) and (min-width: 800px) {
+  .cal-day { font-size: 18px; }
+  .bell-row { padding: 14px 16px; }
+  .bell-row .bell-num { width: 40px; height: 40px; font-size: 18px; }
+}
+
+/* Очень большие экраны (стеновые киоски 1080p+) — увеличиваем кликабельность */
+@media (min-width: 1600px) {
+  .nav-btn { min-height: 64px; font-size: 17px; }
+  .nav-ico { font-size: 26px; }
+  .clock-time { font-size: 48px; }
+  .clock-date { font-size: 16px; }
+}
+
+
+/* ============================== MORE PANEL (Дополнительно) ============================== */
+.more-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.2s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.more-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  animation: pop-in 0.25s ease-out;
+}
+@keyframes pop-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.more-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.more-panel-header h2 { margin: 0; font-size: 24px; }
+.more-panel-close {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--button);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.more-panel-close:hover { background: var(--danger); color: #fff; }
+.more-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+.more-panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.more-panel-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(58, 159, 255, 0.2);
+}
+.more-panel-card-icon { font-size: 36px; }
+.more-panel-card-name { font-size: 14px; text-align: center; font-weight: 500; }
+
+/* Кнопка «Дополнительно» в сайдбаре */
+.nav-more-btn {
+  background: linear-gradient(135deg, rgba(58, 159, 255, 0.10), rgba(107, 91, 255, 0.08)) !important;
+  border: 1px dashed rgba(58, 159, 255, 0.3) !important;
+}
+
+/* ============================== LESSON BLOCK SCREEN ============================== */
+.lesson-block-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 60px 20px;
+  min-height: 60vh;
+  gap: 16px;
+}
+.lesson-block-icon {
+  font-size: 96px;
+  filter: grayscale(0.3);
+  animation: pulse-icon 2s ease-in-out infinite;
+}
+@keyframes pulse-icon {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+.lesson-block-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+.lesson-block-text {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 480px;
+  margin: 0;
+  line-height: 1.5;
+}
+.lesson-block-hint {
+  font-size: 16px;
+  color: var(--accent);
+  margin: 4px 0 16px;
+}
+.lesson-block-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 15px;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.lesson-block-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(58, 159, 255, 0.4);
+}
+
+/* ============================== LEADERBOARD MODAL ============================== */
+.leaderboard-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 1500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: lb-fade-in 0.2s ease-out;
+}
+@keyframes lb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.leaderboard-modal-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  max-width: 560px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  animation: lb-pop-in 0.25s ease-out;
+}
+@keyframes lb-pop-in {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.leaderboard-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.leaderboard-modal-header h2 { margin: 0; font-size: 22px; }
+.leaderboard-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--button);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.leaderboard-close-btn:hover { background: var(--danger); color: #fff; }
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.leaderboard-table th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--surface);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+}
+.leaderboard-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.leaderboard-rank {
+  width: 50px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 16px;
+}
+.leaderboard-name { font-weight: 500; }
+.leaderboard-score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.leaderboard-date {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+.leaderboard-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 30px 10px !important;
+  font-style: italic;
+}
+.leaderboard-new-row {
+  background: rgba(76, 175, 80, 0.15);
+  animation: lb-highlight 2s ease-out;
+}
+@keyframes lb-highlight {
+  0%   { background: rgba(76, 175, 80, 0.5); }
+  100% { background: rgba(76, 175, 80, 0.15); }
+}
+
+.leaderboard-name-input {
+  background: rgba(76, 175, 80, 0.08);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.leaderboard-name-input-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #4caf50;
+  margin-bottom: 4px;
+}
+.leaderboard-name-input-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.leaderboard-name-input-row {
+  display: flex;
+  gap: 8px;
+}
+.leaderboard-name-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+}
+.leaderboard-name-input-row button {
+  padding: 10px 18px;
+  background: #4caf50;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.leaderboard-name-input-row button:hover { background: #43a047; }
+.leaderboard-submitted {
+  text-align: center;
+  color: #4caf50;
+  font-weight: 600;
+  padding: 10px;
+  margin-bottom: 16px;
+}
+.leaderboard-new-score {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.leaderboard-new-score strong { color: var(--accent); font-size: 18px; }

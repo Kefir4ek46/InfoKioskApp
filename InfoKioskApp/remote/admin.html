@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfoKiosk Remote Admin</title>
+    <link rel="icon" href="/Logo.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/Logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/shared/style.css">
+</head>
+<body class="admin-body">
+    <header class="topbar">
+        <div class="topbar-left">
+            <h1>🌐 InfoKiosk Admin</h1>
+            <p class="subtitle">Панель управления киоском</p>
+        </div>
+        <div class="topbar-actions">
+            <div class="status-box">
+                <div id="server-status">Подключение...</div>
+            </div>
+            <a href="/remote" class="topbar-link">← Выбор роли</a>
+            <button id="logout-btn" class="danger" onclick="logoutAdmin()">Выйти</button>
+        </div>
+    </header>
+
+    <div class="admin-layout">
+        <!-- SIDEBAR -->
+        <nav class="admin-sidebar" id="admin-sidebar">
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Контент</div>
+                <div class="sidebar-item active" data-tab="schedules">
+                    <span class="icon">📜</span><span>Расписания</span>
+                </div>
+                <div class="sidebar-item" data-tab="files">
+                    <span class="icon">🗂️</span><span>Файлы</span>
+                </div>
+                <div class="sidebar-item" data-tab="media">
+                    <span class="icon">🖼️</span><span>Медиа</span>
+                </div>
+                <div class="sidebar-item" data-tab="news">
+                    <span class="icon">📰</span><span>Новости</span>
+                </div>
+                <div class="sidebar-item" data-tab="honor">
+                    <span class="icon">🏅</span><span>Почёт</span>
+                </div>
+                <div class="sidebar-item" data-tab="calendar">
+                    <span class="icon">🗓️</span><span>Календарь</span>
+                </div>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">Система</div>
+                <div class="sidebar-item" data-tab="settings-general">
+                    <span class="icon">⚙️</span><span>Общие</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-bells">
+                    <span class="icon">🔔</span><span>Звонки</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-appearance">
+                    <span class="icon">🎨</span><span>Оформление</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-weather">
+                    <span class="icon">🌤️</span><span>Погода</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-ticker">
+                    <span class="icon">📢</span><span>Бегущая строка</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-idle">
+                    <span class="icon">💤</span><span>Экран ожидания</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-security">
+                    <span class="icon">🔐</span><span>Безопасность</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-system">
+                    <span class="icon">💻</span><span>Система</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-plugins">
+                    <span class="icon">🧩</span><span>Расширения</span>
+                </div>
+                <div class="sidebar-item" data-tab="settings-update">
+                    <span class="icon">🔄</span><span>Обновление</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- CONTENT -->
+        <main class="admin-content">
+
+            <!-- ============================== РАСПИСАНИЯ ============================== -->
+            <section id="tab-schedules" class="tab-content active">
+                <div class="tab-head"><h2>📜 Расписания</h2><p>Загрузка, просмотр и скачивание расписаний.</p></div>
+
+                <div class="grid-3">
+                    <div class="card drop-zone" id="dz-main">
+                        <h3>📋 Основное расписание</h3>
+                        <p class="hint">XLSX с листами по классам. Заменяет текущее.</p>
+                        <input type="file" id="main-file" accept=".xlsx,.xls">
+                        <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
+                        <div id="main-schedule-info" style="margin-top:10px;"></div>
+                    </div>
+                    <div class="card drop-zone" id="dz-changes">
+                        <h3>✏ Изменённое расписание</h3>
+                        <p class="hint">XLSX, PDF, PNG, JPG, DOCX. Заменяет текущее.</p>
+                        <input type="file" id="changes-file" accept=".xlsx,.xls,.pdf,.png,.jpg,.jpeg,.docx,.doc,.gif,.webp">
+                        <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
+                        <div id="changes-schedule-info" style="margin-top:10px;"></div>
+                    </div>
+                    <div class="card drop-zone" id="dz-other">
+                        <h3>📁 Доп. расписания</h3>
+                        <p class="hint">Кружки, ВНД, дежурства. Можно несколько.</p>
+                        <input type="file" id="other-file" multiple accept=".xlsx,.xls,.pdf,.png,.jpg,.jpeg,.docx,.doc,.gif,.webp">
+                        <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Дополнительные файлы</h3>
+                    <ul id="other-files"></ul>
+                </div>
+            </section>
+
+            <!-- ============================== ФАЙЛЫ ============================== -->
+            <section id="tab-files" class="tab-content">
+                <div class="tab-head"><h2>🗂️ Документы</h2><p>Загрузка, просмотр и скачивание файлов.</p></div>
+
+                <div class="card drop-zone" id="dz-docs" style="margin-bottom:16px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:200px;">
+                            <h3 style="margin:0 0 6px;">📤 Загрузить файлы</h3>
+                            <p class="hint" style="margin:0;">Перетащите файлы сюда или выберите вручную. Поддерживаются: PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, изображения, видео.</p>
+                        </div>
+                        <input type="file" id="docs-file" multiple style="flex:0 0 auto;width:auto;">
+                        <button onclick="uploadFileType('docs')" style="margin:0;">⬆ Загрузить</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                        <h3 style="margin:0;">📁 Файлы</h3>
+                        <div class="row-inline" style="gap:8px;">
+                            <button onclick="loadFilesCategory()" class="secondary" style="margin:0;padding:8px 14px;font-size:13px;">🔄 Обновить</button>
+                        </div>
+                    </div>
+                    <div id="files-grid" class="files-grid-admin"></div>
+                </div>
+
+                <div class="card">
+                    <h3>📄 Предпросмотр</h3>
+                    <div id="preview-area" class="preview-area"></div>
+                </div>
+            </section>
+
+            <!-- ============================== МЕДИА ============================== -->
+            <section id="tab-media" class="tab-content">
+                <div class="tab-head"><h2>🖼️ Медиа</h2><p>Создание постов, управление категориями.</p></div>
+                <div class="grid-2">
+                    <div class="card create-post-panel">
+                        <h3>Создать пост</h3>
+                        <label>Категория:</label>
+                        <select id="post-category"></select>
+                        <label>Название:</label>
+                        <input id="post-title" type="text">
+                        <label>Описание:</label>
+                        <textarea id="post-description"></textarea>
+                        <label>Дата:</label>
+                        <input id="post-date" type="date">
+                        <div class="card drop-zone" id="dz-post-images" style="margin-top:10px;padding:14px;">
+                            <p class="hint">Перетащите фото сюда или выберите:</p>
+                            <input id="post-images" type="file" accept="image/*" multiple>
+                        </div>
+                        <button onclick="createFullPost()">Создать пост</button>
+                    </div>
+                    <div class="card category-bar">
+                        <h3>Категории</h3>
+                        <label>Текущая:</label>
+                        <select id="category-select" onchange="onCategoryChange()"></select>
+                        <div class="row-inline wrap">
+                            <button class="cat-btn" onclick="renameCategoryPrompt()">✏ Переименовать</button>
+                            <button class="cat-btn danger" onclick="deleteCategory()">🗑 Удалить</button>
+                        </div>
+                        <label>Новая:</label>
+                        <div class="row-inline">
+                            <input id="new-category-name" placeholder="Название">
+                            <button onclick="createCategory()">➕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Посты</h3>
+                    <div id="media-posts-area" class="posts-grid"></div>
+                </div>
+            </section>
+
+            <!-- ============================== НОВОСТИ ============================== -->
+            <section id="tab-news" class="tab-content">
+                <div class="tab-head"><h2>📰 Новости</h2><p>Управление редакторами и модерация.</p></div>
+                <div class="grid-2">
+                    <div>
+                        <div class="card">
+                            <h3>Редакторы</h3>
+                            <label>Имя:</label><input id="editor-name" type="text">
+                            <label>Логин:</label><input id="editor-login" type="text">
+                            <label>Пароль:</label><input id="editor-password" type="text">
+                            <label class="checkbox-label" style="margin-top:14px;">
+                                <input type="checkbox" id="editor-can-publish">
+                                <span>👑 Право публикации без модерации</span>
+                            </label>
+                            <p class="hint" style="margin-top:4px;">Редактор сможет публиковать свои новости сразу, без вашего подтверждения. Также он сможет публиковать новости других редакторов, ожидающие модерации.</p>
+                            <button onclick="createEditor()">➕ Добавить</button>
+                            <ul id="editors-list"></ul>
+                        </div>
+                        <div class="card">
+                            <h3>Ссылка для редакторов</h3>
+                            <p>Страница входа: <code>/editor</code></p>
+                            <input id="editor-link" type="text" readonly>
+                            <button onclick="copyEditorLink()">📋 Копировать</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="card">
+                            <h3>На модерации</h3>
+                            <button onclick="loadPendingNews()">🔄 Обновить</button>
+                            <div id="pending-news-list" class="news-list"></div>
+                        </div>
+                        <div class="card">
+                            <h3>Опубликованные</h3>
+                            <button onclick="loadPublishedNewsAdmin()">🔄 Обновить</button>
+                            <div id="published-news-list" class="news-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== ПОЧЁТ ============================== -->
+            <section id="tab-honor" class="tab-content">
+                <div class="tab-head"><h2>🏅 Почётная доска</h2><p>Карточки с фото и достижениями.</p></div>
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Добавить / обновить</h3>
+                        <input id="honor-id" type="hidden">
+                        <label>ФИО</label><input id="honor-name" type="text">
+                        <label>Описание</label><textarea id="honor-description" style="min-height:120px"></textarea>
+                        <div class="card drop-zone" id="dz-honor-photo" style="margin-top:10px;padding:14px;">
+                            <label>Фото</label>
+                            <input id="honor-photo" type="file" accept="image/*">
+                        </div>
+                        <div class="row-inline wrap">
+                            <button onclick="saveHonorPerson()">💾 Сохранить</button>
+                            <button onclick="resetHonorForm()" class="secondary">Очистить</button>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>Карточки</h3>
+                        <button onclick="loadHonorBoard()">🔄 Обновить</button>
+                        <div id="honor-admin-list" class="posts-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== КАЛЕНДАРЬ ============================== -->
+            <section id="tab-calendar" class="tab-content">
+                <div class="tab-head"><h2>🗓️ Календарь</h2><p>События школы, категории, ежегодные события.</p></div>
+                <div class="grid-2">
+                    <div>
+                        <div class="card calendar-form">
+                            <h3>Добавить событие</h3>
+                            <label>Название:</label>
+                            <input id="event-title" placeholder="Событие">
+                            <label>Описание (опционально):</label>
+                            <textarea id="event-description" placeholder="Детали, место, время..." style="min-height:80px;"></textarea>
+                            <label>Начало:</label>
+                            <input id="event-start" type="date">
+                            <label>Окончание:</label>
+                            <input id="event-end" type="date">
+                            <label>Категория:</label>
+                            <select id="event-type">
+                                <option value="">— создайте категорию ниже —</option>
+                            </select>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="event-yearly">
+                                <span>♻ Ежегодное (повторяется каждый год)</span>
+                            </label>
+                            <button onclick="addEvent()">Добавить</button>
+                        </div>
+                        <div class="card">
+                            <h3>Категории событий</h3>
+                            <p class="hint">Создавайте свои категории с цветом и эмодзи.</p>
+                            <div id="calendar-categories-list"></div>
+                            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                                <h4 style="margin-bottom:8px;">Новая категория</h4>
+                                <div class="row-inline wrap" style="gap:8px;">
+                                    <input id="cal-cat-name" type="text" placeholder="Название" style="flex:1;min-width:120px;">
+                                    <button type="button" id="cal-cat-icon-btn" onclick="openEmojiPicker()" style="width:44px;height:38px;padding:0;font-size:20px;margin:0;">📌</button>
+                                    <input id="cal-cat-icon" type="hidden" value="📌">
+                                    <input id="cal-cat-color" type="color" value="#9B59B6" style="width:44px;height:38px;padding:2px;">
+                                    <button onclick="addCalendarCategory()" class="secondary" style="margin:0;">➕</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3>События</h3>
+                        <ul id="calendar"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ОБЩИЕ ============================== -->
+            <section id="tab-settings-general" class="tab-content">
+                <div class="tab-head"><h2>⚙️ Общие настройки</h2><p>Автозапуск, сон, столовая.</p></div>
+                <div class="card">
+                    <h3>Автозапуск сервера</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="card">
+                    <h3>Сон устройства</h3>
+                    <label class="checkbox-label"><input id="sleep-enabled" type="checkbox"> <span>Включить автосон по расписанию</span></label>
+                    <p class="hint">Если включено — укажите время HH:mm.</p>
+                    <input id="sleep-time" type="time" step="60">
+                    <button onclick="saveSleepMode()">Сохранить</button>
+                </div>
+                <div class="card">
+                    <h3>Сайт школы</h3>
+                    <label>URL сайта:</label>
+                    <input id="schoolsite-url" type="text" placeholder="https://obo-afan.gosuslugi.ru">
+                    <button onclick="saveSchoolSiteUrl()">Сохранить</button>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ЗВОНКИ ============================== -->
+            <section id="tab-settings-bells" class="tab-content">
+                <div class="tab-head"><h2>🔔 Расписание звонков</h2><p>Выбор активного расписания и создание новых вариантов.</p></div>
+
+                <!-- Текущее активное расписание + выбор -->
+                <div class="card">
+                    <h3>Текущее расписание звонков</h3>
+                    <div class="row-inline wrap" style="align-items:flex-end;">
+                        <div style="flex:1;min-width:240px;">
+                            <label>Активное расписание:</label>
+                            <select id="bell-active-select" style="width:100%;"></select>
+                        </div>
+                        <button onclick="applyBellVariant()" style="margin-bottom:0;">✅ Применить</button>
+                    </div>
+                    <div id="bell-active-summary" class="hint" style="margin-top:10px;"></div>
+                </div>
+
+                <!-- Список сохранённых расписаний -->
+                <div class="card">
+                    <h3>Сохранённые расписания</h3>
+                    <div id="bell-variants-list"></div>
+                </div>
+
+                <!-- Кнопка "Создать расписание" -->
+                <div class="card">
+                    <button onclick="showBellCreator()" id="bell-create-btn" style="width:100%;">➕ Создать расписание</button>
+                </div>
+
+                <!-- Шаблон создания расписания (скрыт по умолчанию) -->
+                <div class="card" id="bell-creator" style="display:none;">
+                    <div class="modal-header-row">
+                        <h3>Новое расписание</h3>
+                        <button class="modal-close-btn" onclick="hideBellCreator()">✕</button>
+                    </div>
+
+                    <label>Название расписания:</label>
+                    <input id="bell-variant-name" type="text" placeholder="Например: Обычный день, Сокращённый день">
+
+                    <div class="bell-template-section" style="margin-top:18px;">
+                        <h4 style="margin-bottom:10px;">⚡ Шаблон генерации уроков</h4>
+                        <div class="grid-2">
+                            <div>
+                                <label>Количество уроков:</label>
+                                <input id="bell-template-count" type="number" min="1" max="12" value="7" style="width:80px;">
+                            </div>
+                            <div>
+                                <label>Начало первого урока:</label>
+                                <input id="bell-template-start" type="time" value="08:30">
+                            </div>
+                            <div>
+                                <label>Длительность урока (мин):</label>
+                                <input id="bell-template-lesson" type="number" min="20" max="90" value="45" style="width:80px;">
+                            </div>
+                            <div>
+                                <label>Длительность перемены (мин):</label>
+                                <input id="bell-template-break" type="number" min="5" max="30" value="10" style="width:80px;">
+                            </div>
+                            <div>
+                                <label>Большая перемена после урока №:</label>
+                                <input id="bell-template-big-after" type="number" min="0" max="12" value="3" style="width:80px;">
+                            </div>
+                            <div>
+                                <label>Длительность большой перемены (мин):</label>
+                                <input id="bell-template-big-break" type="number" min="10" max="60" value="20" style="width:80px;">
+                            </div>
+                        </div>
+                        <button onclick="generateBellTemplate()" class="secondary" style="margin-top:12px;">⚡ Сгенерировать по шаблону</button>
+                    </div>
+
+                    <div style="margin-top:18px;">
+                        <h4 style="margin-bottom:10px;">Уроки <button onclick="addBellLesson()" class="secondary" style="float:right;padding:6px 14px;">➕ Добавить урок</button></h4>
+                        <div id="bell-lessons-list"></div>
+                        <p class="hint" style="margin-top:10px;">Редактируйте время начала и конца каждого урока напрямую.</p>
+                    </div>
+
+                    <div class="modal-actions-row">
+                        <button onclick="saveBellVariant()">💾 Сохранить расписание</button>
+                        <button onclick="hideBellCreator()" class="secondary">Отмена</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ОФОРМЛЕНИЕ ============================== -->
+            <section id="tab-settings-appearance" class="tab-content">
+                <div class="tab-head"><h2>🎨 Оформление</h2><p>Темы, цвета, шрифты.</p></div>
+
+                <div class="card">
+                    <h3>Готовые темы</h3>
+                    <div class="theme-presets" id="theme-presets">
+                        <button class="theme-preset" data-theme="dark" data-bg="#1E1E1E" data-panel="#252525" data-accent="#3A9FFF" data-text="#FFFFFF">
+                            <div class="theme-preview" style="background:#1E1E1E;"><div style="background:#3A9FFF;"></div></div>
+                            <span>Тёмная</span>
+                        </button>
+                        <button class="theme-preset" data-theme="light" data-bg="#F5F5F5" data-panel="#FFFFFF" data-accent="#0078D4" data-text="#222222">
+                            <div class="theme-preview" style="background:#F5F5F5;"><div style="background:#0078D4;"></div></div>
+                            <span>Светлая</span>
+                        </button>
+                        <button class="theme-preset" data-theme="blue" data-bg="#0D1B2A" data-panel="#1B263B" data-accent="#4CC9F0" data-text="#E0E1DD">
+                            <div class="theme-preview" style="background:#0D1B2A;"><div style="background:#4CC9F0;"></div></div>
+                            <span>Синяя</span>
+                        </button>
+                        <button class="theme-preset" data-theme="green" data-bg="#1B2A1F" data-panel="#243429" data-accent="#4CAF50" data-text="#E8F5E9">
+                            <div class="theme-preview" style="background:#1B2A1F;"><div style="background:#4CAF50;"></div></div>
+                            <span>Зелёная</span>
+                        </button>
+                        <button class="theme-preset" data-theme="purple" data-bg="#1A0D2E" data-panel="#2D1B4E" data-accent="#BB86FC" data-text="#E1BEE7">
+                            <div class="theme-preview" style="background:#1A0D2E;"><div style="background:#BB86FC;"></div></div>
+                            <span>Фиолетовая</span>
+                        </button>
+                        <button class="theme-preset" data-theme="orange" data-bg="#1E1A14" data-panel="#2A241C" data-accent="#FF9800" data-text="#FFE0B2">
+                            <div class="theme-preview" style="background:#1E1A14;"><div style="background:#FF9800;"></div></div>
+                            <span>Оранжевая</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Свои цвета</h3>
+                    <div class="color-grid">
+                        <div class="color-field">
+                            <label>Фон</label>
+                            <input type="color" id="theme-bg-color" value="#1E1E1E">
+                        </div>
+                        <div class="color-field">
+                            <label>Панели</label>
+                            <input type="color" id="theme-panel-color" value="#252525">
+                        </div>
+                        <div class="color-field">
+                            <label>Акцент</label>
+                            <input type="color" id="theme-accent-color" value="#3A9FFF">
+                        </div>
+                        <div class="color-field">
+                            <label>Текст</label>
+                            <input type="color" id="theme-text-color" value="#FFFFFF">
+                        </div>
+                        <div class="color-field">
+                            <label>Кнопки</label>
+                            <input type="color" id="theme-button-color" value="#3A3A3A">
+                        </div>
+                        <div class="color-field">
+                            <label>Границы</label>
+                            <input type="color" id="theme-border-color" value="#333333">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Шрифты</h3>
+                    <label>Семейство шрифта:</label>
+                    <select id="theme-font-family">
+                        <option value="Roboto">Roboto</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Noto Sans">Noto Sans</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                    </select>
+                    <label>Размер шрифта (px):</label>
+                    <input id="theme-font-size" type="number" step="1" min="10" max="24" value="16">
+                    <label>Размер нав. кнопок (px):</label>
+                    <input id="theme-nav-font-size" type="number" step="1" min="10" max="24" value="15">
+                </div>
+
+                <div class="card">
+                    <h3>Сохранить тему</h3>
+                    <label>Название темы:</label>
+                    <input id="custom-theme-name" type="text" placeholder="Моя тема">
+                    <div class="row-inline wrap">
+                        <button onclick="saveThemeSettings()">💾 Применить к киоску</button>
+                        <button onclick="saveCustomTheme()">⭐ Сохранить как тему</button>
+                    </div>
+                    <div id="saved-themes-list" style="margin-top:14px;"></div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ПОГОДА ============================== -->
+            <section id="tab-settings-weather" class="tab-content">
+                <div class="tab-head"><h2>🌤️ Погода</h2><p>Город определяется по координатам автоматически.</p></div>
+                <div class="card">
+                    <label>API ключ OpenWeatherMap:</label>
+                    <input id="weather-api-key" type="text" placeholder="4fca50ecc7eb8fa8d8ae1021853e0e7c">
+                    <label>Город (например: Москва, Warsaw, Omsk):</label>
+                    <input id="weather-city" type="text" placeholder="Москва">
+                    <label>Координаты (широта, долгота) — можно вставить из Яндекс.Карт:</label>
+                    <input id="weather-coords" type="text" placeholder="51.176333, 36.288285" oninput="parseWeatherCoords()">
+                    <div class="row-inline" style="gap:8px;margin-top:4px;">
+                        <input id="weather-lat" type="number" step="0.0001" placeholder="55.7558" style="flex:1;">
+                        <input id="weather-lon" type="number" step="0.0001" placeholder="37.6173" style="flex:1;">
+                    </div>
+                    <button onclick="saveWeatherSettings()">💾 Сохранить</button>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: БЕГУЩАЯ СТРОКА ============================== -->
+            <section id="tab-settings-ticker" class="tab-content">
+                <div class="tab-head"><h2>📢 Бегущая строка</h2><p>Текст внизу экрана киоска.</p></div>
+                <div class="card">
+                    <label class="checkbox-label"><input id="ticker-enabled" type="checkbox"> <span>Включена</span></label>
+                    <label>Текст по умолчанию:</label>
+                    <input id="ticker-text" type="text">
+                    <label>Сообщения бегущей строки:</label>
+                    <div class="ticker-items-input">
+                        <input id="ticker-new-item" type="text" placeholder="Введите сообщение и нажмите +">
+                        <button type="button" onclick="addTickerItem()" style="margin:0;padding:12px 16px;">➕</button>
+                    </div>
+                    <div id="ticker-items-list" class="ticker-items-list"></div>
+                    <p class="hint">Нажимайте ➕, чтобы добавить сообщение. Каждое сообщение можно удалить кнопкой ✕.</p>
+                    <label>Скорость:</label>
+                    <input id="ticker-speed" type="number" step="0.1" value="1.5">
+                    <div class="row-inline wrap">
+                        <button onclick="saveTickerSettings()">💾 Сохранить</button>
+                        <button onclick="clearTickerSettings()" class="danger">Очистить</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ЭКРАН ОЖИДАНИЯ ============================== -->
+            <section id="tab-settings-idle" class="tab-content">
+                <div class="tab-head"><h2>💤 Экран ожидания</h2><p>Показывается при бездействии.</p></div>
+                <div class="card">
+                    <label class="checkbox-label"><input id="idle-enabled" type="checkbox"> <span>Включён</span></label>
+                    <label>Таймаут (сек):</label>
+                    <input id="idle-timeout" type="number" value="90">
+                    <label>Смена слайда (сек):</label>
+                    <input id="idle-slide-duration" type="number" value="8">
+                    <button onclick="saveIdleSettings()">💾 Сохранить</button>
+                </div>
+                <div class="card drop-zone" id="dz-idle-images">
+                    <h3>Загрузить фото для idle</h3>
+                    <p class="hint">Показываются на экране ожидания. Можно несколько.</p>
+                    <input type="file" id="idle-images-file" multiple accept="image/*">
+                    <button onclick="uploadIdleImages()">⬆ Загрузить</button>
+                </div>
+                <div class="card">
+                    <h3>Загруженные фото</h3>
+                    <button onclick="loadIdleImages()" class="secondary">🔄 Обновить</button>
+                    <div id="idle-images-list" class="idle-images-grid"></div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: БЕЗОПАСНОСТЬ ============================== -->
+            <section id="tab-settings-security" class="tab-content">
+                <div class="tab-head"><h2>🔐 Безопасность</h2><p>Смена пароля (используется и для входа в админку с киоска, и для входа в панель администратора).</p></div>
+                <div class="card">
+                    <h3>Смена пароля</h3>
+                    <p class="hint" style="margin-top:0;">Этот же пароль используется как PIN-код для входа в админку с киоска.</p>
+                    <label>Текущий пароль:</label>
+                    <input id="admin-old-password" type="password">
+                    <label>Новый пароль:</label>
+                    <input id="admin-new-password" type="password">
+                    <button onclick="changeAdminPassword()">Сменить</button>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: СИСТЕМА ============================== -->
+            <section id="tab-settings-system" class="tab-content">
+                <div class="tab-head"><h2>💻 Система</h2><p>Информация о устройстве.</p></div>
+                <div class="card storage-card">
+                    <h3>💾 Память и ресурсы</h3>
+                    <div class="storage-row"><span>📀 Диск:</span><span id="disk-total">—</span></div>
+                    <div class="storage-row"><span>📉 Использовано:</span><span id="disk-used">—</span></div>
+                    <div class="storage-row"><span>📈 Свободно:</span><span id="disk-free">—</span></div>
+                    <div class="storage-row"><span>🧠 ОЗУ (процесс):</span><span id="perf-process-ram">—</span></div>
+                    <div class="storage-row"><span>🧠 ОЗУ (managed):</span><span id="perf-managed-ram">—</span></div>
+                    <div class="storage-row"><span>⚙ CPU:</span><span id="perf-cpu">—</span></div>
+                    <hr>
+                    <div class="storage-row"><span>📂 Папка data:</span><span id="data-size">—</span></div>
+                    <div class="storage-row"><span>🖼 Папка media:</span><span id="media-size">—</span></div>
+                    <div class="storage-row"><span>📰 Папка news:</span><span id="news-size">—</span></div>
+                    <div class="storage-row"><span>🧩 Процесс:</span><span id="app-process">—</span></div>
+                    <div class="storage-row"><span>🆔 PID:</span><span id="app-pid">—</span></div>
+                    <div class="storage-row"><span>📦 База:</span><span id="app-base-dir">—</span></div>
+                </div>
+                <div class="card">
+                    <h3>🔊 Громкость</h3>
+                    <div class="row-inline wrap">
+                        <button onclick="changeVolume('down')">🔉 Тише</button>
+                        <button onclick="changeVolume('up')">🔊 Громче</button>
+                        <button onclick="changeVolume('mute')">🔇 Mute</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: РАСШИРЕНИЯ ============================== -->
+            <section id="tab-settings-plugins" class="tab-content">
+                <div class="tab-head"><h2>🧩 Расширения</h2><p>Управление расширениями киоска. Каждое расширение может добавлять вкладку в киоск, настройки здесь и собственную логику.</p></div>
+
+                <!-- Установка из GitHub -->
+                <div class="card">
+                    <h3>Установить расширение</h3>
+                    <p class="hint">Введите URL GitHub-репозитория (https://github.com/user/repo) или прямую ссылку на .zip-архив с расширением.</p>
+                    <div class="ticker-items-input">
+                        <input id="ext-install-url" type="text" placeholder="https://github.com/user/my-extension">
+                        <button type="button" onclick="installExtensionFromGithub()" style="margin:0;padding:12px 16px;">⬇ Установить</button>
+                    </div>
+                    <div id="ext-install-status" class="hint" style="margin-top:8px;"></div>
+                </div>
+
+                <!-- Сетка расширений -->
+                <div class="card">
+                    <div class="row-inline" style="justify-content:space-between;align-items:center;">
+                        <h3 style="margin:0;">Установленные расширения</h3>
+                        <button onclick="loadExtensionsList()" class="secondary">🔄 Обновить</button>
+                    </div>
+                    <p class="hint">Каждое расширение можно включить/выключить, настроить и выбрать его положение в киоске.</p>
+                    <div id="extensions-list" class="extensions-grid"></div>
+                </div>
+            </section>
+
+            <!-- ============================== НАСТРОЙКИ: ОБНОВЛЕНИЕ ============================== -->
+            <section id="tab-settings-update" class="tab-content">
+                <div class="tab-head"><h2>🔄 Обновление</h2><p>Проверка и установка обновлений.</p></div>
+                <div class="card update-card">
+                    <h3>Версии</h3>
+                    <div class="update-info-grid">
+                        <div class="update-info-item">
+                            <span class="update-info-label">Текущая:</span>
+                            <strong id="currentVersion">—</strong>
+                        </div>
+                        <div class="update-info-item">
+                            <span class="update-info-label">Доступная:</span>
+                            <strong id="latestVersion">—</strong>
+                        </div>
+                    </div>
+                    <div class="update-actions">
+                        <button class="secondary" onclick="checkUpdate()">🔍 Проверить</button>
+                        <button class="primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>⬆ Обновить</button>
+                        <button class="danger" onclick="rollbackUpdate()">↩ Откатить</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Релиз</h3>
+                    <div class="update-release-info">
+                        <div class="update-info-item"><span>Название:</span><strong id="update-release-name">—</strong></div>
+                        <div class="update-info-item"><span>Тег:</span><strong id="update-release-tag">—</strong></div>
+                        <div class="update-info-item"><span>Ссылка:</span><a id="update-release-url" href="#" target="_blank">—</a></div>
+                    </div>
+                    <label>Что нового:</label>
+                    <pre id="update-release-notes" class="update-log" style="max-height:200px;">—</pre>
+                </div>
+                <div class="card">
+                    <h3>Лог обновления</h3>
+                    <pre id="updateLog" class="update-log">Ожидание...</pre>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- POST MODAL (галерея) -->
+    <div id="post-modal" class="post-modal hidden">
+        <div class="post-modal-content">
+            <span class="post-modal-close">&times;</span>
+            <h2 id="modal-post-title"></h2>
+            <p id="modal-post-date"></p>
+            <p id="modal-post-desc"></p>
+            <div class="modal-gallery">
+                <button id="modal-prev" class="gallery-nav">⟵</button>
+                <img id="modal-img" class="modal-img">
+                <button id="modal-next" class="gallery-nav">⟶</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEWS MODAL (редактирование) -->
+    <div id="news-modal" class="post-modal hidden">
+        <div class="post-modal-content" style="width:min(1300px,96vw);">
+            <span id="news-modal-close" class="post-modal-close">&times;</span>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;">
+                <div>
+                    <label>Заголовок</label><input id="news-modal-title" type="text">
+                    <p id="news-modal-meta" style="color:var(--muted);"></p>
+                    <textarea id="news-modal-content" style="min-height:300px;width:100%;"></textarea>
+                    <label>Ссылка для QR:</label><input id="news-modal-link" type="text" placeholder="https://...">
+                    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <button id="news-save-btn">💾 Сохранить</button>
+                        <button id="news-publish-btn">✅ Опубликовать</button>
+                        <button id="news-reject-btn">❌ Отклонить</button>
+                        <button id="news-delete-btn" class="danger">🗑 Удалить</button>
+                    </div>
+                </div>
+                <div>
+                    <div id="news-media-host" style="background:#101014;border:1px solid rgba(255,255,255,.12);border-radius:10px;min-height:520px;display:flex;align-items:center;justify-content:center;padding:8px;"></div>
+                    <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:10px;">
+                        <button id="news-prev">⟵</button>
+                        <span id="news-index">0/0</span>
+                        <button id="news-next">⟶</button>
+                        <button id="news-rotate">⟳ Повернуть</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Picker Modal -->
+    <div id="emoji-picker-modal" class="post-modal hidden">
+        <div class="post-modal-content" style="max-width:520px;width:90vw;">
+            <span class="post-modal-close" onclick="closeEmojiPicker()">&times;</span>
+            <h3 style="margin-bottom:14px;font-size:20px;">Выберите эмодзи</h3>
+            <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;max-height:400px;overflow-y:auto;overflow-x:hidden;"></div>
+        </div>
+    </div>
+
+    <script src="/admin.js"></script>
+</body>
+</html>

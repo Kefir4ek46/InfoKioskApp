@@ -13,5 +13,10 @@
         public string FontFamily { get; set; } = "Segoe UI";
         public double FontSize { get; set; } = 14;
         public double NavigationButtonFontSize { get; set; } = 15;
+
+        // Дополнительные цвета для кастомных тем.
+        public string AccentColor { get; set; } = "#3A9FFF";
+        public string PanelColor { get; set; } = "#252525";
+        public string BorderColor { get; set; } = "#333333";
     }
 }

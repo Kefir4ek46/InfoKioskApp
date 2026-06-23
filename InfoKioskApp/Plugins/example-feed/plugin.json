@@ -1,0 +1,17 @@
+{
+  "id": "example-feed",
+  "name": "Пример расширения",
+  "icon": "🧩",
+  "version": "1.0.0",
+  "author": "InfoKiosk",
+  "description": "Шаблон JS-расширения. Скопируй эту папку, переименуй id и реализуй свою вкладку. По умолчанию скрыт из сайдбара (showInSidebar=false).",
+  "order": 200,
+  "defaultPosition": "end",
+  "showInSidebar": false,
+  "showInMore": false,
+  "blockDuringLesson": false,
+  "category": "utility",
+  "needsBackend": false,
+  "hasSettings": false,
+  "settingsFields": []
+}

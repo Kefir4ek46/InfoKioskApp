@@ -1,0 +1,45 @@
+{
+  "id": "math-quiz",
+  "name": "Математика",
+  "icon": "➗",
+  "version": "1.0.0",
+  "author": "InfoKiosk",
+  "description": "Решайте математические примеры на время. Выберите правильный ответ из 4 вариантов. Очки начисляются за правильные ответы, есть уровни сложности.",
+  "category": "game",
+  "order": 120,
+  "defaultPosition": "end",
+  "showInSidebar": false,
+  "showInMore": true,
+  "blockDuringLesson": false,
+  "needsBackend": false,
+  "hasSettings": true,
+  "settingsFields": [
+    {
+      "key": "defaultDifficulty",
+      "label": "Уровень сложности по умолчанию",
+      "type": "select",
+      "default": "easy",
+      "options": [
+        { "value": "easy", "label": "Лёгкий (+/- до 20, × до 5)" },
+        { "value": "medium", "label": "Средний (+/- до 100, × до 10)" },
+        { "value": "hard", "label": "Сложный (+/- до 1000, × до 15, деление)" }
+      ]
+    },
+    {
+      "key": "timePerQuestion",
+      "label": "Время на вопрос (сек)",
+      "type": "number",
+      "default": 10,
+      "min": 5,
+      "max": 30
+    },
+    {
+      "key": "totalQuestions",
+      "label": "Всего вопросов в раунде",
+      "type": "number",
+      "default": 10,
+      "min": 5,
+      "max": 30
+    }
+  ]
+}

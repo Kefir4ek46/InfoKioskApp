@@ -7,7 +7,19 @@ namespace InfoKioskApp.Services
 {
     public static class ConfigService
     {
-        private static readonly string ConfigPath = "data/config.json";
+        // Сначала ищем config.json рядом с исполняемым файлом (AppDomain.BaseDirectory),
+        // затем — в текущей рабочей директории. Это спасает и при запуске из Visual Studio
+        // (current dir = папка проекта, где data/config.json в исходниках), и при запуске
+        // собранного .exe из bin/Release (BaseDirectory/data/config.json — копируется csproj'ом).
+        private static string ConfigPath =>
+            File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json"))
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json")
+                : "data/config.json";
+
+        private static string ConfigDir =>
+            File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "config.json"))
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data")
+                : "data";
 
         public static AppConfig LoadConfig()
         {
@@ -30,7 +42,7 @@ namespace InfoKioskApp.Services
         {
             try
             {
-                Directory.CreateDirectory("data");
+                Directory.CreateDirectory(ConfigDir);
                 string json = JsonConvert.SerializeObject(config, Formatting.Indented);
                 File.WriteAllText(ConfigPath, json);
             }

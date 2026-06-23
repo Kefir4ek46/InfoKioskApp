@@ -1,0 +1,51 @@
+{
+  "InterfaceSettings": {
+    "Theme": "dark",
+    "BackgroundColor": "#1E1E1E",
+    "ButtonBackground": "#3A3A3A",
+    "ButtonForeground": "White",
+    "NavigationButtonBackground": "#3A3A3A",
+    "NavigationButtonForeground": "White",
+    "FontFamily": "Roboto",
+    "FontSize": 14,
+    "NavigationButtonFontSize": 15
+  },
+  "CustomSections": [],
+  "Schedules": [],
+  "MainSchedulePath": "data/schedules/main/MainSchedule.xlsx",
+  "ChangesPath": "data/schedules/changes/Changes.xlsx",
+  "BellSchedulePath": "data/BellSchedule.json",
+  "MediaPath": "data/media",
+  "DocumentsPath": "data/documents",
+  "FoodBlockId": "15159",
+  "ShowChanges": true,
+  "ChangesType": "Table",
+  "Theme": "Dark",
+  "PinCode": "1234",
+  "RemoteAutoStart": true,
+  "RemotePort": 8080,
+  "City": "Warsaw",
+  "CachedLatitude": 0,
+  "CachedLongitude": 0,
+  "OpenWeatherApiKey": "4fca50ecc7eb8fa8d8ae1021853e0e7c",
+  "Ticker": {
+    "Enabled": true,
+    "Text": "Добро пожаловать в школу!",
+    "Items": [
+      "Добро пожаловать в школу!",
+      "Звените звонки — начинаются уроки",
+      "Не забывайте здороваться с учителями",
+      "Столовая работает с 9:00 до 15:00"
+    ],
+    "Speed": 1.5,
+    "Foreground": "#FFFFFF",
+    "FontSize": 20
+  },
+  "IdleScreen": {
+    "Enabled": true,
+    "TimeoutSeconds": 90,
+    "SlideDurationSeconds": 8,
+    "ShowLogoOnly": false
+  },
+  "SleepAt": ""
+}

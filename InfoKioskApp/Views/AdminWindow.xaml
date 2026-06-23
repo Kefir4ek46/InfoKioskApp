@@ -1,0 +1,81 @@
+<Window x:Class="InfoKioskApp.Views.AdminWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="InfoKiosk — Админка"
+        Width="1280"
+        Height="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#0f1117"
+        WindowStyle="None"
+        ResizeMode="CanResizeWithGrip"
+        AllowsTransparency="False"
+        Closing="Window_Closing">
+    <Window.Resources>
+        <Style x:Key="TitleBarBtn" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#ecf1ff"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2a2f3a"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TitleBarCloseBtn" TargetType="Button" BasedOn="{StaticResource TitleBarBtn}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#e74c3c"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Custom title bar -->
+        <Border Grid.Row="0" Background="#171b24" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <TextBlock Text="⚙" FontSize="14" Foreground="#4a7dff" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="InfoKiosk — Админка" Foreground="#ecf1ff" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Style="{StaticResource TitleBarBtn}" Content="—" Click="MinimizeButton_Click" ToolTip="Свернуть"/>
+                    <Button Style="{StaticResource TitleBarBtn}" Content="▢" Click="MaximizeButton_Click" ToolTip="Развернуть"/>
+                    <Button Style="{StaticResource TitleBarCloseBtn}" Content="✕" Click="CloseButton_Click" ToolTip="Закрыть"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- WebView2 with admin page -->
+        <wv2:WebView2 x:Name="AdminWebView"
+                      Grid.Row="1"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"/>
+    </Grid>
+</Window>

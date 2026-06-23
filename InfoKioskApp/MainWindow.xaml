@@ -1,171 +1,27 @@
-﻿<Window x:Class="InfoKioskApp.MainWindow"
+<Window x:Class="InfoKioskApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        
-
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:views="clr-namespace:InfoKioskApp.Views"
         Title="InfoKioskApp"
         WindowStyle="None"
         WindowState="Maximized"
-        Background="{DynamicResource AppBackgroundBrush}">
+        Background="#1E1E1E"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing">
 
-	<Window.Resources>
+    <Grid>
+        <!-- Основной WebView2 с киоск-интерфейсом (HTML из /web/) -->
+        <wv2:WebView2 x:Name="KioskWebView"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"/>
 
-        <DropShadowEffect x:Key="MyDropShadow"
-                      Color="#000000"
-                      BlurRadius="12"
-                      ShadowDepth="4"
-                      Opacity="0.35"/>
-
-        <Style x:Key="ModernMenuButton" TargetType="Button">
-            <Setter Property="FontSize" Value="18"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource ButtonForegroundBrush}"/>
-            <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}"/>
-            <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="Margin" Value="0,8,0,0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.3"/>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                        CornerRadius="10"
-                        
-                        SnapsToDevicePixels="True">
-                            <ContentPresenter HorizontalAlignment="Left"
-                                      VerticalAlignment="Center"
-                                      Margin="10,0,0,0"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#3A9FFF"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#2A82DA"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1E1E"/>
-		<SolidColorBrush x:Key="PanelBackgroundBrush" Color="#252525"/>
-		<SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#444"/>
-		<SolidColorBrush x:Key="ButtonForegroundBrush" Color="White"/>
-		<SolidColorBrush x:Key="TextForegroundBrush" Color="White"/>
-
-		<DropShadowEffect x:Key="DropShadowEffect"
-                          Color="#000000"
-                          BlurRadius="10"
-                          ShadowDepth="3"
-                          Opacity="0.4"/>
-	</Window.Resources>
-
-	<Grid>
-		<Grid.RowDefinitions>
-			<RowDefinition Height="110"/>
-			<RowDefinition Height="38"/>
-			<RowDefinition Height="*"/>
-		</Grid.RowDefinitions>
-
-		<Grid.ColumnDefinitions>
-			<ColumnDefinition Width="250"/>
-			<ColumnDefinition Width="*"/>
-		</Grid.ColumnDefinitions>
-
-		<!-- Верхняя панель -->
-		<Border Grid.ColumnSpan="2" Background="{DynamicResource PanelBackgroundBrush}" Padding="20,10" CornerRadius="0,0,12,12" Effect="{DynamicResource DropShadowEffect}">
-			<Grid>
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="auto"/>
-					<ColumnDefinition Width="*"/>
-					<ColumnDefinition Width="auto"/>
-				</Grid.ColumnDefinitions>
-
-				<StackPanel Orientation="Vertical" VerticalAlignment="Center">
-					<TextBlock x:Name="TimeText" FontSize="36" Foreground="{DynamicResource TextForegroundBrush}" TextAlignment="Left"/>
-					<TextBlock x:Name="DateText" FontSize="16" Foreground="#BBBBBB"/>
-				</StackPanel>
-
-				<StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-					<TextBlock x:Name="LessonStatusText" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextForegroundBrush}" TextAlignment="Center"/>
-					<TextBlock x:Name="LessonTimeInfo" FontSize="16" Foreground="#AAAAAA" TextAlignment="Center"/>
-				</StackPanel>
-                <!-- погода -->
-                <StackPanel Grid.Column="2" Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <TextBlock x:Name="WeatherIcon" FontSize="28" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="WeatherTemp" FontSize="20" Foreground="{DynamicResource TextForegroundBrush}" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="WeatherCity" FontSize="16" Foreground="#BBBBBB"/>
-                    </StackPanel>
-                    <TextBlock x:Name="WeatherExtra" FontSize="14" Foreground="#AAAAAA" TextAlignment="Right"/>
-                    <TextBlock x:Name="WeatherTomorrow" FontSize="14" Foreground="#AAAAAA" TextAlignment="Right"/>
-                </StackPanel>
-
-            </Grid>
-		</Border>
-
-
-        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource PanelBackgroundBrush}" Margin="10,0,10,0" CornerRadius="8">
-            <Canvas x:Name="TickerCanvas" ClipToBounds="True">
-                <TextBlock x:Name="TickerTextBlock"
-                           VerticalAlignment="Center"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource TextForegroundBrush}"
-                           Text="" />
-            </Canvas>
-        </Border>
-
-		<!-- Боковое меню -->
-		<DockPanel Grid.Row="2"  Background="{DynamicResource PanelBackgroundBrush}" Margin="10" LastChildFill="False">
-            <StackPanel x:Name="LeftMenuPanel" DockPanel.Dock="Top"  Margin="0,0,0,10">
-                <Button Content="📅 Расписание" Click="Schedule_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
-                <Button Content="🍽 Столовая" Click="Canteen_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-                <Button Content="🖼️ Медиа" Click="Media_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
-                <Button Content="📰 Новости" Click="News_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-                <Button Content="🏅 Мы ими гордимся" Click="HonorBoard_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-                <Button Content="📄 Документы" Click="Documents_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
-                <Button Content="📆 Календарь" Click="Calendar_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-                <Button Content="🌐 Сайт школы" Click="SchoolSite_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}" Margin="0,5,0,0"/>
-             
-
-            </StackPanel>
-
-			<Separator DockPanel.Dock="Bottom" Margin="0,10,0,10" Background="#444" Height="2"/>
-
-			<StackPanel DockPanel.Dock="Bottom">
-                <Button Content="⚙️ Админ" Click="Admin_Click" Background="{DynamicResource ButtonBackgroundBrush}" Foreground="{DynamicResource ButtonForegroundBrush}" Style="{StaticResource MenuButtonStyle}"  Margin="0,5,0,0"/>
-			</StackPanel>
-		</DockPanel>
-
-		<!-- Контент -->
-		<Border Grid.Row="2" Grid.Column="1" Margin="15" Background="{DynamicResource AppBackgroundBrush}" CornerRadius="12">
-            <Grid>
-			    <ContentControl x:Name="ContentArea" Margin="10"/>
-
-                <Grid x:Name="IdleOverlay" Visibility="Collapsed" Background="#E6000000" Panel.ZIndex="999">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <Image x:Name="IdleImage" Stretch="UniformToFill" Opacity="0"/>
-
-                    <Border Grid.Row="1" Background="#88000000" Padding="12">
-                        <TextBlock Text="Экран ожидания — коснитесь экрана для продолжения"
-                                   HorizontalAlignment="Center"
-                                   Foreground="White"
-                                   FontSize="18"/>
-                    </Border>
-                </Grid>
-            </Grid>
-		</Border>
-	</Grid>
+        <!-- Оверлей: отдельный WebView2 с сайтом школы.
+             Visibility управляется из C# (SchoolWebsiteViewManager).
+             Поверх основного киоска, перекрывает его полностью. -->
+        <views:SchoolWebsiteView x:Name="SchoolSiteView"
+                                 Visibility="Collapsed"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Stretch"/>
+    </Grid>
 </Window>

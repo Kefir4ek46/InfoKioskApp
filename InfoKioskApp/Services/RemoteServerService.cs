@@ -2,9 +2,11 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -22,11 +24,32 @@ namespace InfoKioskApp.Services
         private static HttpListener _listener ;
         private static CancellationTokenSource _cts;
         public static bool IsRunning => _listener != null && _listener.IsListening;
+        public static int Port { get; private set; } = 8080;
         public static event Action<bool> ServerStatusChanged;
 
+        /// <summary>
+        /// Событие, которое срабатывает, когда нужно отправить push-уведомление
+        /// в киоск. Подписывается WebMessageBridge (через MainWindow), чтобы
+        /// проксировать сообщение в WebView2.
+        /// Параметр — объект-сообщение (сериализуется в JSON и отправляется через PostWebMessageAsJson).
+        /// </summary>
+        public static event Action<object> KioskPushRequested;
+
+        // Корневые папки статики: web/ (киоск) и remote/ (админка).
+        // Запросы вида /admin*, /editor*, /shared* обслуживаются из remote/,
+        // все остальные — из web/.
+        private static readonly string WebRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web");
+        private static readonly string RemoteRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "remote");
+
         private static readonly string DataRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-        private static readonly HashSet<string> AdminTokens = new();
-        private static readonly HashSet<string> EditorTokens = new();
+        // Для хранения токенов используем ConcurrentDictionary вместо HashSet,
+        // т.к. HttpListener обрабатывает запросы параллельно (Task.Run в ListenLoop).
+        // HashSet<T>.Add/Contains не thread-safe и при высокой нагрузке могут
+        // выбрасывать InvalidOperationException или терять данные — это приводило
+        // к тому, что admin-логин проходил, но сразу после этого первый же
+        // /news/admin/pending получал 401 (токен не находился в HashSet).
+        private static readonly ConcurrentDictionary<string, byte> AdminTokens = new();
+        private static readonly ConcurrentDictionary<string, byte> EditorTokens = new();
         private static DateTime _lastCpuSampleTimeUtc = DateTime.UtcNow;
         private static TimeSpan _lastCpuTotalProcessorTime = Process.GetCurrentProcess().TotalProcessorTime;
 
@@ -52,8 +75,11 @@ namespace InfoKioskApp.Services
             if (IsRunning) return;
 
             while (!IsPortFree(port)) port++;
+            Port = port;
 
             Directory.CreateDirectory(DataRoot);
+            Directory.CreateDirectory(WebRoot);
+            Directory.CreateDirectory(RemoteRoot);
             _cts = new CancellationTokenSource();
             _listener = new HttpListener
             {
@@ -154,6 +180,11 @@ namespace InfoKioskApp.Services
                     case "/news/published": await HandleNewsPublishedList(ctx); break;
                     case "/news/editor/submit": await HandleEditorSubmitNews(ctx); break;
                     case "/news/editor/mine": await HandleEditorMyNews(ctx); break;
+                    case "/news/editor/update-profile": await HandleEditorUpdateProfile(ctx); break;
+                    case "/news/editor/pending": await HandleEditorPendingNews(ctx); break;
+                    case "/news/editor/publish": await HandleEditorPublishNews(ctx); break;
+                    case "/news/editor/update": await HandleEditorUpdateNews(ctx); break;
+                    case "/news/editor/info": await HandleEditorInfo(ctx); break;
 
                     case "/news/admin/pending": await HandleAdminPendingNews(ctx); break;
                     case "/news/admin/publish": await HandleAdminPublishNews(ctx); break;
@@ -172,6 +203,18 @@ namespace InfoKioskApp.Services
                         await HandleStorageInfo(ctx);
                         break;
 
+                    // /api/info — агрегированный снимок системы (через SystemInfoService.GetInfo()).
+                    // Возвращает machine + memory + disk + process в одном JSON.
+                    case "/api/info":
+                        await HandleSystemInfo(ctx);
+                        break;
+
+                    // Прокси к сайту школы: позволяет обойти X-Frame-Options,
+                        // который иначе блокирует <iframe src="https://..."> в киоске.
+                    case "/schoolsite/proxy":
+                        await HandleSchoolSiteProxy(ctx);
+                        break;
+
 
                     case "/download": await HandleDownload(ctx); break;
 
@@ -181,6 +224,18 @@ namespace InfoKioskApp.Services
                     case "/calendar/list": await HandleCalendarList(ctx); break;
                     case "/calendar/add": await HandleCalendarAdd(ctx); break;
                     case "/calendar/delete": await HandleCalendarDelete(ctx); break;
+
+                    // === Звонки: чтение/сохранение/активация ===
+                    case "/bell/get":
+                        await HandleBellGet(ctx);
+                        break;
+                    case "/bell/save":
+                        await HandleBellSave(ctx);
+                        break;
+                    case "/bell/activate":
+                        await HandleBellActivate(ctx);
+                        break;
+
                     case "/config":
                         if (ctx.Request.HttpMethod == "GET")
                             await HandleGetConfig(ctx);
@@ -188,6 +243,34 @@ namespace InfoKioskApp.Services
                             await HandlePostConfig(ctx);
                         else
                             await WriteText(ctx, "Unsupported method", 405);
+                        break;
+
+                    // === Расширения (плагины) ===
+                    case "/extensions/list":
+                        await HandleExtensionsList(ctx);
+                        break;
+                    case "/extensions/toggle":
+                        await HandleExtensionsToggle(ctx);
+                        break;
+                    case "/extensions/save-settings":
+                        await HandleExtensionsSaveSettings(ctx);
+                        break;
+                    case "/extensions/install":
+                        await HandleExtensionsInstall(ctx);
+                        break;
+                    case "/extensions/reload":
+                        await HandleExtensionsReload(ctx);
+                        break;
+
+                    // === Таблица рекордов (для игр-расширений) ===
+                    case "/leaderboard/get":
+                        await HandleLeaderboardGet(ctx);
+                        break;
+                    case "/leaderboard/submit":
+                        await HandleLeaderboardSubmit(ctx);
+                        break;
+                    case "/leaderboard/reset":
+                        await HandleLeaderboardReset(ctx);
                         break;
                     default:
                         await HandleStaticFiles(ctx);
@@ -225,6 +308,19 @@ namespace InfoKioskApp.Services
                 if (!string.IsNullOrWhiteSpace(post))
                     folder = Path.Combine(folder, post);     // ← Переход в папку поста
             }
+            else if (target == "custom")
+            {
+                // Кастомный раздел: папку берём из folderPath (абсолютный или относительно BaseDirectory)
+                string folderPath = ctx.Request.QueryString["folderPath"];
+                if (string.IsNullOrWhiteSpace(folderPath))
+                {
+                    await WriteText(ctx, "Missing folderPath for custom target", 400);
+                    return;
+                }
+                folder = Path.IsPathRooted(folderPath)
+                    ? folderPath
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folderPath);
+            }
             else
             {
                 folder = GetFolderByTarget(target);
@@ -243,16 +339,30 @@ namespace InfoKioskApp.Services
 
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             ctx.Response.ContentType =
-                ext == ".png" ? "image/png" :
+                ext == ".png"  ? "image/png" :
                 ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" :
-                ext == ".gif" ? "image/gif" :
+                ext == ".gif"  ? "image/gif" :
                 ext == ".webp" ? "image/webp" :
-                ext == ".bmp" ? "image/bmp" :
-                ext == ".mp4" ? "video/mp4" :
+                ext == ".bmp"  ? "image/bmp" :
+                ext == ".svg"  ? "image/svg+xml" :
+                ext == ".mp4"  ? "video/mp4" :
                 ext == ".webm" ? "video/webm" :
                 ext == ".ogg" || ext == ".ogv" ? "video/ogg" :
-                ext == ".mov" ? "video/quicktime" :
+                ext == ".mov"  ? "video/quicktime" :
+                ext == ".pdf"  ? "application/pdf" :
+                ext == ".txt"  ? "text/plain; charset=utf-8" :
+                ext == ".html" || ext == ".htm" ? "text/html; charset=utf-8" :
+                ext == ".doc" || ext == ".docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" :
+                ext == ".xls" || ext == ".xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" :
+                ext == ".ppt" || ext == ".pptx" ? "application/vnd.openxmlformats-officedocument.presentationml.presentation" :
+                ext == ".json" ? "application/json; charset=utf-8" :
+                ext == ".csv"  ? "text/csv; charset=utf-8" :
                 "application/octet-stream";
+
+            // Content-Disposition: inline — чтобы браузер показывал файл, а не скачивал.
+            // filename параметр нужен для сохранения через «Сохранить как» в просмотрщике.
+            string safeName = Uri.EscapeDataString(Path.GetFileName(filePath));
+            ctx.Response.Headers["Content-Disposition"] = $"inline; filename=\"{safeName}\"";
 
             ctx.Response.ContentLength64 = data.Length;
             await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
@@ -267,37 +377,223 @@ namespace InfoKioskApp.Services
 
         private static async Task HandleStaticFiles(HttpListenerContext ctx)
         {
-            string webRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "remote");
-            string requestPath = ctx.Request.Url.AbsolutePath.TrimStart('/');
+            string rawPath = ctx.Request.Url.AbsolutePath;
+            string requestPath = rawPath.TrimStart('/');
 
             if (string.IsNullOrEmpty(requestPath))
                 requestPath = "index.html";
 
-            string filePath = Path.Combine(webRoot, requestPath);
+            // Нормализуем: убираем trailing slash
+            string normalizedPath = requestPath.TrimEnd('/');
 
+            // ===== Явные маршруты remote-страниц =====
+            //  /remote, /remote/, /remote/index(.html) → remote/index.html
+            //  /admin,   /admin/,   /admin/index(.html),   /admin.html   → remote/admin.html
+            //  /editor,  /editor/,  /editor/index(.html),  /editor.html  → remote/editor.html
+            //  /login,   /login/                              → remote/index.html
+            string remoteTarget = null;
+            if (normalizedPath.Equals("remote", StringComparison.OrdinalIgnoreCase) ||
+                normalizedPath.Equals("remote/index", StringComparison.OrdinalIgnoreCase) ||
+                normalizedPath.Equals("remote/index.html", StringComparison.OrdinalIgnoreCase) ||
+                normalizedPath.Equals("login", StringComparison.OrdinalIgnoreCase) ||
+                normalizedPath.Equals("login/index", StringComparison.OrdinalIgnoreCase))
+            {
+                remoteTarget = "index.html";
+            }
+            else if (normalizedPath.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("admin/", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("admin/index", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("admin/index.html", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("admin.html", StringComparison.OrdinalIgnoreCase))
+            {
+                remoteTarget = "admin.html";
+            }
+            else if (normalizedPath.Equals("editor", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("editor/", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("editor/index", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("editor/index.html", StringComparison.OrdinalIgnoreCase) ||
+                     normalizedPath.Equals("editor.html", StringComparison.OrdinalIgnoreCase))
+            {
+                remoteTarget = "editor.html";
+            }
+
+            if (remoteTarget != null)
+            {
+                await ServeStaticFile(ctx, Path.Combine(RemoteRoot, remoteTarget));
+                return;
+            }
+
+            // ===== Корневой запрос "/" =====
+            // Киоск (localhost / 127.0.0.1) → web/index.html
+            // Удалённый клиент              → remote/index.html (страница выбора роли)
+            if (requestPath == "index.html" || requestPath == "")
+            {
+                bool isLocal = IsLocalRequest(ctx.Request);
+                string rootFile = isLocal
+                    ? Path.Combine(WebRoot, "index.html")
+                    : Path.Combine(RemoteRoot, "index.html");
+                await ServeStaticFile(ctx, rootFile);
+                return;
+            }
+
+            // ===== Защита киоска от удалённого доступа =====
+            // Удалённый клиент (по IP) не должен иметь возможность открывать
+            // файлы из web/ — это внутренний UI киоска. Любой запрос к
+            // статике web/ (css/js/assets) от удалённого клиента → редирект
+            // на страницу выбора роли /remote.
+            if (!IsLocalRequest(ctx.Request))
+            {
+                // Список префиксов, доступных удалённым клиентам.
+                // Всё остальное (/, /css, /js, /assets, /index.html, /favicon.ico и т.д.)
+                // обслуживается ТОЛЬКО локально.
+                bool isRemoteAllowedPath =
+                    requestPath.StartsWith("admin",     StringComparison.OrdinalIgnoreCase) ||
+                    requestPath.StartsWith("editor",    StringComparison.OrdinalIgnoreCase) ||
+                    requestPath.StartsWith("shared",    StringComparison.OrdinalIgnoreCase) ||
+                    requestPath.StartsWith("login",     StringComparison.OrdinalIgnoreCase) ||
+                    requestPath.StartsWith("remote",    StringComparison.OrdinalIgnoreCase);
+                if (!isRemoteAllowedPath)
+                {
+                    ctx.Response.Redirect("/remote");
+                    ctx.Response.Close();
+                    return;
+                }
+            }
+
+            // ===== Общая статика =====
+            // Маршрутизация папок:
+            //   /admin/*, /editor/*, /shared/*, /login/*  → remote/
+            //   /admin.js, /admin.html, /editor.js, /editor.html → remote/
+            //     (файлы из корня remote/ — без trailing slash)
+            //   /plugins/*                               → plugins/ (локальная папка)
+            //   всё остальное                              → web/  (киоск)
+            //
+            // ВАЖНО: ранее проверка была только "admin/" (с trailing slash),
+            // из-за чего /admin.js возвращал 404 (искался в web/, а не в remote/).
+            // Это ломало админку: страница /admin грузилась, но admin.js — нет,
+            // и обработчик submit формы не привязывался → при вводе PIN форма
+            // просто перезагружалась, пароль очищался, ничего не происходило.
+            bool isRemote =
+                requestPath.StartsWith("admin/", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("admin.", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("editor/", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("editor.", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("shared/", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("login/", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("login.", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("remote/", StringComparison.OrdinalIgnoreCase) ||
+                requestPath.StartsWith("remote.", StringComparison.OrdinalIgnoreCase) ||
+                // Logo.ico лежит в remote/Logo.ico — обслуживаем оттуда.
+                requestPath.Equals("logo.ico", StringComparison.OrdinalIgnoreCase);
+
+            // /plugins/<id>/view.js, /plugins/<id>/view.css, /plugins/<id>/plugin.json —
+            // обслуживаем из папки plugins/ рядом с exe. Только локальные запросы
+            // (киоск) — удалённым клиентам плагины не видны.
+            if (requestPath.StartsWith("plugins/", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!IsLocalRequest(ctx.Request))
+                {
+                    ctx.Response.Redirect("/remote");
+                    ctx.Response.Close();
+                    return;
+                }
+                string pluginsRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
+                string pluginRel = requestPath.Substring("plugins/".Length).Replace("\\", "/").TrimStart('/');
+                string pluginFile = Path.GetFullPath(Path.Combine(pluginsRoot, pluginRel));
+                string pluginsFull = Path.GetFullPath(pluginsRoot);
+                if (!pluginFile.StartsWith(pluginsFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    await WriteText(ctx, "403 Forbidden", 403);
+                    return;
+                }
+                await ServeStaticFile(ctx, pluginFile);
+                return;
+            }
+
+            string root = isRemote ? RemoteRoot : WebRoot;
+
+            // /remote/* и /shared/* обслуживаются из корня remote/, убираем префикс
+            string relPath = requestPath;
+            if (isRemote && (relPath.StartsWith("remote/", StringComparison.OrdinalIgnoreCase)))
+                relPath = relPath.Substring("remote/".Length);
+            if (isRemote && (relPath.StartsWith("shared/", StringComparison.OrdinalIgnoreCase)))
+            {
+                // shared/ — это папка remote/shared/, оставляем как есть
+                root = RemoteRoot;
+            }
+
+            // Безопасность: убираем любые .. сегменты
+            string safeRel = relPath.Replace("\\", "/").TrimStart('/');
+            string filePath = Path.GetFullPath(Path.Combine(root, safeRel));
+            string rootFull = Path.GetFullPath(root);
+            if (!filePath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+            {
+                await WriteText(ctx, "403 Forbidden", 403);
+                return;
+            }
+
+            // Если путь — каталог, ищем index.html
+            if (Directory.Exists(filePath))
+                filePath = Path.Combine(filePath, "index.html");
+
+            await ServeStaticFile(ctx, filePath);
+        }
+
+        private static bool IsLocalRequest(HttpListenerRequest req)
+        {
+            try
+            {
+                var ip = req.RemoteEndPoint?.Address;
+                if (ip == null) return false;
+                return IPAddress.IsLoopback(ip);
+            }
+            catch { return false; }
+        }
+
+        private static async Task ServeStaticFile(HttpListenerContext ctx, string filePath)
+        {
             if (!File.Exists(filePath))
             {
-                await WriteText(ctx, "404 Not Found", 404);
+                await WriteText(ctx, "404 Not Found: " + Path.GetFileName(filePath), 404);
                 return;
             }
 
             string ext = Path.GetExtension(filePath).ToLowerInvariant();
             string mime =
                 ext == ".html" || ext == ".htm" ? "text/html; charset=utf-8" :
-                ext == ".js" ? "application/javascript" :
-                ext == ".css" ? "text/css" :
-                ext == ".png" ? "image/png" :
-                ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" :
-                ext == ".json" ? "application/json" :
+                ext == ".js"   || ext == ".mjs" ? "application/javascript; charset=utf-8" :
+                ext == ".css"  ? "text/css; charset=utf-8" :
+                ext == ".png"  ? "image/png" :
+                ext == ".jpg"  || ext == ".jpeg" ? "image/jpeg" :
+                ext == ".gif"  ? "image/gif" :
+                ext == ".webp" ? "image/webp" :
+                ext == ".svg"  ? "image/svg+xml" :
+                ext == ".ico"  ? "image/x-icon" :
+                ext == ".mp4"  ? "video/mp4" :
+                ext == ".webm" ? "video/webm" :
+                ext == ".woff" ? "font/woff" :
+                ext == ".woff2"? "font/woff2" :
+                ext == ".json" ? "application/json; charset=utf-8" :
+                ext == ".txt"  ? "text/plain; charset=utf-8" :
                 "application/octet-stream";
+
+            // Запрещаем кэширование для HTML/JS/CSS — удобно при разработке
+            if (ext == ".html" || ext == ".js" || ext == ".css")
+            {
+                ctx.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            }
 
             ctx.Response.StatusCode = 200;
             ctx.Response.ContentType = mime;
             byte[] data = File.ReadAllBytes(filePath);
             ctx.Response.ContentLength64 = data.Length;
-            await ctx.Response.OutputStream.WriteAsync(data);
-            ctx.Response.OutputStream.Close();
-            ctx.Response.Close();
+            try
+            {
+                await ctx.Response.OutputStream.WriteAsync(data);
+            }
+            catch { /* клиент отвалился — не критично */ }
+            try { ctx.Response.OutputStream.Close(); } catch { }
+            try { ctx.Response.Close(); } catch { }
         }
 
         // ---------------------------- FILE MANAGEMENT ----------------------------
@@ -318,6 +614,7 @@ namespace InfoKioskApp.Services
                 "schoolphotos" => Path.Combine(DataRoot, "schoolPhotos"),
                 "newsmedia" => Path.Combine(NewsRoot, "media"),
                 "honor" => Path.Combine(HonorRoot, "media"),
+                "idle" => Path.Combine(DataRoot, "idle"),
                 _ => DataRoot,
             };
         }
@@ -439,14 +736,36 @@ namespace InfoKioskApp.Services
                     }
                 }
 
-                using (var fs = new FileStream(filePath2, FileMode.Create, FileAccess.Write))
-                    await ctx.Request.InputStream.CopyToAsync(fs);
+                // Сохраняем файл через временный файл + замена (атомарно, безопасно).
+                // Прямая запись в filePath2 может падать с SEHException, если файл
+                // открыт другим процессом (антивирус, индексатор).
+                string tempPath = filePath2 + ".tmp_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                try
+                {
+                    using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        await ctx.Request.InputStream.CopyToAsync(fs);
+                    }
+
+                    // Атомарная замена.
+                    if (File.Exists(filePath2))
+                    {
+                        try { File.Delete(filePath2); } catch { }
+                    }
+                    File.Move(tempPath, filePath2);
+                }
+                finally
+                {
+                    // Если временный файл остался (ошибка) — удалим.
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                }
 
                 Console.WriteLine($"✅ Загружен файл {fileName} → {folder}");
                 await WriteJson(ctx, JsonConvert.SerializeObject(new { status = "ok", name = fileName, savedTo = filePath2 }));
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ Ошибка загрузки файла: {ex.GetType().Name}: {ex.Message}");
                 await WriteText(ctx, $"Ошибка загрузки: {ex.Message}", 500);
             }
         }
@@ -588,6 +907,467 @@ namespace InfoKioskApp.Services
         }
 
 
+        // ---------------------------- BELL SCHEDULE API ----------------------------
+        //
+        // Формат BellSchedule.json (новый):
+        // {
+        //   "active": "default",          // ID активного варианта
+        //   "variants": {
+        //     "default": {
+        //       "name": "Обычный день",
+        //       "lessons": [ { "num": 1, "start": "08:30", "end": "09:15" }, ... ]
+        //     },
+        //     "short": { "name": "Сокращённый", "lessons": [...] }
+        //   }
+        // }
+        //
+        // Старый формат (просто { lessons: [...] }) автоматически конвертируется.
+
+        private static string BellSchedulePath => Path.Combine(DataRoot, "BellSchedule.json");
+
+        private static JObject LoadBellScheduleJson()
+        {
+            try
+            {
+                if (!File.Exists(BellSchedulePath))
+                    return new JObject(
+                        new JProperty("active", "default"),
+                        new JProperty("variants", new JObject(
+                            new JProperty("default", new JObject(
+                                new JProperty("name", "Обычный день"),
+                                new JProperty("lessons", new JArray())
+                            ))
+                        ))
+                    );
+                var json = File.ReadAllText(BellSchedulePath);
+                var parsed = JObject.Parse(json);
+
+                // Конвертация старого формата.
+                if (parsed["variants"] == null)
+                {
+                    var lessons = parsed["lessons"] as JArray ?? new JArray();
+                    return new JObject(
+                        new JProperty("active", "default"),
+                        new JProperty("variants", new JObject(
+                            new JProperty("default", new JObject(
+                                new JProperty("name", "Обычный день"),
+                                new JProperty("lessons", lessons)
+                            ))
+                        ))
+                    );
+                }
+                return parsed;
+            }
+            catch
+            {
+                return new JObject(
+                    new JProperty("active", "default"),
+                    new JProperty("variants", new JObject(
+                        new JProperty("default", new JObject(
+                            new JProperty("name", "Обычный день"),
+                            new JProperty("lessons", new JArray())
+                        ))
+                    ))
+                );
+            }
+        }
+
+        private static void SaveBellScheduleJson(JObject data)
+        {
+            Directory.CreateDirectory(DataRoot);
+            File.WriteAllText(BellSchedulePath, data.ToString(Formatting.Indented));
+        }
+
+        // GET /bell/get — возвращает весь объект { active, variants }
+        private static async Task HandleBellGet(HttpListenerContext ctx)
+        {
+            var data = LoadBellScheduleJson();
+            await WriteJson(ctx, data.ToString(Formatting.None));
+        }
+
+        // POST /bell/save — сохраняет весь объект { active, variants }
+        // Тело: { active: "id", variants: { ... } }
+        private static async Task HandleBellSave(HttpListenerContext ctx)
+        {
+            try
+            {
+                if (!IsAdminAuthorized(ctx))
+                {
+                    await WriteText(ctx, "Unauthorized", 401);
+                    return;
+                }
+                string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+                var data = JObject.Parse(body);
+                SaveBellScheduleJson(data);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "Ошибка: " + ex.Message, 500);
+            }
+        }
+
+        // POST /bell/activate — устанавливает активный вариант
+        // Тело: { id: "variant_id" }
+        private static async Task HandleBellActivate(HttpListenerContext ctx)
+        {
+            try
+            {
+                if (!IsAdminAuthorized(ctx))
+                {
+                    await WriteText(ctx, "Unauthorized", 401);
+                    return;
+                }
+                string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+                var req = JObject.Parse(body);
+                string id = (string)req["id"] ?? "default";
+
+                var data = LoadBellScheduleJson();
+                var variants = data["variants"] as JObject;
+                if (variants == null || variants[id] == null)
+                {
+                    await WriteText(ctx, "Вариант не найден", 404);
+                    return;
+                }
+                data["active"] = id;
+                SaveBellScheduleJson(data);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, active = id }));
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "Ошибка: " + ex.Message, 500);
+            }
+        }
+
+
+        // ---------------------------- EXTENSIONS API ----------------------------
+        // Управление расширениями (плагинами) киоска.
+        // Состояния хранятся в data/extensions-state.json через ExtensionStateService.
+
+        // GET /extensions/list — список всех расширений с состоянием и настройками.
+        // POST /extensions/toggle — { id, enabled } включить/выключить.
+        // POST /extensions/save-settings — { id, position, settings } сохранить позицию и настройки.
+        // POST /extensions/install — { url } установить из GitHub/zip.
+
+        private static async Task HandleExtensionsList(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            var descriptors = InfoKioskApp.Plugins.PluginManager.GetAdminDescriptors();
+            await WriteJson(ctx, JsonConvert.SerializeObject(descriptors, Formatting.Indented));
+        }
+
+        private static async Task HandleExtensionsToggle(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            bool enabled = (bool?)data?.enabled ?? false;
+            if (string.IsNullOrEmpty(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+            InfoKioskApp.Plugins.PluginManager.UpdateState(id, enabled, null, null);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id, enabled }));
+        }
+
+        private static async Task HandleExtensionsSaveSettings(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            string position = (string?)data?.position ?? null;
+            JObject settings = data?.settings as JObject;
+            bool? showInMore = data?.showInMore != null ? (bool?)data?.showInMore : null;
+            bool? blockDuringLesson = data?.blockDuringLesson != null ? (bool?)data?.blockDuringLesson : null;
+            if (string.IsNullOrEmpty(id))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+            InfoKioskApp.Plugins.PluginManager.UpdateState(id, null, position, settings, showInMore, blockDuringLesson);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        // Установка расширения из GitHub-репозитория или .zip-архива.
+        // Поддерживаются:
+        //   1) https://github.com/user/repo                → скачиваем архив branch master/main
+        //   2) https://github.com/user/repo/archive/refs/heads/main.zip
+        //   3) https://example.ru/my-extension.zip         → прямой .zip
+        //
+        // Архив должен содержать plugin.json в корне или в подпапке.
+        // Распаковываем в plugins/<id>/ где id берётся из plugin.json.
+        private static async Task HandleExtensionsInstall(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string url = (string?)data?.url ?? "";
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "URL не указан" }));
+                return;
+            }
+
+            try
+            {
+                // Нормализуем GitHub URL в archive-ссылку.
+                string downloadUrl = url;
+                if (url.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    // https://github.com/user/repo → https://github.com/user/repo/archive/refs/heads/main.zip
+                    // Удаляем возможный trailing slash и .git.
+                    string clean = url.TrimEnd('/').Replace("/git", "");
+                    if (clean.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+                        clean = clean[..^4];
+                    if (!clean.Contains("/archive/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // По умолчанию main, если не сработает — попробуем master.
+                        downloadUrl = clean + "/archive/refs/heads/main.zip";
+                    }
+                }
+
+                // Скачиваем архив.
+                string tempZip = Path.Combine(Path.GetTempPath(), "infokiosk_ext_" + Guid.NewGuid().ToString("N") + ".zip");
+                using (var client = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(60) })
+                {
+                    // Если main.zip не существует (404) — пробуем master.zip.
+                    var firstResp = await client.GetAsync(downloadUrl);
+                    if (!firstResp.IsSuccessStatusCode && downloadUrl.EndsWith("/main.zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        downloadUrl = downloadUrl[..^"main.zip".Length] + "master.zip";
+                        firstResp = await client.GetAsync(downloadUrl);
+                    }
+                    if (!firstResp.IsSuccessStatusCode)
+                    {
+                        await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = $"Не удалось скачать архив (HTTP {firstResp.StatusCode}). Проверьте URL." }));
+                        return;
+                    }
+                    using (var fs = File.Create(tempZip))
+                    {
+                        await firstResp.Content.CopyToAsync(fs);
+                    }
+                }
+
+                // Распаковываем во временную папку.
+                string tempExtract = Path.Combine(Path.GetTempPath(), "infokiosk_ext_extract_" + Guid.NewGuid().ToString("N"));
+                System.IO.Compression.ZipFile.ExtractToDirectory(tempZip, tempExtract, overwriteFiles: true);
+                File.Delete(tempZip);
+
+                // Ищем plugin.json — либо в корне, либо в единственной подпапке.
+                string manifestPath = Path.Combine(tempExtract, "plugin.json");
+                string sourceDir = tempExtract;
+                if (!File.Exists(manifestPath))
+                {
+                    // Ищем в подпапках.
+                    var subDirs = Directory.GetDirectories(tempExtract);
+                    if (subDirs.Length == 1)
+                    {
+                        manifestPath = Path.Combine(subDirs[0], "plugin.json");
+                        sourceDir = subDirs[0];
+                    }
+                    else
+                    {
+                        // Глубокий поиск.
+                        var found = Directory.GetFiles(tempExtract, "plugin.json", SearchOption.AllDirectories).FirstOrDefault();
+                        if (found == null)
+                        {
+                            Directory.Delete(tempExtract, true);
+                            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "В архиве не найден plugin.json" }));
+                            return;
+                        }
+                        manifestPath = found;
+                        sourceDir = Path.GetDirectoryName(found);
+                    }
+                }
+
+                // Читаем id расширения.
+                var manifest = JsonConvert.DeserializeObject<InfoKioskApp.Plugins.JsPluginManifest>(
+                    await File.ReadAllTextAsync(manifestPath));
+                if (manifest == null || string.IsNullOrEmpty(manifest.Id))
+                {
+                    Directory.Delete(tempExtract, true);
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "Некорректный plugin.json (нет id)" }));
+                    return;
+                }
+
+                // Копируем в plugins/<id>/.
+                string pluginsRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
+                string targetDir = Path.Combine(pluginsRoot, manifest.Id);
+                if (Directory.Exists(targetDir))
+                {
+                    Directory.Delete(targetDir, true);
+                }
+                CopyDirectory(sourceDir, targetDir);
+                Directory.Delete(tempExtract, true);
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = manifest.Id, name = manifest.Name }));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Extensions] install failed: {ex.Message}");
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "Ошибка установки: " + ex.Message }));
+            }
+        }
+
+        // Рекурсивное копирование директории.
+        private static void CopyDirectory(string source, string target)
+        {
+            Directory.CreateDirectory(target);
+            foreach (var file in Directory.GetFiles(source))
+            {
+                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: true);
+            }
+            foreach (var dir in Directory.GetDirectories(source))
+            {
+                CopyDirectory(dir, Path.Combine(target, Path.GetFileName(dir)));
+            }
+        }
+
+        // POST /extensions/reload — горячая перезагрузка списка расширений.
+        // Заново сканирует папку plugins/, обновляет PluginManager._jsPlugins,
+        // отправляет push-уведомление в киоск ('data.changed' с section='extensions'),
+        // после чего киоск перерисовывает сайдбар с актуальным списком.
+        private static async Task HandleExtensionsReload(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            try
+            {
+                string pluginsRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "plugins");
+                bool changed = InfoKioskApp.Plugins.PluginManager.ReloadJsPlugins(pluginsRoot);
+                Console.WriteLine($"[Extensions] reload: changed={changed}, count={InfoKioskApp.Plugins.PluginManager.JsPlugins.Count}");
+
+                // Отправляем push в киоск — перерисовать сайдбар с новым списком.
+                try
+                {
+                    KioskPushRequested?.Invoke(new { type = "data.changed", data = new { section = "extensions" } });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Extensions] push to kiosk failed: {ex.Message}");
+                }
+
+                await WriteJson(ctx, JsonConvert.SerializeObject(new {
+                    ok = true,
+                    changed,
+                    count = InfoKioskApp.Plugins.PluginManager.JsPlugins.Count
+                }));
+            }
+            catch (Exception ex)
+            {
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = ex.Message }));
+            }
+        }
+
+
+        // ---------------------------- LEADERBOARD API ----------------------------
+        // Таблица рекордов для игр-расширений. Хранится в data/leaderboards.json.
+        // GET  /leaderboard/get?game=<id>            — топ-N рекордов игры.
+        // POST /leaderboard/submit { game, name, score } — добавить рекорд.
+        // POST /leaderboard/reset  { game }          — сбросить таблицу игры (админ).
+
+        // GET /leaderboard/get?game=<id>
+        // Возвращает { game, entries: [{name, score, date}, ...] } — топ-10.
+        // Не требует авторизации (киоск может читать без токена).
+        private static async Task HandleLeaderboardGet(HttpListenerContext ctx)
+        {
+            string game = ctx.Request.QueryString["game"] ?? "";
+            if (string.IsNullOrWhiteSpace(game))
+            {
+                await WriteText(ctx, "Bad request: game required", 400);
+                return;
+            }
+            var entries = InfoKioskApp.Plugins.LeaderboardService.Get(game);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { game, entries }, Formatting.Indented));
+        }
+
+        // POST /leaderboard/submit { game, name, score }
+        // Добавляет рекорд и возвращает обновлённый топ-10.
+        // Не требует авторизации (киоск отправляет рекорд без токена).
+        private static async Task HandleLeaderboardSubmit(HttpListenerContext ctx)
+        {
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string game = (string?)data?.game ?? "";
+            string name = (string?)data?.name ?? "Аноним";
+            int score = (int?)data?.score ?? 0;
+            if (string.IsNullOrWhiteSpace(game))
+            {
+                await WriteText(ctx, "Bad request: game required", 400);
+                return;
+            }
+            var entries = InfoKioskApp.Plugins.LeaderboardService.Submit(game, name, score);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, game, entries }, Formatting.Indented));
+        }
+
+        // POST /leaderboard/reset { game }
+        // Сбрасывает таблицу рекордов одной игры. Требует админ-токен.
+        private static async Task HandleLeaderboardReset(HttpListenerContext ctx)
+        {
+            if (!IsAdminAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string game = (string?)data?.game ?? "";
+            if (string.IsNullOrWhiteSpace(game))
+            {
+                await WriteText(ctx, "Bad request: game required", 400);
+                return;
+            }
+            InfoKioskApp.Plugins.LeaderboardService.Reset(game);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, game }));
+        }
+
 
         // ---------------------------- CONFIG API ----------------------------
 
@@ -644,13 +1424,13 @@ namespace InfoKioskApp.Services
         private static bool IsAdminAuthorized(HttpListenerContext ctx)
         {
             string token = ctx.Request.Headers["X-Admin-Token"] ?? "";
-            return !string.IsNullOrWhiteSpace(token) && AdminTokens.Contains(token);
+            return !string.IsNullOrWhiteSpace(token) && AdminTokens.ContainsKey(token);
         }
 
         private static bool IsEditorAuthorized(HttpListenerContext ctx)
         {
             string token = ctx.Request.Headers["X-Editor-Token"] ?? "";
-            return !string.IsNullOrWhiteSpace(token) && EditorTokens.Contains(token);
+            return !string.IsNullOrWhiteSpace(token) && EditorTokens.ContainsKey(token);
         }
 
         private static List<NewsPost> ReadNewsList(string path)
@@ -702,19 +1482,40 @@ namespace InfoKioskApp.Services
             }
 
             string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(body);
-            string password = (string?)data?.password ?? "";
-            string pin = ConfigService.LoadConfig().PinCode ?? "1234";
-
-            if (password != pin)
+            string password = "";
+            try
             {
-                await WriteText(ctx, "Unauthorized", 401);
+                var data = JObject.Parse(body);
+                // Принимаем и password, и pin — для совместимости с разными клиентами
+                password = (string)data?["password"] ?? (string)data?["pin"] ?? "";
+            }
+            catch { /* пустое тело или невалидный JSON → password="" */ }
+
+            // Загружаем PIN из конфига. Если файла config.json нет — по умолчанию "1234".
+            string pin;
+            try
+            {
+                pin = ConfigService.LoadConfig()?.PinCode ?? "1234";
+                if (string.IsNullOrEmpty(pin)) pin = "1234";
+            }
+            catch
+            {
+                pin = "1234";
+            }
+
+            Console.WriteLine($"[AdminLogin] entered='{password}' (len={password?.Length ?? 0}), expected='{pin}' (len={pin?.Length ?? 0})");
+
+            if (string.IsNullOrEmpty(password) || password != pin)
+            {
+                // ВАЖНО: передаём код 401 в WriteJson, а не устанавливаем StatusCode после —
+                // иначе ответ уже закрыт и StatusCode=401 игнорируется (клиент видит 200).
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "Неверный PIN-код" }), 401);
                 return;
             }
 
             string token = Guid.NewGuid().ToString("N");
-            AdminTokens.Add(token);
-            await WriteJson(ctx, JsonConvert.SerializeObject(new { token }));
+            AdminTokens[token] = 0;
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, token }));
         }
 
         private static async Task HandleEditorLogin(HttpListenerContext ctx)
@@ -726,16 +1527,31 @@ namespace InfoKioskApp.Services
             }
 
             string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(body);
-            string login = (string?)data?.login ?? "";
-            string password = (string?)data?.password ?? "";
-            string deviceId = (string?)data?.deviceId ?? "";
+            string login = "";
+            string password = "";
+            string deviceId = "";
+            try
+            {
+                var data = JObject.Parse(body);
+                login    = (string)data?["login"]    ?? "";
+                password = (string)data?["password"] ?? "";
+                deviceId = (string)data?["deviceId"] ?? "";
+            }
+            catch { }
+
+            if (string.IsNullOrWhiteSpace(login) || string.IsNullOrEmpty(password))
+            {
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "Логин и пароль обязательны" }), 400);
+                return;
+            }
 
             var editors = ReadEditors();
-            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Password == password && e.Active);
+            var editor = editors.FirstOrDefault(e =>
+                e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) &&
+                e.Password == password && e.Active);
             if (editor == null)
             {
-                await WriteText(ctx, "Unauthorized", 401);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = false, error = "Неверный логин или пароль" }), 401);
                 return;
             }
 
@@ -746,8 +1562,15 @@ namespace InfoKioskApp.Services
             }
 
             string token = Guid.NewGuid().ToString("N");
-            EditorTokens.Add(token);
-            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login, name = editor.Name }));
+            EditorTokens[token] = 0;
+            await WriteJson(ctx, JsonConvert.SerializeObject(new {
+                ok = true,
+                token,
+                login = editor.Login,
+                name = GetEditorDisplayName(editor),
+                canPublishWithoutApproval = editor.CanPublishWithoutApproval,
+                displayName = editor.DisplayName
+            }));
         }
 
         private static async Task HandleEditorDeviceLogin(HttpListenerContext ctx)
@@ -776,8 +1599,248 @@ namespace InfoKioskApp.Services
             }
 
             string token = Guid.NewGuid().ToString("N");
-            EditorTokens.Add(token);
-            await WriteJson(ctx, JsonConvert.SerializeObject(new { token, login = editor.Login, name = editor.Name }));
+            EditorTokens[token] = 0;
+            await WriteJson(ctx, JsonConvert.SerializeObject(new {
+                token,
+                login = editor.Login,
+                name = GetEditorDisplayName(editor),
+                canPublishWithoutApproval = editor.CanPublishWithoutApproval,
+                displayName = editor.DisplayName
+            }));
+        }
+
+        // Возвращает отображаемое имя редактора:
+        //   - если задано DisplayName — оно
+        //   - иначе Name (задаётся администратором)
+        //   - иначе Login
+        private static string GetEditorDisplayName(NewsEditor editor)
+        {
+            if (editor == null) return "";
+            string dn = (editor.DisplayName ?? "").Trim();
+            if (!string.IsNullOrEmpty(dn)) return dn;
+            return string.IsNullOrEmpty(editor.Name) ? editor.Login : editor.Name;
+        }
+
+        // /news/editor/info?login=...
+        // Возвращает информацию о текущем редакторе (имя, права).
+        private static async Task HandleEditorInfo(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            string login = ctx.Request.QueryString["login"] ?? "";
+            var editor = ReadEditors().FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase));
+            if (editor == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+            await WriteJson(ctx, JsonConvert.SerializeObject(new {
+                login = editor.Login,
+                name = editor.Name,
+                displayName = editor.DisplayName ?? "",
+                displayAs = GetEditorDisplayName(editor),
+                canPublishWithoutApproval = editor.CanPublishWithoutApproval,
+                active = editor.Active
+            }));
+        }
+
+        // /news/editor/update-profile  POST { login, displayName }
+        // Редактор меняет своё отображаемое имя.
+        private static async Task HandleEditorUpdateProfile(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string login = (string?)data?.login ?? "";
+            string displayName = ((string?)data?.displayName ?? "").Trim();
+
+            var editors = ReadEditors();
+            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            // Пустое displayName = сброс к имени администратора.
+            editor.DisplayName = string.IsNullOrEmpty(displayName) ? null : displayName;
+            WriteEditors(editors);
+            await WriteJson(ctx, JsonConvert.SerializeObject(new {
+                ok = true,
+                displayAs = GetEditorDisplayName(editor),
+                displayName = editor.DisplayName
+            }));
+        }
+
+        // /news/editor/pending  GET  ?login=...
+        // Возвращает список новостей на модерации для редакторов с правами публикации.
+        // Только для редакторов с CanPublishWithoutApproval = true.
+        private static async Task HandleEditorPendingNews(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            string login = ctx.Request.QueryString["login"] ?? "";
+            var editor = ReadEditors().FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+            if (!editor.CanPublishWithoutApproval)
+            {
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { error = "Недостаточно прав", items = new List<NewsPost>() }));
+                return;
+            }
+
+            // Возвращаем все pending новости, кроме своих собственных
+            // (свои собственные автор публикует автоматически при submit).
+            var pending = ReadNewsList(NewsPendingPath)
+                .Where(x => !(x.AuthorLogin ?? "").Equals(login, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.CreatedAt)
+                .ToList();
+            await WriteJson(ctx, JsonConvert.SerializeObject(pending, Formatting.Indented));
+        }
+
+        // /news/editor/publish  POST { id, login }
+        // Редактор с правами публикует новость другого редактора.
+        private static async Task HandleEditorPublishNews(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            string login = (string?)data?.login ?? "";
+
+            var editors = ReadEditors();
+            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+            if (!editor.CanPublishWithoutApproval)
+            {
+                await WriteText(ctx, "Forbidden", 403);
+                return;
+            }
+
+            var pending = ReadNewsList(NewsPendingPath);
+            var item = pending.FirstOrDefault(x => x.Id == id);
+            if (item == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            pending.Remove(item);
+            WriteNewsList(NewsPendingPath, pending);
+
+            var published = ReadNewsList(NewsPublishedPath);
+            item.Status = "published";
+            item.ModeratedAt = DateTime.Now;
+            // Записываем, кто опубликовал (если это не автор).
+            if (!string.IsNullOrEmpty(item.AuthorLogin) &&
+                !item.AuthorLogin.Equals(login, StringComparison.OrdinalIgnoreCase))
+            {
+                item.PublishedByLogin = login;
+                item.PublishedByName = GetEditorDisplayName(editor);
+            }
+            published.Add(item);
+            WriteNewsList(NewsPublishedPath, published);
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+        }
+
+        // /news/editor/update  POST { id, login, title, content, linkUrl }
+        // Редактор редактирует свою pending-новость либо (если есть права)
+        // pending-новость другого редактора перед публикацией.
+        private static async Task HandleEditorUpdateNews(HttpListenerContext ctx)
+        {
+            if (!IsEditorAuthorized(ctx))
+            {
+                await WriteText(ctx, "Unauthorized", 401);
+                return;
+            }
+            if (ctx.Request.HttpMethod != "POST")
+            {
+                await WriteText(ctx, "Unsupported method", 405);
+                return;
+            }
+
+            string body = await new StreamReader(ctx.Request.InputStream, Encoding.UTF8).ReadToEndAsync();
+            dynamic data = JsonConvert.DeserializeObject(body);
+            string id = (string?)data?.id ?? "";
+            string login = (string?)data?.login ?? "";
+            string title = ((string?)data?.title ?? "").Trim();
+            string content = ((string?)data?.content ?? "").Trim();
+            string linkUrl = ((string?)data?.linkUrl ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(login))
+            {
+                await WriteText(ctx, "Bad request", 400);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                await WriteText(ctx, "Title required", 400);
+                return;
+            }
+
+            var editors = ReadEditors();
+            var editor = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase) && e.Active);
+            if (editor == null)
+            {
+                await WriteText(ctx, "Not found", 404);
+                return;
+            }
+
+            var pending = ReadNewsList(NewsPendingPath);
+            var item = pending.FirstOrDefault(x => x.Id == id);
+            if (item == null)
+            {
+                await WriteText(ctx, "Not found or already published", 404);
+                return;
+            }
+
+            // Автор может редактировать свою новость.
+            // Редактор с правами может редактировать чужую.
+            bool isOwner = (item.AuthorLogin ?? "").Equals(login, StringComparison.OrdinalIgnoreCase);
+            if (!isOwner && !editor.CanPublishWithoutApproval)
+            {
+                await WriteText(ctx, "Forbidden", 403);
+                return;
+            }
+
+            item.Title = title;
+            item.Content = content;
+            item.LinkUrl = string.IsNullOrWhiteSpace(linkUrl) ? null : linkUrl;
+            WriteNewsList(NewsPendingPath, pending);
+
+            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
         }
 
         private static async Task HandleAdminChangePassword(HttpListenerContext ctx)
@@ -919,7 +1982,6 @@ namespace InfoKioskApp.Services
 
             post.Id = Guid.NewGuid().ToString("N");
             post.CreatedAt = DateTime.Now;
-            post.Status = "pending";
             post.PhotoFiles ??= new List<string>();
             post.PhotoFiles = post.PhotoFiles
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -930,10 +1992,31 @@ namespace InfoKioskApp.Services
             post.LinkUrl = string.IsNullOrWhiteSpace(post.LinkUrl) ? null : post.LinkUrl.Trim();
             post.AuthorName = (post.AuthorName ?? "").Trim();
 
-            var pending = ReadNewsList(NewsPendingPath);
-            pending.Add(post);
-            WriteNewsList(NewsPendingPath, pending);
-            await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = post.Id }));
+            // Проверяем права автора на публикацию без модерации.
+            var editor = ReadEditors().FirstOrDefault(e =>
+                e.Login.Equals(post.AuthorLogin ?? "", StringComparison.OrdinalIgnoreCase) && e.Active);
+            bool canAutoPublish = editor != null && editor.CanPublishWithoutApproval;
+
+            if (canAutoPublish)
+            {
+                // Автопубликация: сразу в published, минуя модерацию.
+                post.Status = "published";
+                post.ModeratedAt = DateTime.Now;
+                post.AutoPublished = true;
+                // Автор сам опубликовал — PublishedBy* не заполняем (он же автор).
+                var published = ReadNewsList(NewsPublishedPath);
+                published.Add(post);
+                WriteNewsList(NewsPublishedPath, published);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = post.Id, autoPublished = true }));
+            }
+            else
+            {
+                post.Status = "pending";
+                var pending = ReadNewsList(NewsPendingPath);
+                pending.Add(post);
+                WriteNewsList(NewsPendingPath, pending);
+                await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, id = post.Id, autoPublished = false }));
+            }
         }
 
         private static async Task HandleEditorMyNews(HttpListenerContext ctx)
@@ -1019,6 +2102,13 @@ namespace InfoKioskApp.Services
             var published = ReadNewsList(NewsPublishedPath);
             item.Status = "published";
             item.ModeratedAt = DateTime.Now;
+            // Администратор публикует — записываем, что это сделал админ
+            // (если только администратор не является автором, чего не бывает).
+            if (string.IsNullOrEmpty(item.PublishedByLogin))
+            {
+                item.PublishedByLogin = "admin";
+                item.PublishedByName = "Администратор";
+            }
             published.Add(item);
             WriteNewsList(NewsPublishedPath, published);
 
@@ -1180,6 +2270,7 @@ namespace InfoKioskApp.Services
                     string name = ((string?)data?.name ?? "").Trim();
                     string login = (string?)data?.login ?? "";
                     string password = (string?)data?.password ?? "";
+                    bool canPublish = (bool?)data?.canPublishWithoutApproval ?? false;
                     if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(name))
                     {
                         await WriteText(ctx, "Bad request", 400);
@@ -1192,7 +2283,13 @@ namespace InfoKioskApp.Services
                         return;
                     }
 
-                    editors.Add(new NewsEditor { Name = name, Login = login, Password = password, Active = true });
+                    editors.Add(new NewsEditor {
+                        Name = name,
+                        Login = login,
+                        Password = password,
+                        Active = true,
+                        CanPublishWithoutApproval = canPublish
+                    });
                     WriteEditors(editors);
                     await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
                     return;
@@ -1202,6 +2299,46 @@ namespace InfoKioskApp.Services
                 {
                     string login = (string?)data?.login ?? "";
                     editors.RemoveAll(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase));
+                    WriteEditors(editors);
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
+                    return;
+                }
+
+                // Переключение прав на публикацию без модерации (значок короны).
+                if (action == "toggle-publish-rights")
+                {
+                    string login = (string?)data?.login ?? "";
+                    var ed = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase));
+                    if (ed == null)
+                    {
+                        await WriteText(ctx, "Not found", 404);
+                        return;
+                    }
+                    bool current = (bool?)data?.canPublishWithoutApproval ?? !ed.CanPublishWithoutApproval;
+                    ed.CanPublishWithoutApproval = current;
+                    WriteEditors(editors);
+                    await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true, canPublishWithoutApproval = ed.CanPublishWithoutApproval }));
+                    return;
+                }
+
+                // Редактирование имени/пароля редактора администратором.
+                if (action == "update")
+                {
+                    string login = (string?)data?.login ?? "";
+                    var ed = editors.FirstOrDefault(e => e.Login.Equals(login, StringComparison.OrdinalIgnoreCase));
+                    if (ed == null)
+                    {
+                        await WriteText(ctx, "Not found", 404);
+                        return;
+                    }
+                    string newName = ((string?)data?.name ?? "").Trim();
+                    string newPassword = (string?)data?.password ?? "";
+                    bool canPublish = (bool?)data?.canPublishWithoutApproval ?? ed.CanPublishWithoutApproval;
+                    bool active = (bool?)data?.active ?? ed.Active;
+                    if (!string.IsNullOrEmpty(newName)) ed.Name = newName;
+                    if (!string.IsNullOrEmpty(newPassword)) ed.Password = newPassword;
+                    ed.CanPublishWithoutApproval = canPublish;
+                    ed.Active = active;
                     WriteEditors(editors);
                     await WriteJson(ctx, JsonConvert.SerializeObject(new { ok = true }));
                     return;
@@ -2068,6 +3205,223 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
             }
         }
 
+        // === Прокси к сайту школы ===
+        // Берёт URL из ?url= или из config.SchoolSiteUrl (если задан),
+        // делает HTTP-запрос сервером, и отдаёт контент в <iframe> киоска.
+        // Это обходит X-Frame-Options: DENY/SAMEORIGIN, который иначе ломает
+        // iframe на стороне клиента. Удаляем заголовки X-Frame-Options и
+        // Content-Security-Policy из ответа, чтобы iframe отрисовался.
+        private static async Task HandleSchoolSiteProxy(HttpListenerContext ctx)
+        {
+            try
+            {
+                string url = ctx.Request.QueryString["url"];
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    // По умолчанию берём из конфига (если задано) или хардкод
+                    try
+                    {
+                        url = ConfigService.LoadConfig()?.SchoolSiteUrl;
+                    }
+                    catch { }
+                    if (string.IsNullOrWhiteSpace(url))
+                        url = "https://obo-afan.gosuslugi.ru";
+                }
+
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                    || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                {
+                    await WriteText(ctx, "Invalid URL", 400);
+                    return;
+                }
+
+                // Делаем запрос от имени сервера — с User-Agent как у браузера,
+                // иначе некоторые сайты (в т.ч. Госуслуги) возвращают 403.
+                var req = (HttpWebRequest)WebRequest.Create(uri);
+                req.Method = "GET";
+                req.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                                "(KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+                req.Accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+                req.AllowAutoRedirect = true;
+                req.Timeout = 15000;
+
+                // Cookie контейнер нужен, чтобы сайты сandatory-куки не возвращали 403.
+                req.CookieContainer = new System.Net.CookieContainer();
+
+                using (var resp = (HttpWebResponse)await req.GetResponseAsync())
+                using (var stream = resp.GetResponseStream())
+                using (var ms = new MemoryStream())
+                {
+                    await stream.CopyToAsync(ms);
+                    byte[] data = ms.ToArray();
+
+                    ctx.Response.StatusCode = (int)resp.StatusCode;
+                    string ct = resp.ContentType ?? "text/html; charset=utf-8";
+                    ctx.Response.ContentType = ct;
+
+                    // Удаляем заголовки, которые блокируют iframe:
+                    //   X-Frame-Options: DENY/SAMEORIGIN
+                    //   Content-Security-Policy: frame-ancestors ...
+                    ctx.Response.Headers["X-Frame-Options"] = "ALLOWALL";
+                    ctx.Response.Headers.Remove("Content-Security-Policy");
+                    // Cross-Origin-Opener-Policy / Cross-Origin-Embedder-Policy —
+                    // тоже мешают встраиванию в iframe.
+                    ctx.Response.Headers.Remove("Cross-Origin-Opener-Policy");
+                    ctx.Response.Headers.Remove("Cross-Origin-Embedder-Policy");
+                    ctx.Response.Headers.Remove("Cross-Origin-Resource-Policy");
+
+                    // Если это HTML — добавляем <base href="..."> чтобы относительные
+                    // ссылки (CSS, JS, картинки) резолвились к оригинальному домену,
+                    // а не к нашему /schoolsite/proxy. И инжектируем JS-скрипт, который
+                    // перехватывает клики по <a> и сабмиты форм, и направляет их через
+                    // прокси — иначе iframe попытается загрузить внешний URL напрямую,
+                    // что приведёт к ошибке "отказано в подключении" (X-Frame-Options).
+                    if (ct.IndexOf("text/html", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        try
+                        {
+                            string html = Encoding.UTF8.GetString(data);
+                            string schemeHost = uri.Scheme + "://" + uri.Host + (uri.Port != 80 && uri.Port != 443 ? ":" + uri.Port : "");
+                            string baseTag = $"<base href=\"{schemeHost}/\">";
+                            // Вставляем <base> сразу после <head> или в начало.
+                            int headIdx = html.IndexOf("<head", StringComparison.OrdinalIgnoreCase);
+                            if (headIdx >= 0)
+                            {
+                                int closeTag = html.IndexOf('>', headIdx);
+                                if (closeTag >= 0)
+                                {
+                                    html = html.Insert(closeTag + 1, baseTag);
+                                }
+                            }
+                            else
+                            {
+                                html = baseTag + html;
+                            }
+
+                            // Скрипт-перехватчик: все клики по <a href> и сабмиты форм
+                            // направляем через /schoolsite/proxy?url=<encoded original>.
+                            // Это решает проблему "отказано в подключении" при переходе
+                            // по разделам сайта внутри iframe (внешний URL блокируется
+                            // X-Frame-Options, если загружать его напрямую).
+                            string interceptorScript = @"
+<script>
+(function() {
+  var PROXY = '/schoolsite/proxy?url=';
+  function isExternal(u) {
+    if (!u) return false;
+    if (u.indexOf('javascript:') === 0) return false;
+    if (u.charAt(0) === '#') return false;
+    if (u.indexOf('/schoolsite/proxy') === 0) return false;
+    if (u.indexOf('http://') === 0 || u.indexOf('https://') === 0) return true;
+    // Относительные ссылки резолвятся через <base> к внешнему домену
+    return true;
+  }
+  function rewriteUrl(u) {
+    if (!u) return u;
+    if (u.indexOf('javascript:') === 0) return u;
+    if (u.charAt(0) === '#') return u;
+    if (u.indexOf('/schoolsite/proxy') === 0) return u;
+    // Резолвим через <base>
+    var a = document.createElement('a');
+    a.href = u;
+    var full = a.href;
+    if (full.indexOf('http://') === 0 || full.indexOf('https://') === 0) {
+      return PROXY + encodeURIComponent(full);
+    }
+    return u;
+  }
+  // Перехват кликов по <a> (на capture-фазе, чтобы сработать раньше)
+  document.addEventListener('click', function(e) {
+    var node = e.target;
+    while (node && node.tagName !== 'A') node = node.parentNode;
+    if (!node || node.tagName !== 'A') return;
+    var href = node.getAttribute('href');
+    if (!href) return;
+    if (href.indexOf('javascript:') === 0) return;
+    if (href.charAt(0) === '#') return;
+    // Если target=_blank — открываем в этом же iframe (киоск не должен открывать новые окна)
+    if (node.target === '_blank' || node.target === '_top' || node.target === '_parent') {
+      node.target = '_self';
+    }
+    var newHref = rewriteUrl(href);
+    if (newHref !== href) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Важно: используем location.replace, чтобы не засорять историю iframe
+      try { window.location.replace(newHref); } catch(_) { window.location.href = newHref; }
+    }
+  }, true);
+  // Перехват сабмита формы — переписываем action на прокси
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (!form || !form.tagName || form.tagName !== 'FORM') return;
+    var action = form.getAttribute('action');
+    if (!action) {
+      // Нет action — форма сабмитится на текущий URL, который уже через прокси
+      return;
+    }
+    var newAction = rewriteUrl(action);
+    if (newAction !== action) {
+      form.setAttribute('action', newAction);
+    }
+  }, true);
+})();
+</script>";
+
+                            // Вставляем скрипт перед </body> (или в конец, если </body> нет)
+                            int bodyCloseIdx = html.LastIndexOf("</body>", StringComparison.OrdinalIgnoreCase);
+                            if (bodyCloseIdx >= 0)
+                            {
+                                html = html.Insert(bodyCloseIdx, interceptorScript);
+                            }
+                            else
+                            {
+                                html = html + interceptorScript;
+                            }
+
+                            data = Encoding.UTF8.GetBytes(html);
+                        }
+                        catch
+                        {
+                            // Не упадём, если HTML-парсинг не удался — отдадим как есть.
+                        }
+                    }
+
+                    ctx.Response.ContentLength64 = data.Length;
+                    await ctx.Response.OutputStream.WriteAsync(data, 0, data.Length);
+                    ctx.Response.OutputStream.Close();
+                    ctx.Response.Close();
+                }
+            }
+            catch (WebException wex)
+            {
+                Console.WriteLine($"[SchoolSiteProxy] WebException: {wex.Message}");
+                await WriteText(ctx, "School site proxy error: " + wex.Message, 502);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SchoolSiteProxy] Error: {ex.Message}");
+                await WriteText(ctx, "School site proxy error: " + ex.Message, 500);
+            }
+        }
+
+        // /api/info — агрегированный снимок системы (через SystemInfoService.GetInfo).
+        // Используется админкой для отображения machine + memory + disk + process
+        // в одном запросе (вместо отдельных /api/storage и т.п.).
+        private static async Task HandleSystemInfo(HttpListenerContext ctx)
+        {
+            try
+            {
+                var info = SystemInfoService.GetInfo();
+                string json = JsonConvert.SerializeObject(info, Formatting.Indented);
+                await WriteJson(ctx, json);
+            }
+            catch (Exception ex)
+            {
+                await WriteText(ctx, "System info error: " + ex.Message, 500);
+            }
+        }
+
         private static async Task HandleStorageInfo(HttpListenerContext ctx)
         {
             try
@@ -2078,7 +3432,6 @@ private static async Task HandleUpdateRollback(HttpListenerContext ctx)
                 string newsPath = Path.Combine(DataRoot, "news");
                 long mediaSize = Directory.Exists(mediaPath) ? SystemInfoService.GetDirectorySize(mediaPath) : 0;
                 long newsSize = Directory.Exists(newsPath) ? SystemInfoService.GetDirectorySize(newsPath) : 0;
-
                 var result = new
                 {
                     disk = new

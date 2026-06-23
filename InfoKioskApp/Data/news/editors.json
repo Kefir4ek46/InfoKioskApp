@@ -1,0 +1,9 @@
+[
+  {
+    "Name": "admin",
+    "Login": "admin",
+    "Password": "admin123",
+    "TrustedDeviceId": null,
+    "Active": true
+  }
+]

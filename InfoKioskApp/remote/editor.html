@@ -4,75 +4,267 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>InfoKiosk Editor</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/shared/style.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <h1>✍️ Панель редактора</h1>
-      <p class="subtitle">Создайте новость, добавьте фото/видео и отправьте на модерацию</p>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div id="editor-avatar" class="editor-avatar">?</div>
+      <div>
+        <h1 style="margin:0;">
+          ✍️ Редактор новостей <span id="editor-crown-badge" class="crown-badge" style="display:none;" title="Право публикации без модерации">👑</span>
+        </h1>
+        <p class="subtitle" id="editor-subtitle">Вы вошли как гость</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a href="/remote" class="topbar-link">← Выбор роли</a>
+      <button class="danger" onclick="logoutEditor()">Выйти</button>
     </div>
   </header>
 
+  <div class="admin-layout">
+    <!-- SIDEBAR -->
+    <nav class="admin-sidebar">
+      <!-- Карточка пользователя -->
+      <div class="sidebar-user-card" id="sidebar-user-card">
+        <div class="sidebar-user-avatar" id="sidebar-user-avatar">?</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name" id="sidebar-user-name">Гость</div>
+          <div class="sidebar-user-login" id="sidebar-user-login"></div>
+          <div class="sidebar-user-badge" id="sidebar-user-badge" style="display:none;">👑 Право публикации</div>
+        </div>
+      </div>
+
+      <div class="sidebar-group">
+        <div class="sidebar-group-title">Редактор</div>
+        <div class="sidebar-item active" data-tab="new-news">
+          <span class="icon">📝</span><span>Новая новость</span>
+        </div>
+        <div class="sidebar-item" data-tab="my-news">
+          <span class="icon">📋</span><span>Мои новости</span>
+        </div>
+        <div class="sidebar-item" data-tab="my-published">
+          <span class="icon">✅</span><span>Мои публикации</span>
+        </div>
+        <div class="sidebar-item" id="sidebar-moderate" data-tab="moderate" style="display:none;">
+          <span class="icon">👑</span><span>Модерация</span>
+        </div>
+        <div class="sidebar-item" data-tab="profile">
+          <span class="icon">👤</span><span>Профиль</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="admin-content">
+
+      <!-- НОВАЯ НОВОСТЬ -->
+      <section id="tab-new-news" class="tab-content active">
+        <div class="tab-head">
+          <h2>📝 Новая новость</h2>
+          <p id="new-news-hint">Заполните поля и отправьте на модерацию администратору.</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <label>Заголовок</label>
+            <input id="news-title" type="text" placeholder="Введите заголовок">
+
+            <label>Текст новости</label>
+            <textarea id="news-content" style="min-height:240px;" placeholder="Текст новости..."></textarea>
+
+            <label>Ссылка к новости (для QR-кода, опционально)</label>
+            <input id="news-link-url" type="text" placeholder="https://...">
+            <div id="qr-preview" class="qr-preview" style="margin-top:12px;"></div>
+          </div>
+
+          <div class="card">
+            <h3>Медиа</h3>
+            <label>Видеофайл (опционально)</label>
+            <div class="card drop-zone" id="dz-video" style="margin-top:8px;padding:14px;">
+              <input id="news-video-file" type="file" accept="video/*">
+            </div>
+
+            <label>Фотографии (можно несколько)</label>
+            <div class="card drop-zone" id="dz-photos" style="margin-top:8px;padding:14px;">
+              <input id="news-photos" type="file" accept="image/*" multiple>
+            </div>
+
+            <button onclick="submitNews()" style="margin-top:18px;">📤 Отправить</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- МОИ НОВОСТИ (pending/rejected) -->
+      <section id="tab-my-news" class="tab-content">
+        <div class="tab-head">
+          <h2>📋 Мои новости на модерации</h2>
+          <p>Новости, ожидающие проверки администратором или редактором с правами.</p>
+        </div>
+        <div class="card">
+          <button onclick="loadMyPending()">🔄 Обновить</button>
+          <h3 style="margin-top:14px;">На модерации</h3>
+          <div id="my-pending-list" class="news-list"></div>
+          <h3 style="margin-top:18px;">Отклонённые</h3>
+          <div id="my-rejected-list" class="news-list"></div>
+        </div>
+      </section>
+
+      <!-- МОИ ПУБЛИКАЦИИ (published) -->
+      <section id="tab-my-published" class="tab-content">
+        <div class="tab-head">
+          <h2>✅ Мои публикации</h2>
+          <p>Опубликованные новости, автором которых вы являетесь.</p>
+        </div>
+        <div class="card">
+          <button onclick="loadMyPublished()">🔄 Обновить</button>
+          <div id="my-published-list" class="news-list"></div>
+        </div>
+      </section>
+
+      <!-- МОДЕРАЦИЯ (только для редакторов с правами) -->
+      <section id="tab-moderate" class="tab-content">
+        <div class="tab-head">
+          <h2>👑 Модерация новостей</h2>
+          <p>Новости других редакторов, ожидающие публикации. Можно просмотреть, отредактировать и опубликовать.</p>
+        </div>
+        <div class="card">
+          <button onclick="loadModerateQueue()">🔄 Обновить</button>
+          <div id="moderate-news-list" class="news-list"></div>
+        </div>
+      </section>
+
+      <!-- ПРОФИЛЬ -->
+      <section id="tab-profile" class="tab-content">
+        <div class="tab-head">
+          <h2>👤 Профиль</h2>
+          <p>Информация об аккаунте, отображаемое имя и смена пароля.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Аккаунт</h3>
+            <div class="profile-banner" id="profile-banner">
+              <div class="profile-banner-avatar" id="profile-banner-avatar">?</div>
+              <div>
+                <div class="profile-banner-name" id="profile-banner-name">Гость</div>
+                <div class="profile-banner-login" id="profile-banner-login"></div>
+              </div>
+            </div>
+            <label>Логин</label>
+            <input id="editor-login" type="text" readonly>
+            <label>Имя (задаётся администратором)</label>
+            <input id="editor-name" type="text" readonly>
+            <label>Отображаемое имя (можете изменить)</label>
+            <input id="editor-display-name" type="text" placeholder="Оставьте пустым для имени по умолчанию">
+            <button onclick="saveDisplayName()" style="margin-top:10px;">💾 Сохранить отображаемое имя</button>
+            <p id="editor-rights-status" class="hint"></p>
+            <p id="editor-auth-status" class="hint"></p>
+          </div>
+          <div class="card">
+            <h3>Смена пароля</h3>
+            <label>Текущий пароль</label>
+            <input id="editor-old-password" type="password">
+            <label>Новый пароль</label>
+            <input id="editor-new-password" type="password">
+            <button onclick="changeEditorPassword()">🔐 Сменить пароль</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Модалка входа -->
   <div id="editor-auth-modal" class="post-modal hidden">
-    <div class="post-modal-content" style="max-width:520px;">
-      <h2>Вход редактора</h2>
+    <div class="post-modal-content" style="max-width:440px;">
+      <h2 style="margin-bottom:16px;">Вход редактора</h2>
       <label>Логин</label>
       <input id="editor-login-modal" type="text">
-      <label>Имя (для отображения)</label>
-      <input id="editor-name-modal" type="text" readonly>
       <label>Пароль</label>
       <input id="editor-password-modal" type="password">
-      <div style="margin-top:12px;display:flex;gap:8px;">
-        <button onclick="loginEditorFromModal()">Войти</button>
-      </div>
+      <button onclick="loginEditorFromModal()" style="margin-top:18px;">Войти</button>
       <p id="editor-auth-modal-status" class="hint"></p>
     </div>
   </div>
 
-  <main>
-    <section class="tab-content active">
-      <div class="grid-2">
-        <div class="card">
-          <h3>Профиль редактора</h3>
-          <label>Логин</label>
-          <input id="editor-login" type="text" readonly>
-          <label>Имя</label>
-          <input id="editor-name" type="text" readonly>
-          <p id="editor-auth-status" class="hint"></p>
-
-          <h4 style="margin-top:14px;">Смена пароля</h4>
-          <label>Текущий пароль</label>
-          <input id="editor-old-password" type="password">
-          <label>Новый пароль</label>
-          <input id="editor-new-password" type="password">
-          <button onclick="changeEditorPassword()">🔐 Сменить пароль</button>
-        </div>
-
-        <div class="card">
-          <h3>Новая новость</h3>
-          <label>Заголовок</label>
-          <input id="news-title" type="text">
-          <label>Текст новости</label>
-          <textarea id="news-content"></textarea>
-                    <label>Ссылка к новости (для QR-кода)</label>
-          <input id="news-link-url" type="text" placeholder="https://...">
-          <label>Или прикрепить видеофайл</label>
-          <input id="news-video-file" type="file" accept="video/*">
-          <label>Фото (можно несколько)</label>
-          <input id="news-photos" type="file" accept="image/*" multiple>
-          <button onclick="submitNews()">📤 Отправить на модерацию</button>
-        </div>
+  <!-- Модалка предпросмотра/редактирования новости -->
+  <div id="news-preview-modal" class="post-modal hidden">
+    <div class="post-modal-content" style="max-width:900px;">
+      <div class="modal-header-row">
+        <h2 id="np-modal-title">Просмотр новости</h2>
+        <button class="modal-close-btn" onclick="closeNewsPreviewModal()">✕</button>
       </div>
 
-      <div class="card">
-        <h3>Мои отправленные новости</h3>
-        <button onclick="loadMyPending()">🔄 Обновить</button>
-        <ul id="my-news-list"></ul>
-      </div>
-    </section>
-  </main>
+      <!-- Метаданные: автор, дата, статус -->
+      <div id="np-meta" class="np-meta"></div>
 
-  <script src="editor.js"></script>
+      <!-- Редактируемые поля -->
+      <div id="np-edit-fields" style="display:none;">
+        <label>Заголовок</label>
+        <input id="np-title" type="text">
+        <label>Текст новости</label>
+        <textarea id="np-content" style="min-height:200px;"></textarea>
+        <label>Ссылка (для QR-кода)</label>
+        <input id="np-link" type="text">
+      </div>
+
+      <!-- Только просмотр -->
+      <div id="np-view-fields">
+        <h3 id="np-view-title" style="margin-top:0;"></h3>
+        <div id="np-view-content" class="np-view-content"></div>
+        <div id="np-view-link" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- Медиа: фото и видео -->
+      <div id="np-media" class="np-media"></div>
+
+      <!-- QR-код, если есть ссылка -->
+      <div id="np-qr" style="margin-top:14px;"></div>
+
+      <!-- Кнопки действий -->
+      <div class="modal-actions-row" id="np-actions"></div>
+    </div>
+  </div>
+
+  <script src="/editor.js"></script>
+  <script>
+    // Tab switching for editor
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        item.classList.add('active');
+        const tab = item.dataset.tab;
+        document.getElementById('tab-' + tab).classList.add('active');
+        if (tab === 'my-news') loadMyPending();
+        if (tab === 'my-published') loadMyPublished();
+        if (tab === 'moderate') loadModerateQueue();
+        if (tab === 'profile') loadEditorInfo();
+      });
+    });
+
+    // QR-код preview при вводе ссылки.
+    document.addEventListener('DOMContentLoaded', () => {
+      const linkInput = document.getElementById('news-link-url');
+      if (linkInput) {
+        let qrTimer = null;
+        linkInput.addEventListener('input', () => {
+          clearTimeout(qrTimer);
+          qrTimer = setTimeout(updateQrPreview, 300);
+        });
+      }
+    });
+
+    // Закрытие модалки предпросмотра по клику на фон.
+    document.addEventListener('DOMContentLoaded', () => {
+      const modal = document.getElementById('news-preview-modal');
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeNewsPreviewModal();
+        });
+      }
+    });
+  </script>
 </body>
 </html>

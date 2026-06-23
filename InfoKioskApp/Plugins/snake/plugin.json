@@ -1,0 +1,39 @@
+{
+  "id": "snake",
+  "name": "Змейка",
+  "icon": "🐍",
+  "version": "1.0.0",
+  "author": "InfoKiosk",
+  "description": "Классическая игра «Змейка». Управление — стрелки на клавиатуре или свайпы на touchscreen. Рекорд сохраняется в localStorage.",
+  "order": 100,
+  "defaultPosition": "end",
+  "showInSidebar": false,
+  "showInMore": true,
+  "blockDuringLesson": true,
+  "category": "game",
+  "needsBackend": false,
+  "hasSettings": true,
+  "settingsFields": [
+    {
+      "key": "speed",
+      "label": "Начальная скорость (мс на ход)",
+      "type": "number",
+      "default": 150,
+      "min": 50,
+      "max": 500,
+      "help": "Меньше = быстрее. По умолчанию 150 мс."
+    },
+    {
+      "key": "fieldSize",
+      "label": "Размер поля (клеток)",
+      "type": "select",
+      "default": "20",
+      "options": [
+        { "value": "15", "label": "15×15 (легко)" },
+        { "value": "20", "label": "20×20 (нормально)" },
+        { "value": "25", "label": "25×25 (сложно)" },
+        { "value": "30", "label": "30×30 (эксперт)" }
+      ]
+    }
+  ]
+}

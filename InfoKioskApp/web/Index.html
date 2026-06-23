@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="color-scheme" content="dark">
+  <title>Инфокиоск</title>
+
+  <!-- Шрифты Roboto + Noto Sans (локально, из Resources) -->
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/css/views.css">
+  <link rel="stylesheet" href="/css/animations.css">
+</head>
+<body class="theme-dark">
+
+  <!-- ============================== KIOSK ROOT ============================== -->
+  <div id="kiosk">
+
+    <!-- -------------------------- HEADER (110px) -------------------------- -->
+    <header class="kiosk-header" id="kiosk-header">
+      <div class="header-left">
+        <div class="logo" id="logo">
+          <svg viewBox="0 0 40 40" width="36" height="36" aria-hidden="true">
+            <rect x="3" y="6"  width="34" height="26" rx="3" fill="#3A9FFF"/>
+            <rect x="3" y="6"  width="34" height="6"  rx="3" fill="#2A82DA"/>
+            <circle cx="9" cy="9" r="1.5" fill="#1E1E1E"/>
+            <circle cx="14" cy="9" r="1.5" fill="#1E1E1E"/>
+            <text x="20" y="24" text-anchor="middle" font-family="Roboto" font-weight="700" font-size="12" fill="#fff">ШК</text>
+          </svg>
+          <span class="logo-text">Инфокиоск</span>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="clock" id="clock">
+          <div class="clock-time" id="clock-time">--:--</div>
+          <div class="clock-date" id="clock-date">—</div>
+        </div>
+        <div class="lesson-block" id="lesson-block" hidden>
+          <div class="lesson-badge" id="lesson-badge">
+            <span class="lesson-label" id="lesson-label">Урок</span>
+            <span class="lesson-num" id="lesson-num">—</span>
+            <span class="lesson-time" id="lesson-time">—</span>
+          </div>
+          <div class="lesson-countdown" id="lesson-countdown">—</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button class="weather" id="weather" type="button" hidden aria-label="Подробнее о погоде">
+          <img class="weather-icon" id="weather-icon" alt="" />
+          <div class="weather-text">
+            <div class="weather-temp" id="weather-temp">—</div>
+            <div class="weather-desc" id="weather-desc">—</div>
+            <div class="weather-hint">нажмите для подробностей</div>
+          </div>
+        </button>
+      </div>
+    </header>
+
+    <!-- -------------------------- WEATHER PANEL -------------------------- -->
+    <!-- Подробная панель погоды — открывается при клике на виджет в шапке.
+         Содержит город, температуру, влажность, давление, ветер, видимость,
+         восход/закат. Закрывается по крестику или клику на фон. -->
+    <div class="weather-panel" id="weather-panel" hidden>
+      <div class="weather-panel-card">
+        <button type="button" class="weather-panel-close" id="weather-panel-close" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+        <div class="wp-header">
+          <img class="wp-icon" id="wp-icon" alt="" />
+          <div class="wp-main">
+            <div class="wp-city" id="wp-city">—</div>
+            <div class="wp-temp" id="wp-temp">—</div>
+            <div class="wp-desc" id="wp-desc">—</div>
+          </div>
+        </div>
+        <div class="wp-grid" id="wp-grid">
+          <!-- Заполняется JS: влажность, давление, ветер, ощущается, видимость, восход, закат, облачность -->
+        </div>
+      </div>
+    </div>
+
+    <!-- -------------------------- TICKER (38px) -------------------------- -->
+    <div class="kiosk-ticker" id="kiosk-ticker" hidden>
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+
+    <!-- -------------------------- MAIN (sidebar + content) -------------------------- -->
+    <main class="kiosk-main">
+      <nav class="kiosk-sidebar" id="kiosk-sidebar">
+        <button class="nav-btn active" data-view="schedule" data-icon="📅">
+          <span class="nav-ico">📅</span><span class="nav-text">Расписание</span>
+        </button>
+        <button class="nav-btn" data-view="media" data-icon="🖼️">
+          <span class="nav-ico">🖼️</span><span class="nav-text">Медиа</span>
+        </button>
+        <button class="nav-btn" data-view="news" data-icon="📰">
+          <span class="nav-ico">📰</span><span class="nav-text">Новости</span>
+        </button>
+        <button class="nav-btn" data-view="honor" data-icon="🏅">
+          <span class="nav-ico">🏅</span><span class="nav-text">Мы ими гордимся</span>
+        </button>
+        <button class="nav-btn" data-view="documents" data-icon="📄">
+          <span class="nav-ico">📄</span><span class="nav-text">Документы</span>
+        </button>
+        <button class="nav-btn" data-view="calendar" data-icon="📆">
+          <span class="nav-ico">📆</span><span class="nav-text">Календарь</span>
+        </button>
+        <button class="nav-btn" data-view="schoolsite" data-icon="🌐">
+          <span class="nav-ico">🌐</span><span class="nav-text">Сайт школы</span>
+        </button>
+        <!-- Сюда добавятся кастомные разделы из config.CustomSections -->
+      </nav>
+
+      <section class="kiosk-content" id="kiosk-content">
+        <!-- Сюда грузится активная вкладка -->
+        <div class="view-loader">
+          <div class="spinner"></div>
+          <div class="loader-text">Загрузка…</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================== MODAL ROOT ============================== -->
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <!-- ============================== ADMIN ACCESS BUTTON ============================== -->
+  <!-- Маленькая кнопка внизу-слева для входа в админку. Запрашивает PIN-код
+       (по умолчанию 1234), при успехе — открывает /admin в новой вкладке/окне. -->
+  <button class="admin-access-btn" id="admin-access-btn" type="button"
+          title="Вход для администратора" aria-label="Вход для администратора">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/>
+    </svg>
+    <span class="admin-access-text">Админ</span>
+  </button>
+
+  <!-- PIN-форма для входа в админку -->
+  <div class="pin-modal" id="pin-modal" hidden>
+    <div class="pin-modal-card">
+      <div class="pin-modal-title">Вход в админку</div>
+      <div class="pin-modal-sub">Введите PIN-код</div>
+      <input type="password" id="pin-modal-input" class="pin-modal-input"
+             inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+             placeholder="••••" maxlength="20">
+      <div class="pin-modal-error" id="pin-modal-error" hidden></div>
+      <div class="pin-modal-pad" id="pin-modal-pad">
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="clear">C</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="back">⌫</button>
+      </div>
+      <div class="pin-modal-actions">
+        <button type="button" class="pin-modal-cancel" id="pin-modal-cancel">Отмена</button>
+        <button type="button" class="pin-modal-ok" id="pin-modal-ok">Войти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка управления окном — показывается ТОЛЬКО после успешного ввода PIN.
+       Это предотвращает закрытие приложения кем угодно. -->
+  <div class="pin-modal" id="window-control-modal" hidden>
+    <div class="pin-modal-card">
+      <div class="pin-modal-title">Управление приложением</div>
+      <div class="pin-modal-sub">Вы вошли как администратор</div>
+      <div class="admin-actions" style="margin-top:18px;">
+        <button type="button" id="admin-open-btn" class="admin-action-btn primary" title="Открыть панель администратора">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-3.3 0-10 1.7-10 5v3h20v-3c0-3.3-6.7-5-10-5z"/></svg>
+          <span>Открыть админку</span>
+        </button>
+        <button type="button" id="win-minimize" class="admin-action-btn" title="Свернуть приложение">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 11h12v2H6z"/></svg>
+          <span>Свернуть приложение</span>
+        </button>
+        <button type="button" id="win-close" class="admin-action-btn danger" title="Закрыть приложение">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          <span>Закрыть приложение</span>
+        </button>
+      </div>
+      <div style="margin-top:16px;">
+        <button type="button" class="pin-modal-cancel" id="window-control-cancel" style="width:100%;">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== IDLE OVERLAY ============================== -->
+  <!--
+    Структура слоёв (z-index считаем от фона к лицу):
+      .idle-bg          — полупрозрачный тёмный фильтр (1)
+      .idle-slide       — фото-фон, смещён ниже уровня контента (2)
+      .idle-content     — контейнер для текста поверх фона: заголовок + часы + дата (3)
+    Это гарантирует, что время и надписи всегда видны над фото, и не наезжают
+    друг на друга (вертикальный stack через flexbox с gap).
+  -->
+  <div class="idle-overlay" id="idle-overlay" hidden>
+    <div class="idle-slide" id="idle-slide"></div>
+    <div class="idle-slide idle-slide-next" id="idle-slide-next"></div>
+    <div class="idle-bg"    id="idle-bg"></div>
+    <div class="idle-content" id="idle-content">
+      <div class="idle-clock" id="idle-clock">
+        <div class="idle-clock-time" id="idle-clock-time">--:--</div>
+        <div class="idle-clock-date" id="idle-clock-date">—</div>
+      </div>
+      <div class="idle-lesson" id="idle-lesson" hidden></div>
+      <div class="idle-hint">Нажмите, чтобы продолжить</div>
+    </div>
+  </div>
+
+  <!-- ============================== TOASTS ============================== -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- ============================== SCRIPTS ============================== -->
+  <!-- Bootstrap: window.KioskViews должен существовать ДО загрузки view-скриптов,
+       иначе они падают с TypeError и вкладки не регистрируются → "Вкладка не найдена" -->
+  <script>window.KioskViews = window.KioskViews || {};</script>
+  <script src="/js/clock.js"></script>
+  <script src="/js/weather.js"></script>
+  <script src="/js/ticker.js"></script>
+  <script src="/js/idle.js"></script>
+  <script src="/js/modal.js"></script>
+  <script src="/js/toast.js"></script>
+  <script src="/js/leaderboard.js"></script>
+  <script src="/js/admin-access.js"></script>
+  <script src="/js/views/schedule.js"></script>
+  <script src="/js/views/media.js"></script>
+  <script src="/js/views/news.js"></script>
+  <script src="/js/views/honor.js"></script>
+  <script src="/js/views/documents.js"></script>
+  <script src="/js/views/calendar.js"></script>
+  <script src="/js/views/schoolsite.js"></script>
+  <script src="/js/views/custom.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

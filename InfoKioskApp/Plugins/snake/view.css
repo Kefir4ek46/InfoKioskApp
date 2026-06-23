@@ -1,0 +1,76 @@
+/* plugins/snake/view.css — стили игры «Змейка». */
+
+.snake-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.snake-stats {
+  display: flex;
+  gap: 24px;
+  font-size: 18px;
+}
+.snake-stat span {
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+.snake-stat strong {
+  color: var(--accent);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.snake-canvas-wrap {
+  position: relative;
+  display: inline-block;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+#snake-canvas {
+  display: block;
+  background: #0f131c;
+  border-radius: var(--radius-md);
+  touch-action: none;
+}
+
+.snake-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 19, 28, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.snake-overlay-content {
+  text-align: center;
+  padding: 24px;
+}
+.snake-overlay-msg {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 18px;
+}
+.snake-start-btn {
+  padding: 14px 32px;
+  font-size: 18px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+.snake-start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(58, 159, 255, 0.4);
+}
+
+.snake-controls {
+  display: flex;
+  gap: 12px;
+}

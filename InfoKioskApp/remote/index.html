@@ -1,485 +1,158 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InfoKiosk Remote Admin</title>
-    <link rel="icon" href="Logo.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="Logo.ico" type="image/x-icon">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoKiosk — Выбор роли</title>
+  <link rel="stylesheet" href="/shared/style.css">
+  <style>
+    /* Стили только для страницы выбора роли */
+    .role-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at top, #2a2a2a 0%, #1E1E1E 60%);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .role-card {
+      max-width: 720px;
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 18px;
+      padding: 48px 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      animation: fade-up .5s ease;
+    }
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .role-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .role-logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -.5px;
+      margin: 0;
+    }
+    .role-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 15px;
+      margin: 4px 0 32px;
+    }
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 600px) {
+      .role-grid { grid-template-columns: 1fr; }
+      .role-card { padding: 32px 20px; }
+    }
+    .role-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 32px 20px;
+      border-radius: 14px;
+      background: var(--bg);
+      border: 2px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+      cursor: pointer;
+    }
+    .role-tile:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      background: var(--panel-2);
+      box-shadow: 0 12px 30px rgba(58,159,255,.18);
+    }
+    .role-tile:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .role-tile-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    }
+    .role-tile.admin .role-tile-icon  { background: linear-gradient(135deg, #3A9FFF 0%, #2A82DA 100%); }
+    .role-tile.editor .role-tile-icon { background: linear-gradient(135deg, #28A745 0%, #1E7E34 100%); }
+    .role-tile-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .role-tile-desc {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.4;
+    }
+    .role-footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .role-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .role-footer a:hover { text-decoration: underline; }
+  </style>
 </head>
-<body>
-    <header class="topbar">
-        <div class="topbar-left">
-            <h1>🌐 InfoKiosk Remote Admin</h1>
-            <p class="subtitle">Единая панель для расписаний, файлов, медиа, календаря и системных настроек</p>
-        </div>
-        <div class="status-box">
-            <div id="server-status">Подключение...</div>
-            <div class="status-hint">API: текущий адрес страницы</div>
-        </div>
-    </header>
+<body class="theme-dark">
 
-    <main>
-        <nav class="menu">
-            <div class="menu-item active" data-tab="schedules"><span class="icon">📜</span><span class="title">Расписания</span></div>
-            <div class="menu-item" data-tab="files"><span class="icon">🗂️</span><span class="title">Файлы</span></div>
-            <div class="menu-item" data-tab="media"><span class="icon">🖼️</span><span class="title">Медиа</span></div>
-            <div class="menu-item" data-tab="calendar"><span class="icon">🗓️</span><span class="title">Календарь</span></div>
-            <div class="menu-item" data-tab="news"><span class="icon">📰</span><span class="title">Новости</span></div>
-            <div class="menu-item" data-tab="honor"><span class="icon">🏅</span><span class="title">Мы ими гордимся</span></div>
-            <div class="menu-item" data-tab="settings"><span class="icon">⚙️</span><span class="title">Настройки</span></div>
-        </nav>
+  <div class="role-screen">
+    <div class="role-card">
+      <div class="role-logo">
+        <svg viewBox="0 0 40 40" width="44" height="44">
+          <rect x="3" y="6" width="34" height="26" rx="3" fill="#3A9FFF"/>
+          <rect x="3" y="6" width="34" height="6"  rx="3" fill="#2A82DA"/>
+          <circle cx="9"  cy="9" r="1.5" fill="#1E1E1E"/>
+          <circle cx="14" cy="9" r="1.5" fill="#1E1E1E"/>
+          <text x="20" y="24" text-anchor="middle" font-family="Roboto, sans-serif" font-weight="700" font-size="12" fill="#fff">ШК</text>
+        </svg>
+        <h1>InfoKiosk</h1>
+      </div>
+      <p class="role-subtitle">Выберите роль для входа в систему</p>
 
-        <section id="tab-schedules" class="tab-content active">
-            <div class="tab-head">
-                <h2>📂 Управление расписаниями</h2>
-                <p>Загружайте основные и дополнительные файлы расписаний через drag&drop или ручной выбор.</p>
-            </div>
+      <div class="role-grid">
+        <a href="/admin" class="role-tile admin">
+          <div class="role-tile-icon">A</div>
+          <div class="role-tile-title">Администратор</div>
+          <div class="role-tile-desc">Полный доступ: модерация новостей, файлы, календарь, настройки киоска</div>
+        </a>
+        <a href="/editor" class="role-tile editor">
+          <div class="role-tile-icon">Р</div>
+          <div class="role-tile-title">Редактор новостей</div>
+          <div class="role-tile-desc">Подача новостей на модерацию, просмотр своих опубликованных материалов</div>
+        </a>
+      </div>
 
-            <div class="grid-3">
-                <div class="card drop-zone">
-                    <h3>Основное расписание</h3>
-                    <p class="hint">Поддерживается множественная загрузка.</p>
-                    <input type="file" id="main-file" multiple>
-                    <button onclick="uploadSchedule('main')">⬆ Загрузить</button>
-                </div>
-
-                <div class="card drop-zone">
-                    <h3>Изменённое расписание</h3>
-                    <p class="hint">Файлы попадут в раздел изменений.</p>
-                    <input type="file" id="changes-file" multiple>
-                    <button onclick="uploadSchedule('changes')">⬆ Загрузить</button>
-                </div>
-
-                <div class="card drop-zone">
-                    <h3>Другое расписание</h3>
-                    <p class="hint">Дополнительные таблицы и вспомогательные файлы.</p>
-                    <input type="file" id="other-file" multiple>
-                    <button onclick="uploadSchedule('other')">⬆ Загрузить</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>📋 Список дополнительных файлов</h3>
-                <ul id="other-files"></ul>
-            </div>
-        </section>
-
-        <section id="tab-files" class="tab-content">
-            <div class="tab-head">
-                <h2>🗂 Управление файлами</h2>
-                <p>Работа с документами и встроенный предпросмотр.</p>
-            </div>
-
-            <div class="grid-2">
-                <div>
-                    <div class="card drop-zone">
-                        <h3>Документы</h3>
-                        <p class="hint">Перетащите файлы сюда, чтобы загрузить их в раздел документов.</p>
-                        <input type="file" id="docs-file" multiple>
-                        <button onclick="uploadFileType('docs')">⬆ Загрузить</button>
-                    </div>
-
-                    <div class="card file-list">
-                        <h3>📁 Список файлов</h3>
-                        <div class="row-inline">
-                            <select id="file-category" onchange="loadFilesCategory()">
-                                <option value="docs">Документы</option>
-                            </select>
-                            <button onclick="loadFilesCategory()">🔄</button>
-                        </div>
-                        <ul id="files-list"></ul>
-                    </div>
-                </div>
-
-                <div class="card file-preview">
-                    <h3>📄 Предпросмотр</h3>
-                    <div id="preview-area" class="preview-area"></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="tab-media" class="tab-content">
-            <div class="tab-head">
-                <h2>🖼 Медиа и посты</h2>
-                <p>Создание постов, загрузка изображений и управление категориями.</p>
-            </div>
-
-            <div class="grid-2">
-                <div class="card create-post-panel">
-                    <h3>Создать пост</h3>
-                    <label>Категория:</label>
-                    <select id="post-category"></select>
-
-                    <label>Название:</label>
-                    <input id="post-title" type="text">
-
-                    <label>Описание:</label>
-                    <textarea id="post-description"></textarea>
-
-                    <label>Дата:</label>
-                    <input id="post-date" type="date">
-
-                    <label>Фотографии:</label>
-                    <input id="post-images" type="file" accept="image/*" multiple>
-
-                    <button onclick="createFullPost()">Создать пост</button>
-                </div>
-
-                <div class="card category-bar">
-                    <h3>Категории</h3>
-                    <label>Текущая категория:</label>
-                    <select id="category-select" onchange="onCategoryChange()"></select>
-
-                    <div class="row-inline wrap">
-                        <button class="cat-btn" onclick="renameCategoryPrompt()">✏ Переименовать</button>
-                        <button class="cat-btn danger" onclick="deleteCategory()">🗑 Удалить</button>
-                    </div>
-
-                    <label>Новая категория:</label>
-                    <div class="row-inline">
-                        <input id="new-category-name" placeholder="Новая категория">
-                        <button onclick="createCategory()">➕ Добавить</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Посты</h3>
-                <div id="media-posts-area" class="posts-grid"></div>
-            </div>
-        </section>
-
-        <section id="tab-calendar" class="tab-content">
-            <div class="tab-head">
-                <h2>📅 Календарь событий</h2>
-                <p>Публикуйте школьные события, праздники, каникулы и выходные.</p>
-            </div>
-
-            <div class="grid-2">
-                <div class="calendar-form card">
-                    <input id="event-title" placeholder="Название события">
-
-                    <label>Начало:</label>
-                    <input id="event-start" type="date">
-
-                    <label>Окончание:</label>
-                    <input id="event-end" type="date">
-
-                    <label>Тип:</label>
-                    <select id="event-type">
-                        <option value="Праздник">🎉 Праздник</option>
-                        <option value="Каникулы">🏖 Каникулы</option>
-                        <option value="Выходной">🕊 Выходной</option>
-                        <option value="Другое" selected>📌 Другое</option>
-                    </select>
-
-                    <button onclick="addEvent()">Добавить</button>
-                </div>
-
-                <div class="card">
-                    <h3>Список событий</h3>
-                    <ul id="calendar"></ul>
-                </div>
-            </div>
-        </section>
-
-
-        <section id="tab-news" class="tab-content">
-            <div class="tab-head">
-                <h2>📰 Новости и модерация</h2>
-                <p>Создавайте редакторов, принимайте или отклоняйте новости, отправленные на модерацию.</p>
-            </div>
-
-            <div class="grid-2">
-                <div>
-                    <div class="card">
-                        <h3>Редакторы (имя / логин / пароль)</h3>
-                        <label>Имя:</label>
-                        <input id="editor-name" type="text">
-                        <label>Логин:</label>
-                        <input id="editor-login" type="text">
-                        <label>Пароль:</label>
-                        <input id="editor-password" type="text">
-                        <button onclick="createEditor()">➕ Добавить редактора</button>
-                        <ul id="editors-list"></ul>
-                    </div>
-
-                    <div class="card">
-                        <h3>Ссылка для редакторов</h3>
-                        <p>Передайте редактору страницу <code>/editor.html</code></p>
-                        <input id="editor-link" type="text" readonly>
-                        <div style="display:flex; gap:8px; margin-top:8px;">
-                            <button onclick="copyEditorLink()">📋 Копировать ссылку</button>
-                            <a href="editor.html" target="_blank">Открыть editor.html</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3>Новости на модерации</h3>
-                    <button onclick="loadPendingNews()">🔄 Обновить</button>
-                    <div id="pending-news-list" class="news-list"></div>
-                </div>
-
-                <div class="card">
-                    <h3>Уже опубликованные новости</h3>
-                    <button onclick="loadPublishedNewsAdmin()">🔄 Обновить</button>
-                    <div id="published-news-list" class="news-list"></div>
-                </div>
-            </div>
-        </section>
-
-
-        <section id="tab-honor" class="tab-content">
-            <div class="tab-head">
-                <h2>🏅 Мы ими гордимся</h2>
-                <p>Доска почета: карточки с фото, ФИО и описанием достижений.</p>
-            </div>
-            <div class="grid-2">
-                <div class="card">
-                    <h3>Добавить / обновить карточку</h3>
-                    <input id="honor-id" type="hidden">
-                    <label>ФИО</label>
-                    <input id="honor-name" type="text">
-                    <label>Описание / достижения</label>
-                    <textarea id="honor-description" style="min-height:140px"></textarea>
-                    <label>Фото</label>
-                    <input id="honor-photo" type="file" accept="image/*">
-                    <div class="row-inline wrap">
-                        <button onclick="saveHonorPerson()">💾 Сохранить карточку</button>
-                        <button onclick="resetHonorForm()" class="secondary">Очистить форму</button>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3>Карточки доски почета</h3>
-                    <button onclick="loadHonorBoard()">🔄 Обновить</button>
-                    <div id="honor-admin-list" class="posts-grid"></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="tab-settings" class="tab-content">
-            <div class="tab-head">
-                <h2>⚙ Настройки</h2>
-                <p>Параметры удалённого доступа, столовой и обновления приложения.</p>
-            </div>
-
-            <div class="grid-2">
-                <div>
-                    <div class="card">
-                        <h3>Автозапуск удалённого сервера</h3>
-                        <label class="switch">
-                            <input type="checkbox" id="autostart-toggle" onchange="toggleAutostart()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="card">
-                        <h3>Время перехода устройства в сон</h3>
-                        <label><input id="sleep-enabled" type="checkbox"> Включить автосон по расписанию</label>
-                        <p class="hint">Если выключено — автосон полностью отключён. Если включено, укажите время HH:mm.</p>
-                        <input id="sleep-time" type="time" step="60">
-                        <button onclick="saveSleepMode()">Сохранить</button>
-                    </div>
-
-                    <div class="card">
-                        <h3>Столовая (FoodBlockId)</h3>
-                        <input id="food-block-id" type="text" placeholder="Например, 15159">
-                        <button onclick="saveFoodBlockId()">Сохранить</button>
-                    </div>
-
-                    <div class="card">
-                        <h3>Темы и шрифты</h3>
-                        <label>Тема:</label>
-                        <select id="theme-mode">
-                            <option value="dark">Тёмная</option>
-                            <option value="light">Светлая</option>
-                        </select>
-                        <label>Шрифт:</label>
-                        <input id="theme-font-family" type="text" placeholder="Segoe UI">
-                        <label>Размер шрифта:</label>
-                        <input id="theme-font-size" type="number" step="0.5">
-                        <label>Размер нав. кнопок:</label>
-                        <input id="theme-nav-font-size" type="number" step="0.5">
-                        <label>Цвет нав. кнопок:</label>
-                        <input id="theme-nav-bg" type="text" placeholder="#3A3A3A">
-                        <label>Цвет текста нав. кнопок:</label>
-                        <input id="theme-nav-fg" type="text" placeholder="#FFFFFF">
-                        <button onclick="saveThemeSettings()">Сохранить тему</button>
-                    </div>
-
-                    <div class="card">
-                        <h3>Бегущая строка</h3>
-                        <label><input id="ticker-enabled" type="checkbox"> Включить</label>
-                        <label>Текст по умолчанию:</label>
-                        <input id="ticker-text" type="text">
-                        <label>Несколько сообщений (каждое с новой строки):</label>
-                        <textarea id="ticker-items" placeholder="Первое сообщение&#10;Второе сообщение"></textarea>
-                        <label>Скорость:</label>
-                        <input id="ticker-speed" type="number" step="0.1">
-                        <div class="row-inline wrap">
-                            <button onclick="saveTickerSettings()">Сохранить бегущую строку</button>
-                            <button onclick="clearTickerSettings()" class="danger">Очистить строку</button>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <h3>Экран неактивности</h3>
-                        <label><input id="idle-enabled" type="checkbox"> Включить</label>
-                        <label><input id="idle-logo-only" type="checkbox"> Показывать только логотип</label>
-                        <label>Таймаут (сек):</label>
-                        <input id="idle-timeout" type="number">
-                        <label>Смена слайда (сек):</label>
-                        <input id="idle-slide-duration" type="number">
-                        <button onclick="saveIdleSettings()">Сохранить экран ожидания</button>
-                    </div>
-
-                    
-                    <div class="card">
-                        <h3>Безопасность администратора</h3>
-                        <label>Текущий пароль:</label>
-                        <input id="admin-old-password" type="password">
-                        <label>Новый пароль:</label>
-                        <input id="admin-new-password" type="password">
-                        <button onclick="changeAdminPassword()">Сменить пароль admin</button>
-                    </div>
-
-                    <div class="card">
-                        <h3>Громкость устройства (Windows)</h3>
-                        <p class="hint">Команды применяются на устройстве, где запущен InfoKiosk.</p>
-                        <div class="row-inline wrap">
-                            <button onclick="changeVolume('down')">🔉 Тише</button>
-                            <button onclick="changeVolume('up')">🔊 Громче</button>
-                            <button onclick="changeVolume('mute')">🔇 Mute</button>
-                        </div>
-                    </div>
-
-                    <div class="card drop-zone">
-                        <h3>Логотип школы</h3>
-                        <input type="file" id="schoollogo-file">
-                        <button onclick="uploadFileType('schoollogo')">⬆ Загрузить логотип</button>
-                    </div>
-
-                    <div class="card drop-zone">
-                        <h3>Фото школы (слайдшоу)</h3>
-                        <input type="file" id="schoolphotos-file" multiple>
-                        <button onclick="uploadFileType('schoolphotos')">⬆ Загрузить фото</button>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="card storage-card">
-                        <h3>💾 Память устройства</h3>
-                        <div class="storage-row"><span>📀 Диск:</span><span id="disk-total">—</span></div>
-                        <div class="storage-row"><span>📉 Использовано:</span><span id="disk-used">—</span></div>
-                        <div class="storage-row"><span>📈 Свободно:</span><span id="disk-free">—</span></div>
-                        <div class="storage-row"><span>🧠 ОЗУ (процесс):</span><span id="perf-process-ram">—</span></div>
-                        <div class="storage-row"><span>🧠 ОЗУ (managed):</span><span id="perf-managed-ram">—</span></div>
-                        <div class="storage-row"><span>⚙ CPU (устройство):</span><span id="perf-cpu">—</span></div>
-                        <hr>
-                        <div class="storage-row"><span>📂 Папка data:</span><span id="data-size">—</span></div>
-                        <div class="storage-row"><span>🖼 Папка media:</span><span id="media-size">—</span></div>
-                        <div class="storage-row"><span>📰 Папка news:</span><span id="news-size">—</span></div>
-                        <div class="storage-row"><span>🧩 Процесс:</span><span id="app-process">—</span></div>
-                        <div class="storage-row"><span>🆔 PID:</span><span id="app-pid">—</span></div>
-                        <div class="storage-row"><span>📦 База приложения:</span><span id="app-base-dir">—</span></div>
-                    </div>
-
-                    <div class="card update-card">
-                        <h3>🔄 Обновление системы</h3>
-                        <div class="update-versions">
-                            <div class="update-row"><span>Текущая версия:</span><strong id="currentVersion">—</strong></div>
-                            <div class="update-row"><span>Доступная версия:</span><strong id="latestVersion">—</strong></div>
-                            <div class="update-row"><span>Путь app:</span><strong id="update-app-base-dir">—</strong></div>
-                            <div class="update-row"><span>InstallDir updater:</span><strong id="update-install-dir">—</strong></div>
-                        </div>
-                        <div class="update-release-notes">
-                            <div class="update-row"><span>Релиз:</span><strong id="update-release-name">—</strong></div>
-                            <div class="update-row"><span>Тег:</span><strong id="update-release-tag">—</strong></div>
-                            <div class="update-row"><span>Ссылка:</span><a id="update-release-url" href="#" target="_blank">—</a></div>
-                            <label style="display:block;margin-top:8px;color:var(--muted)">Что нового:</label>
-                            <pre id="update-release-notes" class="log" style="max-height:180px;white-space:pre-wrap;">—</pre>
-                        </div>
-
-                        <div class="update-actions">
-                            <button class="btn secondary" onclick="checkUpdate()">Проверить обновления</button>
-                            <button class="btn primary" id="btnInstallUpdate" onclick="installUpdate()" disabled>Обновить</button>
-                            <button class="btn danger" onclick="rollbackUpdate()">Откат версии</button>
-                        </div>
-
-                        <div class="update-log-wrapper">
-                            <div class="update-log-title">Статус обновления</div>
-                            <pre id="updateLog" class="update-log">Ожидание действий...</pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    
-    <div id="news-modal" class="post-modal hidden">
-        <div class="post-modal-content" style="width:min(1300px,96vw);">
-            <span id="news-modal-close" class="post-modal-close">&times;</span>
-            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:16px;">
-                <div>
-                    <label>Заголовок</label><input id="news-modal-title" type="text">
-                    <p id="news-modal-meta" style="color:var(--muted);"></p>
-                    <textarea id="news-modal-content" style="min-height:300px;width:100%;"></textarea>
-                    <label>Ссылка для QR:</label><input id="news-modal-link" type="text" placeholder="https://...">
-                    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                        <button id="news-save-btn">💾 Сохранить текст</button>
-                        <button id="news-publish-btn">✅ Опубликовать</button>
-                        <button id="news-reject-btn">❌ Отклонить</button>
-                        <button id="news-delete-btn" style="background:#8b2a2a;">🗑 Удалить</button>
-                    </div>
-                </div>
-                <div>
-                    <div id="news-media-host" style="background:#101014;border:1px solid rgba(255,255,255,.12);border-radius:10px;min-height:520px;display:flex;align-items:center;justify-content:center;padding:8px;"></div>
-                    <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:10px;">
-                        <button id="news-prev">⟵</button>
-                        <span id="news-index">0/0</span>
-                        <button id="news-next">⟶</button>
-                        <button id="news-rotate">⟳ Повернуть</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+      <div class="role-footer">
+        Доступ к киоску — только с локального устройства.
+      </div>
     </div>
+  </div>
 
-    <div id="post-modal" class="post-modal hidden">
-        <div class="post-modal-content">
-            <span class="post-modal-close">&times;</span>
-            <h2 id="modal-post-title"></h2>
-            <p id="modal-post-date"></p>
-            <p id="modal-post-desc"></p>
-            <div class="modal-gallery">
-                <button id="modal-prev" class="gallery-nav">⟵</button>
-                <img id="modal-img" class="modal-img">
-                <button id="modal-next" class="gallery-nav">⟶</button>
-            </div>
-        </div>
-    </div>
-
-    <footer class="app-footer">
-        <div class="footer-content">
-            <div class="footer-left">
-                <h3>InfoKioskApp Admin</h3>
-                <p>© 2025. Все права защищены.</p>
-            </div>
-            <div class="footer-center">
-                <a href="https://vk.com/akabudakoff" target="_blank" class="footer-link"><span class="icon">🌐</span> VK</a>
-                <a href="https://t.me/krasivyy_Max" target="_blank" class="footer-link"><span class="icon">💬</span> Telegram</a>
-                <a href="https://github.com/Kefir4ek46" target="_blank" class="footer-link"><span class="icon">💻</span> GitHub</a>
-            </div>
-            <div class="footer-right">
-                <p>Разработчик: <strong>Maks aka Fizik aka Kefir4ek46</strong></p>
-            </div>
-        </div>
-    </footer>
-
-    <script src="script.js"></script>
 </body>
 </html>

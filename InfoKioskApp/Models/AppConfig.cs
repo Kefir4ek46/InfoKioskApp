@@ -35,6 +35,9 @@ namespace InfoKioskApp.Models
         // === PIN и безопасность ===
         public string PinCode { get; set; } = "1234";
 
+        // === Сайт школы (для встраивания через прокси-iframe) ===
+        public string SchoolSiteUrl { get; set; } = "https://obo-afan.gosuslugi.ru";
+
         
         // === Удалённое управление ===
         public bool RemoteAutoStart { get; set; } = true;
@@ -54,6 +57,16 @@ namespace InfoKioskApp.Models
 
         // === Запланированный сон устройства (HH:mm) ===
         public string SleepAt { get; set; } = "";
+
+        // === Кастомные категории событий календаря ===
+        // { "Категория": { "color": "#hex", "icon": "emoji" } }
+        public Dictionary<string, CalendarCategoryInfo> CalendarCategories { get; set; }
+
+        public class CalendarCategoryInfo
+        {
+            public string Color { get; set; } = "#3A9FFF";
+            public string Icon { get; set; } = "📌";
+        }
 
         public class TickerSettings
         {

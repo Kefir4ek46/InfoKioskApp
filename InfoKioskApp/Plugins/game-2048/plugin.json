@@ -1,0 +1,38 @@
+{
+  "id": "game-2048",
+  "name": "2048",
+  "icon": "🔢",
+  "version": "1.0.0",
+  "author": "InfoKiosk",
+  "description": "Классическая игра 2048. Объединяйте плитки с одинаковыми числами, чтобы получить 2048. Управление — стрелки или свайпы.",
+  "category": "game",
+  "order": 110,
+  "defaultPosition": "end",
+  "showInSidebar": false,
+  "showInMore": true,
+  "blockDuringLesson": true,
+  "needsBackend": false,
+  "hasSettings": true,
+  "settingsFields": [
+    {
+      "key": "gridSize",
+      "label": "Размер поля",
+      "type": "select",
+      "default": "4",
+      "options": [
+        { "value": "4", "label": "4×4 (классика)" },
+        { "value": "5", "label": "5×5 (больше пространства)" },
+        { "value": "6", "label": "6×6 (эксперт)" }
+      ]
+    },
+    {
+      "key": "winTile",
+      "label": "Плитка для победы",
+      "type": "number",
+      "default": 2048,
+      "min": 128,
+      "max": 8192,
+      "help": "Целевая плитка. По умолчанию 2048."
+    }
+  ]
+}

@@ -4,12 +4,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-	  
-	  
-	  <!-- ВЕРСИЯ ПРИЛОЖЕНИЯ -->
-	  <AssemblyVersion>1.0.0.0</AssemblyVersion>
-	  <FileVersion>1.0.0.0</FileVersion>
-	  <Version>1.0.5</Version>
+          
+          
+          <!-- ВЕРСИЯ ПРИЛОЖЕНИЯ -->
+          <AssemblyVersion>1.0.0.0</AssemblyVersion>
+          <FileVersion>1.0.0.0</FileVersion>
+          <Version>1.0.6</Version>
 
     <!-- Автоматическая генерация partial-классов -->
     <Nullable>enable</Nullable>
@@ -21,10 +21,23 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
-  <!-- Ресурсы, которые нужно копировать -->
+  <!-- Ресурсы, которые нужно копировать в выходную папку -->
   <ItemGroup>
+    <!-- HTML-киоск: всё содержимое web/ копируем как есть -->
+    <Content Include="web\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+
+    <!-- HTML-админка: всё содержимое remote/ копируем как есть -->
     <Content Include="remote\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Плагины: папка plugins/ копируется в выходную директорию как есть.
+         Каждый плагин — это папка plugins/&lt;id&gt;/ с plugin.json, view.js,
+         (опц.) view.css и (опц.) config.json. -->
+    <Content Include="plugins\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
 
     <Content Include="Data\about_developer.txt">
@@ -32,6 +45,29 @@
     </Content>
 
     <Content Include="Logo.ico" />
+
+    <!-- Конфиг и пользовательские данные — обязательно копируем в выходную папку.
+         Без этого ConfigService не найдёт data/config.json при запуске собранного .exe,
+         и PIN-код всегда будет дефолтным "1234" (или, что хуже, несовпадающим с тем,
+         что редактировал пользователь). -->
+    <Content Include="Data\config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\BellSchedule.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\CalendarEvents.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\honor\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\news\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\documents\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
 
     <!-- Медиа -->
     <Content Include="Data\media\**\*" />
@@ -52,6 +88,7 @@
     <PackageReference Include="QRCoder" Version="1.7.0" />
     <PackageReference Include="SixLabors.Fonts" Version="2.1.3" />
     <PackageReference Include="RBush" Version="4.0.0" />
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
     <PackageReference Include="System.Windows.Extensions" Version="10.0.1" />
     <PackageReference Include="WindowsAPICodePack" Version="8.0.14" />
     <PackageReference Include="WindowsAPICodePack-Core" Version="1.1.2" />
